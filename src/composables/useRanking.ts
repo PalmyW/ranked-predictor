@@ -57,34 +57,43 @@ export function decodeRanking(s: string): { ranking: TeamRanking; tierSizes: num
 
 const defaultRanking = (): TeamRanking => TEAMS.map((t) => t.id)
 
+interface StoredState { ranking: TeamRanking; tierSizes: number[] }
+
 function loadInitialState(): {
   ranking: TeamRanking
   tierSizes: number[]
   source: 'url' | 'storage' | 'default'
+  stored: StoredState | null
 } {
+  // Always read localStorage first so we can offer to restore it later
+  const storedRaw = localStorage.getItem(STORAGE_KEY)
+  const stored = storedRaw ? decodeRanking(storedRaw) : null
+
   // 1. URL param
   const params = new URLSearchParams(window.location.search)
   const urlParam = params.get('r')
   if (urlParam) {
     const decoded = decodeRanking(urlParam)
-    if (decoded) return { ...decoded, source: 'url' }
+    if (decoded) return { ...decoded, source: 'url', stored }
   }
   // 2. localStorage
-  const stored = localStorage.getItem(STORAGE_KEY)
-  if (stored) {
-    const decoded = decodeRanking(stored)
-    if (decoded) return { ...decoded, source: 'storage' }
-  }
+  if (stored) return { ...stored, source: 'storage', stored }
   // 3. Default (alphabetical, default tier sizes)
-  return { ranking: defaultRanking(), tierSizes: [...DEFAULT_TIER_SIZES], source: 'default' }
+  return { ranking: defaultRanking(), tierSizes: [...DEFAULT_TIER_SIZES], source: 'default', stored: null }
 }
 
-const { ranking: initialRanking, tierSizes: initialTierSizes, source: initialSource } = loadInitialState()
+const { ranking: initialRanking, tierSizes: initialTierSizes, source: initialSource, stored: initialStored } = loadInitialState()
 
 const ranking = ref<TeamRanking>(initialRanking)
 const tierSizes = ref<number[]>(initialTierSizes)
 const rankedFromUrl = initialSource === 'url'
 const rankedFromStorage = initialSource === 'storage'
+
+type LadderSource = 'live' | 'shared' | 'mine'
+const ladderSource = ref<LadderSource>(
+  initialSource === 'url' ? 'shared' : initialSource === 'storage' ? 'mine' : 'live'
+)
+const savedState = ref<StoredState | null>(initialStored)
 
 export function useRanking() {
   const encodedRanking = computed(() => encodeRanking(ranking.value, tierSizes.value))
@@ -96,9 +105,11 @@ export function useRanking() {
     return url.toString()
   })
 
-  // Persist to localStorage on every change
+  // Persist to localStorage on every change (except when viewing a shared ladder before any interaction)
   watch(encodedRanking, (encoded) => {
-    localStorage.setItem(STORAGE_KEY, encoded)
+    if (ladderSource.value !== 'shared') {
+      localStorage.setItem(STORAGE_KEY, encoded)
+    }
   })
 
   function setRanking(newRanking: TeamRanking) {
@@ -112,6 +123,7 @@ export function useRanking() {
   function resetToLadder(ladder: LadderRow[]) {
     ranking.value = ladder.map((row) => row.teamId)
     tierSizes.value = [...DEFAULT_TIER_SIZES]
+    ladderSource.value = 'live'
   }
 
   function moveTeam(fromIndex: number, toIndex: number) {
@@ -122,6 +134,20 @@ export function useRanking() {
     ranking.value = next
   }
 
+  function loadSavedRanking() {
+    if (!savedState.value) return
+    ranking.value = [...savedState.value.ranking]
+    tierSizes.value = [...savedState.value.tierSizes]
+    ladderSource.value = 'mine'
+  }
+
+  function saveToMyLadder() {
+    const encoded = encodedRanking.value
+    localStorage.setItem(STORAGE_KEY, encoded)
+    savedState.value = { ranking: [...ranking.value], tierSizes: [...tierSizes.value] }
+    ladderSource.value = 'mine'
+  }
+
   return {
     ranking,
     tierSizes,
@@ -129,9 +155,13 @@ export function useRanking() {
     shareUrl,
     rankedFromUrl,
     rankedFromStorage,
+    ladderSource,
+    savedState,
     setRanking,
     setTierSizes,
     resetToLadder,
     moveTeam,
+    loadSavedRanking,
+    saveToMyLadder,
   }
 }

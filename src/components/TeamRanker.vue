@@ -1,14 +1,6 @@
 <template>
   <div>
-    <div class="flex items-center justify-between mb-3">
-      <p class="text-xs text-gray-500 dark:text-gray-400">Drag teams between tiers or within a tier</p>
-      <button
-        @click="$emit('reset')"
-        class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline"
-      >
-        Reset to ladder
-      </button>
-    </div>
+    <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">Drag teams between tiers or within a tier</p>
 
     <div class="space-y-1.5">
       <div v-for="tier in tiers" :key="tier.name" class="flex gap-2">
