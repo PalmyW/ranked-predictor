@@ -17,7 +17,15 @@
           <th class="w-8 py-2 text-center font-semibold">D</th>
           <th class="w-10 py-2 text-center font-semibold">Pts</th>
           <th class="w-16 py-2 text-center font-semibold">%</th>
-          <th class="w-14 py-2 text-center font-semibold" title="Schedule difficulty — 1 = easiest remaining draw, 18 = hardest">Diff</th>
+          <th class="w-14 py-2 text-center font-semibold">
+            <span class="inline-flex items-center gap-0.5">
+              Diff
+              <span
+                class="text-gray-400 hover:text-gray-600 cursor-default"
+                title="Schedule difficulty score (1–18). Calculated as the average ladder position of each team's remaining opponents, normalised so 1 = easiest draw and 18 = hardest draw."
+              >ⓘ</span>
+            </span>
+          </th>
         </tr>
       </thead>
       <tbody>

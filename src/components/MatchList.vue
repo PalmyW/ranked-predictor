@@ -2,7 +2,7 @@
   <div>
     <div class="flex items-center justify-between mb-3">
       <h2 class="text-base font-bold text-gray-800">Full Fixture</h2>
-      <div class="flex gap-2 text-xs text-gray-500">
+      <div class="flex gap-3 text-xs text-gray-500">
         <span class="flex items-center gap-1">
           <span class="inline-block w-2 h-2 rounded-full bg-green-500"></span> Concluded
         </span>
@@ -10,14 +10,16 @@
           <span class="inline-block w-2 h-2 rounded-full bg-blue-400"></span> Live
         </span>
         <span class="flex items-center gap-1">
-          <span class="inline-block w-2 h-2 rounded-full bg-gray-300"></span> Predicted
+          <span class="font-bold text-gray-700">Bold</span> Predicted
+        </span>
+        <span v-if="simulatedMatchWinners" class="flex items-center gap-1">
+          <span class="px-1 rounded text-white bg-purple-500 font-bold" style="font-size:10px">S</span> Simulated
         </span>
       </div>
     </div>
 
     <div class="space-y-2">
       <div v-for="round in rounds" :key="round.roundNumber">
-        <!-- Round header (clickable to collapse) -->
         <button
           class="w-full flex items-center justify-between px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm font-semibold text-gray-700 transition-colors"
           @click="toggleRound(round.roundNumber)"
@@ -29,7 +31,6 @@
           </span>
         </button>
 
-        <!-- Match rows -->
         <div v-show="expandedRounds.has(round.roundNumber)" class="border border-gray-200 rounded overflow-hidden">
           <div
             v-for="(match, i) in round.matches"
@@ -52,7 +53,7 @@
               />
             </span>
 
-            <!-- Concluded match: show scores -->
+            <!-- Concluded: show scores -->
             <template v-if="match.status === 'CONCLUDED' && match.homeScore && match.awayScore">
               <span
                 class="flex-1 min-w-0 truncate"
@@ -77,31 +78,45 @@
               </span>
             </template>
 
-            <!-- Live match: show partial scores or in-progress indicator -->
+            <!-- Live -->
             <template v-else-if="match.status === 'LIVE'">
               <span class="flex-1 truncate text-blue-700 font-medium">{{ match.homeTeamName }}</span>
               <span class="shrink-0 mx-2 text-xs text-blue-500 font-semibold">LIVE</span>
               <span class="flex-1 truncate text-right text-blue-700 font-medium">{{ match.awayTeamName }}</span>
             </template>
 
-            <!-- Future match: show teams and predicted winner -->
+            <!-- Future: predicted + simulated winners -->
             <template v-else>
-              <span
-                class="flex-1 min-w-0 truncate"
-                :class="predictedWinner(match) === match.homeTeamId ? 'font-bold text-gray-800' : 'text-gray-400'"
-              >
-                {{ match.homeTeamName }}
+              <!-- Home team -->
+              <span class="flex-1 min-w-0 flex items-center gap-1 truncate">
+                <span :class="predictedWinner(match) === match.homeTeamId ? 'font-bold text-gray-800' : 'text-gray-400'">
+                  {{ match.homeTeamName }}
+                </span>
+                <span
+                  v-if="simulatedMatchWinners && simulatedMatchWinners[match.id] === match.homeTeamId"
+                  class="shrink-0 px-1 rounded text-white bg-purple-500 font-bold leading-tight cursor-default"
+                  style="font-size:10px"
+                  title="Simulated winner"
+                >S</span>
               </span>
+
               <span class="shrink-0 mx-2 text-xs text-gray-400">vs</span>
-              <span
-                class="flex-1 min-w-0 truncate text-right"
-                :class="predictedWinner(match) === match.awayTeamId ? 'font-bold text-gray-800' : 'text-gray-400'"
-              >
-                {{ match.awayTeamName }}
+
+              <!-- Away team -->
+              <span class="flex-1 min-w-0 flex items-center justify-end gap-1 truncate">
+                <span
+                  v-if="simulatedMatchWinners && simulatedMatchWinners[match.id] === match.awayTeamId"
+                  class="shrink-0 px-1 rounded text-white bg-purple-500 font-bold leading-tight cursor-default"
+                  style="font-size:10px"
+                  title="Simulated winner"
+                >S</span>
+                <span :class="predictedWinner(match) === match.awayTeamId ? 'font-bold text-gray-800' : 'text-gray-400'">
+                  {{ match.awayTeamName }}
+                </span>
               </span>
             </template>
 
-            <!-- Date for future matches -->
+            <!-- Date -->
             <span v-if="match.status !== 'CONCLUDED'" class="shrink-0 ml-2 text-xs text-gray-400 hidden sm:block">
               {{ formatDate(match.utcStartTime) }}
             </span>
@@ -113,15 +128,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive } from 'vue'
+import { computed, reactive, watch } from 'vue'
 import type { AflMatch, TeamRanking } from '../types/afl'
 
 const props = defineProps<{
   matches: readonly AflMatch[]
   ranking: TeamRanking
+  simulatedMatchWinners: Record<number, number> | null
 }>()
 
-// Build rank map reactively
 const rankMap = computed<Record<number, number>>(() => {
   const map: Record<number, number> = {}
   props.ranking.forEach((id, i) => { map[id] = i + 1 })
@@ -160,7 +175,6 @@ const rounds = computed<RoundGroup[]>(() => {
   return Array.from(map.values()).sort((a, b) => a.roundNumber - b.roundNumber)
 })
 
-// Auto-expand current round (first with any non-concluded match) and the last concluded round
 const expandedRounds = reactive(new Set<number>())
 
 const currentRoundNumber = computed(() => {
@@ -168,13 +182,10 @@ const currentRoundNumber = computed(() => {
   if (inProgress) return inProgress.roundNumber
   const liveRound = rounds.value.find(r => r.matches.some(m => m.status === 'LIVE'))
   if (liveRound) return liveRound.roundNumber
-  // First future round
   const future = rounds.value.find(r => r.concludedCount === 0)
   return future?.roundNumber ?? rounds.value[0]?.roundNumber
 })
 
-// Watch for rounds to load and expand the current one
-import { watch } from 'vue'
 watch(rounds, (newRounds) => {
   if (newRounds.length && expandedRounds.size === 0) {
     const curr = currentRoundNumber.value

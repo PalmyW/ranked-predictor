@@ -172,13 +172,46 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef) {
   })
 
   const simulatedLadder = ref<LadderRow[] | null>(null)
+  // matchId → winning teamId from last random simulation
+  const simulatedMatchWinners = ref<Record<number, number> | null>(null)
 
   function simulate() {
     if (!ranking.value.length) return
     const rankMap: Record<number, number> = {}
     ranking.value.forEach((id, i) => { rankMap[id] = i + 1 })
-    simulatedLadder.value = simulateMatches(matches.value, rankMap, true)
+
+    // Capture per-match results while simulating
+    const winners: Record<number, number> = {}
+    for (const match of matches.value) {
+      if (match.status === 'CONCLUDED') continue
+      const hId = match.homeTeamId
+      const aId = match.awayTeamId
+      if (!hId || !aId) continue
+      const hRank = rankMap[hId] ?? 999
+      const aRank = rankMap[aId] ?? 999
+      if (hRank === aRank) continue
+      const favouriteId = hRank < aRank ? hId : aId
+      const underdogId = hRank < aRank ? aId : hId
+      winners[match.id] = Math.random() < favouriteWinProb(hRank - aRank) ? favouriteId : underdogId
+      // Use same winners for the ladder calculation below
+    }
+    simulatedMatchWinners.value = winners
+
+    // Build ladder from the captured winners (not a second random pass)
+    const baseStats = buildStats(matches.value)
+    const simStats: Record<number, TeamStats> = {}
+    for (const [id, s] of Object.entries(baseStats)) simStats[Number(id)] = { ...s }
+    for (const match of matches.value) {
+      if (match.status === 'CONCLUDED') continue
+      const winnerId = winners[match.id]
+      if (!winnerId) continue
+      const loserId = winnerId === match.homeTeamId ? match.awayTeamId : match.homeTeamId
+      if (!simStats[winnerId] || !simStats[loserId]) continue
+      simStats[winnerId].wins++; simStats[winnerId].pts += 4; simStats[winnerId].played++
+      simStats[loserId].losses++; simStats[loserId].played++
+    }
+    simulatedLadder.value = statsToLadder(simStats, matches.value, rankMap)
   }
 
-  return { actualLadder, predictedLadder, simulatedLadder, simulate }
+  return { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate }
 }

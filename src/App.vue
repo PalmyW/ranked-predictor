@@ -52,8 +52,14 @@
           <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
             <div class="flex items-center justify-between mb-3">
               <div>
-                <h2 class="text-lg font-bold text-gray-800">Simulated Ladder</h2>
-                <p class="text-xs text-gray-400 mt-0.5">Favourite wins ~67.5% of games</p>
+                <div class="flex items-center gap-1">
+                  <h2 class="text-lg font-bold text-gray-800">Simulated Ladder</h2>
+                  <span
+                    class="text-gray-400 hover:text-gray-600 cursor-default text-sm"
+                    title="Each unplayed game is decided by probability based on your team ranking. A 1-place gap gives the favourite a 60% chance of winning, scaling up to 95% for a 17-place gap. Click Simulate to run a new randomised season."
+                  >ⓘ</span>
+                </div>
+                <p class="text-xs text-gray-400 mt-0.5">Win chance scales from 60% (1 place apart) to 95% (17 places apart)</p>
               </div>
               <button
                 @click="simulate"
@@ -95,7 +101,11 @@
 
       <!-- Full Fixture -->
       <section v-if="!isLoading && matches.length > 0" class="mt-6 bg-white rounded-lg border border-gray-200 shadow-sm p-4">
-        <MatchList :matches="matches" :ranking="ranking" />
+        <MatchList
+          :matches="matches"
+          :ranking="ranking"
+          :simulated-match-winners="simulatedMatchWinners"
+        />
       </section>
     </main>
   </div>
@@ -121,7 +131,7 @@ const {
   setRanking,
   resetToLadder,
 } = useRanking()
-const { actualLadder, predictedLadder, simulatedLadder, simulate } = useSimulation(ranking, matches)
+const { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate } = useSimulation(ranking, matches)
 
 // Once actual ladder loads, use it as default ranking if nothing was saved
 let initialized = false
