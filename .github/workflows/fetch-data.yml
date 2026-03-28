@@ -1,0 +1,33 @@
+name: Fetch AFL Data
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fetch fixture
+        run: |
+          curl -fsSL \
+            -H 'accept: */*' \
+            -H 'account: afl' \
+            -H 'origin: https://www.afl.com.au' \
+            -H 'referer: https://www.afl.com.au/' \
+            -H 'user-agent: Mozilla/5.0 (compatible; ranked-predictor-ci/1.0)' \
+            'https://aflapi.afl.com.au/afl/v2/matches?pageSize=300&competitionId=1&compSeasonId=85' \
+            -o public/data/fixture.json
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/data/fixture.json
+          git diff --staged --quiet || git commit -m "chore: update AFL fixture data"
+          git push
