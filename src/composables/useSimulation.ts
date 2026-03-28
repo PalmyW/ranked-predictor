@@ -49,30 +49,39 @@ function buildStats(matches: readonly AflMatch[]): Record<number, TeamStats> {
   return stats
 }
 
-// Average rank of remaining opponents for each team
+interface DifficultyInfo {
+  avg: number | null
+  opponents: Array<{ name: string; rank: number }>
+}
+
+// Average rank of remaining opponents for each team, plus ordered opponent list
 function computeDifficulty(
   matches: readonly AflMatch[],
   rankMap: Record<number, number>,
-): Record<number, number | null> {
-  const opponents: Record<number, number[]> = {}
-  for (const team of TEAMS) opponents[team.id] = []
+): Record<number, DifficultyInfo> {
+  const teamMap = Object.fromEntries(TEAMS.map((t) => [t.id, t]))
+  const oppMap: Record<number, number[]> = {}
+  for (const team of TEAMS) oppMap[team.id] = []
 
   for (const match of matches) {
     if (match.status === 'CONCLUDED') continue
     const hId = match.homeTeamId
     const aId = match.awayTeamId
-    if (opponents[hId]) opponents[hId].push(aId)
-    if (opponents[aId]) opponents[aId].push(hId)
+    if (oppMap[hId]) oppMap[hId].push(aId)
+    if (oppMap[aId]) oppMap[aId].push(hId)
   }
 
-  const result: Record<number, number | null> = {}
+  const result: Record<number, DifficultyInfo> = {}
   for (const team of TEAMS) {
-    const opps = opponents[team.id]
+    const opps = oppMap[team.id]
     if (!opps || opps.length === 0) {
-      result[team.id] = null
+      result[team.id] = { avg: null, opponents: [] }
     } else {
+      const oppDetails = opps
+        .map((id) => ({ name: teamMap[id]?.name ?? String(id), rank: rankMap[id] ?? 0 }))
+        .sort((a, b) => a.rank - b.rank)
       const sum = opps.reduce((acc, id) => acc + (rankMap[id] ?? 0), 0)
-      result[team.id] = sum / opps.length
+      result[team.id] = { avg: sum / opps.length, opponents: oppDetails }
     }
   }
   return result
@@ -102,7 +111,8 @@ function statsToLadder(
       against: s.against,
       percentage,
       isFinalist: false,
-      difficulty: difficulty[s.teamId] ?? null,
+      difficulty: difficulty[s.teamId]?.avg ?? null,
+      remainingOpponents: difficulty[s.teamId]?.opponents ?? [],
     }
   })
 
