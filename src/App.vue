@@ -75,7 +75,13 @@
             <div class="p-4">
               <!-- Predicted -->
               <div v-if="activeTab === 'predicted'">
-                <LadderTable :ladder="predictedLadder" title="Predicted Final Ladder" :isLoading="isLoading" />
+                <div class="flex items-center justify-between mb-3">
+                  <div>
+                    <h2 class="text-lg font-bold text-gray-800 dark:text-gray-100">Predicted Final Ladder</h2>
+                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Higher-ranked team wins every remaining game</p>
+                  </div>
+                </div>
+                <LadderTable :ladder="predictedLadder" :isLoading="isLoading" :baselineRanking="ranking" />
               </div>
 
               <!-- Simulated -->
@@ -129,12 +135,18 @@
                 <div v-if="!simulating && !simulatedLadder" class="text-center py-8 text-gray-400 dark:text-gray-500 text-sm">
                   Press Simulate to run a randomised season
                 </div>
-                <LadderTable v-if="!simulating && simulatedLadder" :ladder="simulatedLadder" :isLoading="false" />
+                <LadderTable v-if="!simulating && simulatedLadder" :ladder="simulatedLadder" :isLoading="false" :baselineRanking="predictedLadder.map(r => r.teamId)" />
               </div>
 
               <!-- Current -->
               <div v-else-if="activeTab === 'current'">
-                <LadderTable :ladder="actualLadder" title="Current Ladder" :isLoading="isLoading" />
+                <div class="flex items-center justify-between mb-3">
+                  <div>
+                    <h2 class="text-lg font-bold text-gray-800 dark:text-gray-100">Current Ladder</h2>
+                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Based on concluded matches this season</p>
+                  </div>
+                </div>
+                <LadderTable :ladder="actualLadder" :isLoading="isLoading" />
               </div>
             </div>
           </div>

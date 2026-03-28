@@ -17,6 +17,7 @@
           <th class="w-8 py-2 text-center font-semibold">D</th>
           <th class="w-10 py-2 text-center font-semibold">Pts</th>
           <th class="w-16 py-2 text-center font-semibold">%</th>
+          <th v-if="baselineRanking" class="w-10 py-2 text-center font-semibold">±</th>
           <th class="w-14 py-2 text-center font-semibold">
             <span class="inline-flex items-center justify-center gap-0.5">
               Diff
@@ -56,6 +57,11 @@
             <td class="py-1.5 text-center text-gray-600 dark:text-gray-400">{{ row.draws }}</td>
             <td class="py-1.5 text-center font-bold text-gray-700 dark:text-gray-200">{{ row.pts }}</td>
             <td class="py-1.5 text-center text-gray-600 dark:text-gray-400 text-xs">{{ row.percentage.toFixed(1) }}</td>
+            <td v-if="baselineRanking" class="py-1.5 text-center text-xs font-bold tabular-nums">
+              <span v-if="deltaDir(row.teamId, i + 1) === 'up'" class="text-green-500">▲{{ deltaAbs(row.teamId, i + 1) }}</span>
+              <span v-else-if="deltaDir(row.teamId, i + 1) === 'down'" class="text-red-500">▼{{ deltaAbs(row.teamId, i + 1) }}</span>
+              <span v-else-if="deltaDir(row.teamId, i + 1) === 'same'" class="text-gray-300 dark:text-gray-600">—</span>
+            </td>
             <td class="py-1.5 text-center text-xs font-semibold" :class="normalizedDiffClass(row.teamId)">
               <HtmlTooltip v-if="row.remainingOpponents && row.remainingOpponents.length > 0" placement="above">
                 <template #trigger="{ toggle }">
@@ -99,10 +105,38 @@ import { computed } from 'vue'
 import type { LadderRow } from '../types/afl'
 import HtmlTooltip from './HtmlTooltip.vue'
 
+// Map teamId → baseline rank (1-based) from the provided ranking array
+const baselineMap = computed<Map<number, number>>(() => {
+  const map = new Map<number, number>()
+  if (props.baselineRanking) {
+    props.baselineRanking.forEach((id, i) => map.set(id, i + 1))
+  }
+  return map
+})
+
+function positionDelta(teamId: number, ladderPos: number): number | null {
+  const baseline = baselineMap.value.get(teamId)
+  if (baseline === undefined) return null
+  return baseline - ladderPos  // positive = moved up, negative = moved down
+}
+
+function deltaDir(teamId: number, ladderPos: number): 'up' | 'down' | 'same' | null {
+  const d = positionDelta(teamId, ladderPos)
+  if (d === null) return null
+  if (d > 0) return 'up'
+  if (d < 0) return 'down'
+  return 'same'
+}
+
+function deltaAbs(teamId: number, ladderPos: number): number {
+  return Math.abs(positionDelta(teamId, ladderPos) ?? 0)
+}
+
 const props = defineProps<{
   ladder: LadderRow[]
   title?: string
   isLoading?: boolean
+  baselineRanking?: number[]  // team IDs in baseline order (index 0 = rank 1)
 }>()
 
 const normalizedMap = computed<Map<number, number>>(() => {
