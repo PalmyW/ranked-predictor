@@ -46,7 +46,11 @@
             <td class="py-1.5 text-center text-gray-600">{{ row.draws }}</td>
             <td class="py-1.5 text-center font-bold text-gray-700">{{ row.pts }}</td>
             <td class="py-1.5 text-center text-gray-600 text-xs">{{ row.percentage.toFixed(1) }}</td>
-            <td class="py-1.5 text-center text-xs font-semibold" :class="normalizedDiffClass(row.teamId)">
+            <td
+              class="py-1.5 text-center text-xs font-semibold"
+              :class="normalizedDiffClass(row.teamId)"
+              :title="diffTooltip(row)"
+            >
               {{ normalizedDiff(row.teamId) }}
             </td>
           </tr>
@@ -104,5 +108,12 @@ function normalizedDiffClass(teamId: number): string {
   if (v >= 10) return 'text-orange-500'
   if (v >= 6)  return 'text-gray-500'
   return 'text-green-600'
+}
+
+function diffTooltip(row: LadderRow): string {
+  if (!row.remainingOpponents || row.remainingOpponents.length === 0) return 'No remaining games'
+  const avg = row.difficulty !== null ? row.difficulty.toFixed(1) : '—'
+  const lines = row.remainingOpponents.map((o) => `· ${o.name} (${o.rank})`)
+  return `Avg opponent position: ${avg}\n${lines.join('\n')}`
 }
 </script>

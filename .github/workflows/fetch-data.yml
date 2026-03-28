@@ -2,7 +2,13 @@ name: Fetch AFL Data
 
 on:
   schedule:
-    - cron: '0 */6 * * *'
+    # All times UTC. AFL games Thu–Sun (AEST UTC+10, AEDT UTC+11 Mar–Apr)
+    # After arvo games (~1:45pm start, finish ~3:45pm → 6am UTC)
+    - cron: '0 6 * * 6,0'    # Sat & Sun 6am UTC
+    # After afternoon games (~4:35pm start, finish ~6:35pm → 9am UTC)
+    - cron: '0 9 * * 6,0'    # Sat & Sun 9am UTC
+    # After night games (~7:25pm start, finish ~9:30pm → 12pm UTC next day)
+    - cron: '0 12 * * 5,6,0,1' # Fri Sat Sun Mon noon UTC
   workflow_dispatch:
 
 jobs:

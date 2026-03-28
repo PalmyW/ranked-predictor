@@ -32,7 +32,9 @@
           <TeamRanker
             :teams="teams"
             :ranking="ranking"
+            :tierSizes="tierSizes"
             @update:ranking="setRanking"
+            @update:tierSizes="setTierSizes"
             @reset="handleReset"
           />
         </section>
@@ -124,11 +126,13 @@ import MatchList from './components/MatchList.vue'
 const { matches, teams, isLoading, error } = useAFLData()
 const {
   ranking,
+  tierSizes,
   encodedRanking,
   shareUrl,
   rankedFromUrl,
   rankedFromStorage,
   setRanking,
+  setTierSizes,
   resetToLadder,
 } = useRanking()
 const { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate } = useSimulation(ranking, matches)
