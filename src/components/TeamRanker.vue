@@ -1,10 +1,10 @@
 <template>
   <div>
     <div class="flex items-center justify-between mb-3">
-      <p class="text-xs text-gray-500">Drag teams between tiers or within a tier</p>
+      <p class="text-xs text-gray-500 dark:text-gray-400">Drag teams between tiers or within a tier</p>
       <button
         @click="$emit('reset')"
-        class="text-xs text-blue-600 hover:text-blue-800 underline"
+        class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline"
       >
         Reset to ladder
       </button>
@@ -34,50 +34,110 @@
           :class="TIER_STYLES[tier.name].zone"
         >
           <template #item="{ element }">
-            <div
-              class="flex items-center gap-2 px-2 py-1.5 rounded border transition-colors select-none"
-              :class="TIER_STYLES[tier.name].item"
-            >
-              <span class="drag-handle cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 shrink-0 text-lg leading-none touch-none">
-                ⠿
-              </span>
-              <span class="w-5 text-center text-xs font-bold text-gray-400 shrink-0">
-                {{ rankMap[element.id] }}
-              </span>
-              <span class="flex-1 text-sm font-medium min-w-0 truncate" :class="TIER_STYLES[tier.name].text">
-                {{ element.name }}
-              </span>
+            <div class="relative">
+              <div
+                class="flex items-center gap-2 px-2 py-1.5 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 transition-colors select-none"
+              >
+                <span class="drag-handle cursor-grab active:cursor-grabbing text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 shrink-0 text-lg leading-none touch-none">
+                  ⠿
+                </span>
+                <span class="w-5 text-center text-xs font-bold shrink-0" :class="TIER_STYLES[tier.name].rank">
+                  {{ rankMap[element.id] }}
+                </span>
+                <span class="flex-1 text-sm font-medium min-w-0 truncate text-gray-800 dark:text-gray-200">
+                  {{ element.name }}
+                </span>
+                <!-- Fixture button -->
+                <button
+                  @click.stop="toggleFixture(element.id)"
+                  class="shrink-0 text-xs text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 px-1 transition-colors"
+                  title="View remaining fixture"
+                >
+                  📅
+                </button>
+              </div>
+
+              <!-- Fixture popover -->
+              <div
+                v-if="openFixtureTeamId === element.id"
+                class="absolute right-0 top-full mt-1 z-50 w-72 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg text-sm overflow-hidden"
+              >
+                <div class="flex items-center justify-between px-3 py-2 border-b border-gray-100 dark:border-gray-800">
+                  <span class="font-semibold text-gray-800 dark:text-gray-100 text-xs">{{ element.name }} — Remaining Fixture</span>
+                  <button @click.stop="openFixtureTeamId = null" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xs">✕</button>
+                </div>
+                <div v-if="remainingFixture(element.id).length === 0" class="px-3 py-3 text-gray-400 dark:text-gray-500 text-xs text-center">
+                  No remaining games
+                </div>
+                <div v-else class="max-h-72 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
+                  <div
+                    v-for="game in remainingFixture(element.id)"
+                    :key="game.matchId"
+                    class="flex items-center gap-2 px-3 py-2"
+                  >
+                    <!-- H/A badge -->
+                    <span
+                      class="shrink-0 w-5 h-5 flex items-center justify-center rounded text-xs font-semibold border"
+                      :class="game.isHome
+                        ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300'
+                        : 'bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400'"
+                    >{{ game.isHome ? 'H' : 'A' }}</span>
+                    <!-- Round -->
+                    <span class="shrink-0 text-gray-400 dark:text-gray-600 text-xs w-6">R{{ game.roundNumber }}</span>
+                    <!-- Opponent -->
+                    <span class="flex-1 min-w-0 text-gray-800 dark:text-gray-200 text-xs truncate">{{ game.opponent }}</span>
+                    <!-- Predicted W/L -->
+                    <span
+                      class="shrink-0 w-5 h-5 flex items-center justify-center rounded text-white text-xs font-bold"
+                      :class="game.predicted === 'W' ? 'bg-green-500' : 'bg-red-500'"
+                      title="Predicted"
+                    >{{ game.predicted }}</span>
+                    <!-- Simulated W/L -->
+                    <span
+                      v-if="game.simulated !== null"
+                      class="shrink-0 w-5 h-5 flex items-center justify-center rounded text-white text-xs font-bold opacity-60"
+                      :class="game.simulated === 'W' ? 'bg-green-500' : 'bg-red-500'"
+                      title="Simulated"
+                    >{{ game.simulated }}</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </template>
         </draggable>
       </div>
     </div>
+
+    <!-- Click-outside overlay -->
+    <div v-if="openFixtureTeamId !== null" class="fixed inset-0 z-40" @click="openFixtureTeamId = null" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import draggable from 'vuedraggable'
-import type { AflTeam, TeamRanking } from '../types/afl'
+import type { AflTeam, AflMatch, TeamRanking } from '../types/afl'
 import { DEFAULT_TIER_SIZES } from '../composables/useRanking'
 
 const TIER_NAMES = ['S', 'A', 'B', 'C', 'D', 'E', 'F'] as const
 type TierName = (typeof TIER_NAMES)[number]
 
-const TIER_STYLES: Record<TierName, { label: string; zone: string; item: string; text: string }> = {
-  S: { label: 'bg-amber-400 text-white',   zone: 'border-amber-300 bg-amber-50',   item: 'bg-white border-amber-200',   text: 'text-amber-900' },
-  A: { label: 'bg-green-500 text-white',    zone: 'border-green-300 bg-green-50',   item: 'bg-white border-green-200',   text: 'text-green-900' },
-  B: { label: 'bg-teal-500 text-white',     zone: 'border-teal-300 bg-teal-50',     item: 'bg-white border-teal-200',    text: 'text-teal-900' },
-  C: { label: 'bg-blue-500 text-white',     zone: 'border-blue-300 bg-blue-50',     item: 'bg-white border-blue-200',    text: 'text-blue-900' },
-  D: { label: 'bg-purple-500 text-white',   zone: 'border-purple-300 bg-purple-50', item: 'bg-white border-purple-200',  text: 'text-purple-900' },
-  E: { label: 'bg-orange-500 text-white',   zone: 'border-orange-300 bg-orange-50', item: 'bg-white border-orange-200',  text: 'text-orange-900' },
-  F: { label: 'bg-red-500 text-white',      zone: 'border-red-300 bg-red-50',       item: 'bg-white border-red-200',     text: 'text-red-900' },
+const TIER_STYLES: Record<TierName, { label: string; zone: string; rank: string }> = {
+  S: { label: 'bg-amber-400 text-white',   zone: 'border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800',     rank: 'text-amber-400' },
+  A: { label: 'bg-green-500 text-white',   zone: 'border-green-300 bg-green-50 dark:bg-green-950/30 dark:border-green-800',     rank: 'text-green-500' },
+  B: { label: 'bg-teal-500 text-white',    zone: 'border-teal-300 bg-teal-50 dark:bg-teal-950/30 dark:border-teal-800',         rank: 'text-teal-500' },
+  C: { label: 'bg-blue-500 text-white',    zone: 'border-blue-300 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800',         rank: 'text-blue-500' },
+  D: { label: 'bg-purple-500 text-white',  zone: 'border-purple-300 bg-purple-50 dark:bg-purple-950/30 dark:border-purple-800', rank: 'text-purple-500' },
+  E: { label: 'bg-orange-500 text-white',  zone: 'border-orange-300 bg-orange-50 dark:bg-orange-950/30 dark:border-orange-800', rank: 'text-orange-500' },
+  F: { label: 'bg-red-500 text-white',     zone: 'border-red-300 bg-red-50 dark:bg-red-950/30 dark:border-red-800',             rank: 'text-red-500' },
 }
 
 const props = defineProps<{
   teams: AflTeam[]
   ranking: TeamRanking
   tierSizes: number[]
+  matches: readonly AflMatch[]
+  simulatedMatchWinners: Record<number, number> | null
 }>()
 
 const emit = defineEmits<{
@@ -118,7 +178,6 @@ watch(
   { immediate: true, deep: true }
 )
 
-// Global rank across all tiers (1 = best)
 const rankMap = computed<Record<number, number>>(() => {
   const flat = tiers.value.flatMap((t) => t.teams)
   return Object.fromEntries(flat.map((team, i) => [team.id, i + 1]))
@@ -130,6 +189,43 @@ function onDragEnd() {
   const newTierSizes = tiers.value.map((t) => t.teams.length)
   emit('update:ranking', flat)
   emit('update:tierSizes', newTierSizes)
+}
+
+// Fixture popover
+const openFixtureTeamId = ref<number | null>(null)
+
+function toggleFixture(teamId: number) {
+  openFixtureTeamId.value = openFixtureTeamId.value === teamId ? null : teamId
+}
+
+interface FixtureGame {
+  matchId: number
+  roundNumber: number
+  opponent: string
+  isHome: boolean
+  predicted: 'W' | 'L'
+  simulated: 'W' | 'L' | null
+}
+
+function remainingFixture(teamId: number): FixtureGame[] {
+  const myRank = rankMap.value[teamId] ?? 999
+  return props.matches
+    .filter((m) => m.status !== 'CONCLUDED' && (m.homeTeamId === teamId || m.awayTeamId === teamId))
+    .map((m): FixtureGame => {
+      const isHome = m.homeTeamId === teamId
+      const opponentId = isHome ? m.awayTeamId : m.homeTeamId
+      const opponentRank = rankMap.value[opponentId] ?? 999
+      const simWinner = props.simulatedMatchWinners?.[m.id] ?? null
+      return {
+        matchId: m.id,
+        roundNumber: m.roundNumber,
+        opponent: isHome ? m.awayTeamName : m.homeTeamName,
+        isHome,
+        predicted: myRank < opponentRank ? 'W' : 'L',
+        simulated: simWinner === null ? null : simWinner === teamId ? 'W' : 'L',
+      }
+    })
+    .sort((a, b) => a.roundNumber - b.roundNumber)
 }
 </script>
 

@@ -1,38 +1,51 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <div class="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors">
     <!-- Header -->
-    <header class="bg-white border-b border-gray-200 shadow-sm">
+    <header class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-sm">
       <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
         <div>
-          <h1 class="text-xl font-bold text-gray-900">AFL 2026 Season Predictor</h1>
-          <p class="text-xs text-gray-500 mt-0.5">
+          <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">AFL 2026 Season Predictor</h1>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
             Rank teams 1–18 to predict the final ladder
           </p>
         </div>
-        <div class="text-xs text-gray-400 text-right hidden sm:block">
-          <span v-if="isLoading">Loading fixture...</span>
-          <span v-else-if="matches.length > 0">{{ matches.length }} matches loaded</span>
+        <div class="flex items-center gap-3">
+          <div class="text-xs text-gray-400 dark:text-gray-500 text-right hidden sm:block">
+            <span v-if="isLoading">Loading fixture...</span>
+            <span v-else-if="matches.length > 0">{{ matches.length }} matches loaded</span>
+          </div>
+          <!-- Dark mode toggle -->
+          <button
+            @click="toggleDark"
+            class="w-8 h-8 flex items-center justify-center rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+          >
+            <span v-if="isDark">☀️</span>
+            <span v-else>🌙</span>
+          </button>
         </div>
       </div>
     </header>
 
     <main class="max-w-6xl mx-auto px-4 py-6">
       <!-- Error banner -->
-      <div v-if="error" class="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+      <div v-if="error" class="mb-4 p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded text-red-700 dark:text-red-400 text-sm">
         Failed to load fixture data: {{ error }}. Rankings still work but ladder data may be incomplete.
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Left: Team Ranker -->
-        <section class="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
-          <h2 class="text-base font-bold text-gray-800 mb-1">Your Team Ranking</h2>
-          <p class="text-xs text-gray-400 mb-3">
+        <section class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-4">
+          <h2 class="text-base font-bold text-gray-800 dark:text-gray-100 mb-1">Your Team Ranking</h2>
+          <p class="text-xs text-gray-400 dark:text-gray-500 mb-3">
             Higher-ranked team always wins remaining games
           </p>
           <TeamRanker
             :teams="teams"
             :ranking="ranking"
             :tierSizes="tierSizes"
+            :matches="matches"
+            :simulatedMatchWinners="simulatedMatchWinners"
             @update:ranking="setRanking"
             @update:tierSizes="setTierSizes"
             @reset="handleReset"
@@ -42,17 +55,17 @@
         <!-- Right: Ladders + Share -->
         <section class="space-y-6">
           <!-- Tab switcher -->
-          <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
+          <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
             <!-- Tab bar -->
-            <div class="flex border-b border-gray-200">
+            <div class="flex border-b border-gray-200 dark:border-gray-700">
               <button
                 v-for="tab in tabs"
                 :key="tab.id"
                 @click="activeTab = tab.id"
                 class="flex-1 py-2.5 text-sm font-semibold transition-colors"
                 :class="activeTab === tab.id
-                  ? 'text-blue-600 border-b-2 border-blue-600 -mb-px'
-                  : 'text-gray-500 hover:text-gray-700'"
+                  ? 'text-blue-500 border-b-2 border-blue-500 -mb-px'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
               >
                 {{ tab.label }}
               </button>
@@ -70,13 +83,25 @@
                 <div class="flex items-center justify-between mb-3">
                   <div>
                     <div class="flex items-center gap-1">
-                      <h2 class="text-lg font-bold text-gray-800">Simulated Ladder</h2>
-                      <span
-                        class="text-gray-400 hover:text-gray-600 cursor-default text-sm"
-                        title="Each unplayed game is decided by probability based on your team ranking. A 1-place gap gives the favourite a 60% chance of winning, scaling up to 95% for a 17-place gap. Click Simulate to run a new randomised season."
-                      >ⓘ</span>
+                      <h2 class="text-lg font-bold text-gray-800 dark:text-gray-100">Simulated Ladder</h2>
+                      <HtmlTooltip placement="below">
+                        <template #trigger="{ toggle }">
+                          <button @click.stop="toggle" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-sm leading-none">ⓘ</button>
+                        </template>
+                        <template #content>
+                          <div class="p-3 max-w-[240px]">
+                            <p class="font-semibold mb-1 text-gray-800 dark:text-gray-100">Simulated Ladder</p>
+                            <p class="text-gray-600 dark:text-gray-300 leading-relaxed">Each unplayed game is decided by probability based on your team ranking.</p>
+                            <ul class="mt-2 space-y-1 text-gray-600 dark:text-gray-300">
+                              <li>· <span class="font-semibold">1 place apart</span> → 60% win chance</li>
+                              <li>· <span class="font-semibold">17 places apart</span> → 95% win chance</li>
+                            </ul>
+                            <p class="mt-2 text-gray-400 dark:text-gray-500">Click Simulate to run a new randomised season.</p>
+                          </div>
+                        </template>
+                      </HtmlTooltip>
                     </div>
-                    <p class="text-xs text-gray-400 mt-0.5">Win chance scales from 60% (1 place apart) to 95% (17 places apart)</p>
+                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Win chance scales from 60% (1 place apart) to 95% (17 places apart)</p>
                   </div>
                   <button
                     @click="handleSimulate"
@@ -89,11 +114,11 @@
 
                 <!-- Progress bar -->
                 <div v-if="simulating" class="mb-4">
-                  <div class="flex justify-between text-xs text-gray-400 mb-1">
+                  <div class="flex justify-between text-xs text-gray-400 dark:text-gray-500 mb-1">
                     <span>{{ simStage }}</span>
                     <span>{{ Math.round(simProgress) }}%</span>
                   </div>
-                  <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div class="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                     <div
                       class="h-full bg-blue-500 rounded-full transition-none"
                       :style="{ width: simProgress + '%' }"
@@ -101,7 +126,7 @@
                   </div>
                 </div>
 
-                <div v-if="!simulating && !simulatedLadder" class="text-center py-8 text-gray-400 text-sm">
+                <div v-if="!simulating && !simulatedLadder" class="text-center py-8 text-gray-400 dark:text-gray-500 text-sm">
                   Press Simulate to run a randomised season
                 </div>
                 <LadderTable v-if="!simulating && simulatedLadder" :ladder="simulatedLadder" :isLoading="false" />
@@ -115,18 +140,15 @@
           </div>
 
           <!-- Share -->
-          <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
-            <h2 class="text-sm font-bold text-gray-700 mb-2">Share Your Prediction</h2>
+          <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-4">
+            <h2 class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Share Your Prediction</h2>
             <ShareBar :shareUrl="shareUrl" />
-            <p class="text-xs text-gray-400 mt-2">
-              Code: <span class="font-mono font-bold text-gray-600">{{ encodedRanking }}</span>
-            </p>
           </div>
         </section>
       </div>
 
       <!-- Full Fixture -->
-      <section v-if="!isLoading && matches.length > 0" class="mt-6 bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+      <section v-if="!isLoading && matches.length > 0" class="mt-6 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-4">
         <MatchList
           :matches="matches"
           :ranking="ranking"
@@ -142,16 +164,18 @@ import { ref, watch } from 'vue'
 import { useAFLData } from './composables/useAFLData'
 import { useRanking } from './composables/useRanking'
 import { useSimulation } from './composables/useSimulation'
+import { useDarkMode } from './composables/useDarkMode'
 import TeamRanker from './components/TeamRanker.vue'
 import LadderTable from './components/LadderTable.vue'
 import ShareBar from './components/ShareBar.vue'
 import MatchList from './components/MatchList.vue'
+import HtmlTooltip from './components/HtmlTooltip.vue'
 
+const { isDark, toggle: toggleDark } = useDarkMode()
 const { matches, teams, isLoading, error } = useAFLData()
 const {
   ranking,
   tierSizes,
-  encodedRanking,
   shareUrl,
   rankedFromUrl,
   rankedFromStorage,

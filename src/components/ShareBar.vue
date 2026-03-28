@@ -5,7 +5,7 @@
       type="text"
       :value="shareUrl"
       readonly
-      class="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1.5 text-xs font-mono text-gray-600 bg-gray-50 truncate cursor-text"
+      class="flex-1 min-w-0 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-xs font-mono text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 truncate cursor-text"
       @click="selectAll"
     />
     <button
@@ -14,7 +14,7 @@
       :class="
         copied
           ? 'bg-green-600 border-green-600 text-white'
-          : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+          : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
       "
     >
       {{ copied ? 'Copied!' : 'Copy Link' }}

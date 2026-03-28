@@ -1,8 +1,8 @@
 <template>
   <div>
     <div class="flex items-center justify-between mb-3">
-      <h2 class="text-base font-bold text-gray-800">Full Fixture</h2>
-      <div class="flex gap-3 text-xs text-gray-500">
+      <h2 class="text-base font-bold text-gray-800 dark:text-gray-100">Full Fixture</h2>
+      <div class="flex gap-3 text-xs text-gray-500 dark:text-gray-400">
         <span class="flex items-center gap-1">
           <span class="inline-block w-2 h-2 rounded-full bg-green-500"></span> Concluded
         </span>
@@ -21,23 +21,23 @@
     <div class="space-y-2">
       <div v-for="round in rounds" :key="round.roundNumber">
         <button
-          class="w-full flex items-center justify-between px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm font-semibold text-gray-700 transition-colors"
+          class="w-full flex items-center justify-between px-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-sm font-semibold text-gray-700 dark:text-gray-200 transition-colors"
           @click="toggleRound(round.roundNumber)"
         >
           <span>{{ round.roundName }}</span>
           <span class="flex items-center gap-2 text-xs font-normal text-gray-500">
-            <span>{{ round.concludedCount }}/{{ round.matches.length }} played</span>
+            <span class="text-gray-500 dark:text-gray-400">{{ round.concludedCount }}/{{ round.matches.length }} played</span>
             <span>{{ expandedRounds.has(round.roundNumber) ? '▲' : '▼' }}</span>
           </span>
         </button>
 
-        <div v-show="expandedRounds.has(round.roundNumber)" class="border border-gray-200 rounded overflow-hidden">
+        <div v-show="expandedRounds.has(round.roundNumber)" class="border border-gray-200 dark:border-gray-700 rounded overflow-hidden">
           <div
             v-for="(match, i) in round.matches"
             :key="match.id"
             class="flex items-center px-3 py-2 text-sm"
             :class="[
-              i % 2 === 0 ? 'bg-white' : 'bg-gray-50',
+              i % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800/50',
               match.status === 'LIVE' ? 'border-l-2 border-blue-400' : ''
             ]"
           >
@@ -57,22 +57,22 @@
             <template v-if="match.status === 'CONCLUDED' && match.homeScore && match.awayScore">
               <span
                 class="flex-1 min-w-0 truncate"
-                :class="match.homeScore.totalScore > match.awayScore.totalScore ? 'font-bold text-gray-900' : 'text-gray-500'"
+                :class="match.homeScore.totalScore > match.awayScore.totalScore ? 'font-bold text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-500'"
               >
                 {{ match.homeTeamName }}
               </span>
-              <span class="shrink-0 mx-2 text-xs font-mono tabular-nums text-gray-700 font-semibold">
+              <span class="shrink-0 mx-2 text-xs font-mono tabular-nums text-gray-700 dark:text-gray-300 font-semibold">
                 {{ match.homeScore.goals }}.{{ match.homeScore.behinds }}
-                <span class="text-gray-900">({{ match.homeScore.totalScore }})</span>
+                <span class="text-gray-900 dark:text-gray-100">({{ match.homeScore.totalScore }})</span>
               </span>
-              <span class="shrink-0 text-gray-400 mx-1">—</span>
-              <span class="shrink-0 mx-2 text-xs font-mono tabular-nums text-gray-700 font-semibold">
+              <span class="shrink-0 text-gray-400 dark:text-gray-600 mx-1">—</span>
+              <span class="shrink-0 mx-2 text-xs font-mono tabular-nums text-gray-700 dark:text-gray-300 font-semibold">
                 {{ match.awayScore.goals }}.{{ match.awayScore.behinds }}
-                <span class="text-gray-900">({{ match.awayScore.totalScore }})</span>
+                <span class="text-gray-900 dark:text-gray-100">({{ match.awayScore.totalScore }})</span>
               </span>
               <span
                 class="flex-1 min-w-0 truncate text-right"
-                :class="match.awayScore.totalScore > match.homeScore.totalScore ? 'font-bold text-gray-900' : 'text-gray-500'"
+                :class="match.awayScore.totalScore > match.homeScore.totalScore ? 'font-bold text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-500'"
               >
                 {{ match.awayTeamName }}
               </span>
@@ -80,16 +80,16 @@
 
             <!-- Live -->
             <template v-else-if="match.status === 'LIVE'">
-              <span class="flex-1 truncate text-blue-700 font-medium">{{ match.homeTeamName }}</span>
-              <span class="shrink-0 mx-2 text-xs text-blue-500 font-semibold">LIVE</span>
-              <span class="flex-1 truncate text-right text-blue-700 font-medium">{{ match.awayTeamName }}</span>
+              <span class="flex-1 truncate text-blue-700 dark:text-blue-400 font-medium">{{ match.homeTeamName }}</span>
+              <span class="shrink-0 mx-2 text-xs text-blue-500 dark:text-blue-400 font-semibold">LIVE</span>
+              <span class="flex-1 truncate text-right text-blue-700 dark:text-blue-400 font-medium">{{ match.awayTeamName }}</span>
             </template>
 
             <!-- Future: predicted + simulated winners -->
             <template v-else>
               <!-- Home team -->
               <span class="flex-1 min-w-0 flex items-center gap-1 truncate">
-                <span :class="predictedWinner(match) === match.homeTeamId ? 'font-bold text-gray-800' : 'text-gray-400'">
+                <span :class="predictedWinner(match) === match.homeTeamId ? 'font-bold text-gray-800 dark:text-gray-100' : 'text-gray-400 dark:text-gray-600'">
                   {{ match.homeTeamName }}
                 </span>
                 <span
@@ -100,7 +100,7 @@
                 >S</span>
               </span>
 
-              <span class="shrink-0 mx-2 text-xs text-gray-400">vs</span>
+              <span class="shrink-0 mx-2 text-xs text-gray-400 dark:text-gray-600">vs</span>
 
               <!-- Away team -->
               <span class="flex-1 min-w-0 flex items-center justify-end gap-1 truncate">
@@ -110,14 +110,14 @@
                   style="font-size:10px"
                   title="Simulated winner"
                 >S</span>
-                <span :class="predictedWinner(match) === match.awayTeamId ? 'font-bold text-gray-800' : 'text-gray-400'">
+                <span :class="predictedWinner(match) === match.awayTeamId ? 'font-bold text-gray-800 dark:text-gray-100' : 'text-gray-400 dark:text-gray-600'">
                   {{ match.awayTeamName }}
                 </span>
               </span>
             </template>
 
             <!-- Date -->
-            <span v-if="match.status !== 'CONCLUDED'" class="shrink-0 ml-2 text-xs text-gray-400 hidden sm:block">
+            <span v-if="match.status !== 'CONCLUDED'" class="shrink-0 ml-2 text-xs text-gray-400 dark:text-gray-600 hidden sm:block">
               {{ formatDate(match.utcStartTime) }}
             </span>
           </div>
