@@ -1,11 +1,19 @@
 <template>
   <header class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-sm">
-    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-      <div>
-        <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">AFL 2026 Season Predictor</h1>
-        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Rank teams 1–18 to predict the final ladder</p>
+    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+      <!-- Tile logo -->
+      <div class="flex flex-col gap-0.5 shrink-0">
+        <div v-for="(row, ri) in LOGO_ROWS" :key="ri" class="flex gap-0.5">
+          <div
+            v-for="(char, ci) in row"
+            :key="ci"
+            class="w-6 h-6 flex items-center justify-center text-white font-black text-xs leading-none select-none font-shoulders"
+            :class="char === '/' ? 'bg-slate-800 dark:bg-slate-700 text-slate-400 dark:text-slate-500' : 'bg-slate-800 dark:bg-slate-700'"
+          >{{ char }}</div>
+        </div>
       </div>
-      <div class="flex items-center gap-3">
+
+      <div class="flex items-center gap-3 shrink-0 ml-auto">
         <div class="text-xs text-gray-400 dark:text-gray-500 text-right hidden sm:block">
           <span v-if="isLoading">Loading fixture...</span>
           <span v-else-if="matchCount > 0">{{ matchCount }} matches loaded</span>
@@ -33,4 +41,11 @@ defineProps<{
 defineEmits<{
   (e: 'toggle-dark'): void
 }>()
+
+// Row 1: "DONT CALL ME A CHAMP, MATE" (26 positions)
+// Row 2: "DATA" + slashes padded to 26
+const LOGO_ROWS: string[][] = [
+  ['D','O','N','T',' ','C','A','L','L',' ','M','E',' ','A',' ','C','H','A','M','P',',',' ','M','A','T','E','!'],
+  ['D','A','T','A','/','/','/','/','/','/','/','/','/','/','/','/','/','/','/','/','/','/','/','/','/','/','/' ],
+]
 </script>

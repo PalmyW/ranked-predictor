@@ -1,28 +1,28 @@
-name: Fetch AFL Data
+name: Sync Deploy Branch
 
 on:
-  schedule:
-    # All times UTC. AFL games Thu–Sun (AEST UTC+10, AEDT UTC+11 Mar–Apr)
-    # After arvo games (~1:45pm start, finish ~3:45pm → 6am UTC)
-    - cron: '0 6 * * 6,0'    # Sat & Sun 6am UTC
-    # After afternoon games (~4:35pm start, finish ~6:35pm → 9am UTC)
-    - cron: '0 9 * * 6,0'    # Sat & Sun 9am UTC
-    # After night games (~7:25pm start, finish ~9:30pm → 12pm UTC next day)
-    - cron: '0 12 * * 5,6,0,1' # Fri Sat Sun Mon noon UTC
-  workflow_dispatch:
+  push:
+    branches: [main]
 
 jobs:
-  fetch:
+  sync:
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: deploy
+          fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Fetch fixture
+      - name: Force-reset deploy to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B deploy
+          git push origin deploy --force
+
+      - name: Fetch fixture data
         run: |
           curl -fsSL \
             -H 'accept: */*' \
@@ -33,10 +33,8 @@ jobs:
             'https://aflapi.afl.com.au/afl/v2/matches?pageSize=300&competitionId=1&compSeasonId=85' \
             -o public/data/fixture.json
 
-      - name: Commit changes
+      - name: Commit and push fixture
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add public/data/fixture.json
           git diff --staged --quiet || git commit -m "chore: update AFL fixture data"
-          git push
+          git push origin deploy
