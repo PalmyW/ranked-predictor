@@ -17,38 +17,30 @@
           <th class="w-8 py-2 text-center font-semibold">D</th>
           <th class="w-10 py-2 text-center font-semibold">Pts</th>
           <th class="w-16 py-2 text-center font-semibold">%</th>
+          <th class="w-14 py-2 text-center font-semibold" title="Schedule difficulty — 1 = easiest remaining draw, 18 = hardest">Diff</th>
         </tr>
       </thead>
       <tbody>
         <template v-for="(row, i) in ladder" :key="row.teamId">
-          <!-- Finals cut-off separator -->
-          <tr v-if="i === 8" class="border-t-2 border-gray-400" aria-hidden="true">
-            <td colspan="8" class="py-0" />
-          </tr>
           <tr
-            :class="[
-              'border-b border-gray-100 transition-colors',
-              row.isFinalist
-                ? 'bg-green-50 hover:bg-green-100'
-                : 'hover:bg-gray-50',
-            ]"
+            class="hover:bg-gray-50 transition-colors"
+            :class="{
+              'border-b-2 border-red-400': i === 5,
+              'border-b-2 border-blue-400': i === 9,
+              'border-b border-gray-100': i !== 5 && i !== 9,
+            }"
           >
             <td class="py-1.5 text-center text-gray-500 text-xs">{{ i + 1 }}</td>
-            <td class="py-1.5 pl-2">
-              <span :class="['font-medium', row.isFinalist ? 'text-green-800' : 'text-gray-800']">
-                {{ row.teamName }}
-              </span>
-            </td>
+            <td class="py-1.5 pl-2 font-medium text-gray-800">{{ row.teamName }}</td>
             <td class="py-1.5 text-center text-gray-600">{{ row.played }}</td>
-            <td class="py-1.5 text-center" :class="row.isFinalist ? 'text-green-700 font-semibold' : 'text-gray-600'">
-              {{ row.wins }}
-            </td>
+            <td class="py-1.5 text-center text-gray-600">{{ row.wins }}</td>
             <td class="py-1.5 text-center text-gray-600">{{ row.losses }}</td>
             <td class="py-1.5 text-center text-gray-600">{{ row.draws }}</td>
-            <td class="py-1.5 text-center font-bold" :class="row.isFinalist ? 'text-green-700' : 'text-gray-700'">
-              {{ row.pts }}
-            </td>
+            <td class="py-1.5 text-center font-bold text-gray-700">{{ row.pts }}</td>
             <td class="py-1.5 text-center text-gray-600 text-xs">{{ row.percentage.toFixed(1) }}</td>
+            <td class="py-1.5 text-center text-xs font-semibold" :class="normalizedDiffClass(row.teamId)">
+              {{ normalizedDiff(row.teamId) }}
+            </td>
           </tr>
         </template>
       </tbody>
@@ -61,11 +53,48 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { LadderRow } from '../types/afl'
 
-defineProps<{
+const props = defineProps<{
   ladder: LadderRow[]
   title?: string
   isLoading?: boolean
 }>()
+
+// Min-max normalise raw difficulty values across all teams to a 1–18 scale.
+// Raw difficulty = avg opponent rank: lower raw = harder schedule.
+// We invert so that 1 = easiest, 18 = hardest.
+const normalizedMap = computed<Map<number, number>>(() => {
+  const withDiff = props.ladder.filter((r) => r.difficulty !== null)
+  if (withDiff.length < 2) return new Map()
+
+  const raws = withDiff.map((r) => r.difficulty as number)
+  const minRaw = Math.min(...raws)  // smallest avg opp rank = hardest
+  const maxRaw = Math.max(...raws)  // largest avg opp rank = easiest
+  const range = maxRaw - minRaw
+
+  const map = new Map<number, number>()
+  for (const row of withDiff) {
+    const raw = row.difficulty as number
+    // Invert: high raw (easy) → low normalised; low raw (hard) → high normalised
+    const normalised = range === 0 ? 9.5 : 1 + ((maxRaw - raw) / range) * 17
+    map.set(row.teamId, normalised)
+  }
+  return map
+})
+
+function normalizedDiff(teamId: number): string {
+  const v = normalizedMap.value.get(teamId)
+  return v !== undefined ? v.toFixed(1) : '—'
+}
+
+function normalizedDiffClass(teamId: number): string {
+  const v = normalizedMap.value.get(teamId)
+  if (v === undefined) return 'text-gray-300'
+  if (v >= 14) return 'text-red-600'
+  if (v >= 10) return 'text-orange-500'
+  if (v >= 6)  return 'text-gray-500'
+  return 'text-green-600'
+}
 </script>

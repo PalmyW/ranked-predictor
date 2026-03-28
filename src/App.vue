@@ -48,6 +48,31 @@
             />
           </div>
 
+          <!-- Simulated Ladder -->
+          <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <h2 class="text-lg font-bold text-gray-800">Simulated Ladder</h2>
+                <p class="text-xs text-gray-400 mt-0.5">Favourite wins ~67.5% of games</p>
+              </div>
+              <button
+                @click="simulate"
+                :disabled="isLoading || !matches.length"
+                class="px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Simulate
+              </button>
+            </div>
+            <div v-if="!simulatedLadder" class="text-center py-8 text-gray-400 text-sm">
+              Press Simulate to run a randomised season
+            </div>
+            <LadderTable
+              v-else
+              :ladder="simulatedLadder"
+              :isLoading="false"
+            />
+          </div>
+
           <!-- Current Actual Ladder -->
           <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
             <LadderTable
@@ -67,6 +92,11 @@
           </div>
         </section>
       </div>
+
+      <!-- Full Fixture -->
+      <section v-if="!isLoading && matches.length > 0" class="mt-6 bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+        <MatchList :matches="matches" :ranking="ranking" />
+      </section>
     </main>
   </div>
 </template>
@@ -79,6 +109,7 @@ import { useSimulation } from './composables/useSimulation'
 import TeamRanker from './components/TeamRanker.vue'
 import LadderTable from './components/LadderTable.vue'
 import ShareBar from './components/ShareBar.vue'
+import MatchList from './components/MatchList.vue'
 
 const { matches, teams, isLoading, error } = useAFLData()
 const {
@@ -90,7 +121,7 @@ const {
   setRanking,
   resetToLadder,
 } = useRanking()
-const { actualLadder, predictedLadder } = useSimulation(ranking, matches)
+const { actualLadder, predictedLadder, simulatedLadder, simulate } = useSimulation(ranking, matches)
 
 // Once actual ladder loads, use it as default ranking if nothing was saved
 let initialized = false

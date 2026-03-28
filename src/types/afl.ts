@@ -45,6 +45,7 @@ export interface LadderRow {
   against: number
   percentage: number
   isFinalist: boolean
+  difficulty: number | null  // avg rank of remaining opponents (lower = harder)
 }
 
 export type TeamRanking = number[]

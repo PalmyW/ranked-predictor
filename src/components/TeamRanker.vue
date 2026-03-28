@@ -15,9 +15,10 @@
       item-key="id"
       handle=".drag-handle"
       :animation="150"
-      ghost-class="opacity-50"
-      chosen-class="shadow-lg"
-      @end="emitRanking"
+      ghost-class="ranker-drop-ghost"
+      chosen-class="ranker-chosen"
+      drag-class="ranker-dragging"
+      @end="onDragEnd"
     >
       <template #item="{ element, index }">
         <div
@@ -37,13 +38,8 @@
           </span>
 
           <!-- Drag handle -->
-          <span class="drag-handle cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 shrink-0 text-lg leading-none">
+          <span class="drag-handle cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 shrink-0 text-lg leading-none px-1 touch-none">
             ⠿
-          </span>
-
-          <!-- Letter badge -->
-          <span class="bg-gray-200 text-gray-700 rounded px-1 py-0.5 font-mono text-xs font-bold shrink-0 w-5 text-center">
-            {{ element.letter }}
           </span>
 
           <!-- Team name -->
@@ -57,7 +53,7 @@
           <!-- Up/Down buttons -->
           <div class="flex gap-0.5 shrink-0">
             <button
-              @click="move(index, index - 1)"
+              @click.stop="move(index, index - 1)"
               :disabled="index === 0"
               class="w-6 h-6 flex items-center justify-center text-xs rounded hover:bg-gray-200 disabled:opacity-20 disabled:cursor-not-allowed text-gray-600"
               aria-label="Move up"
@@ -65,7 +61,7 @@
               ▲
             </button>
             <button
-              @click="move(index, index + 1)"
+              @click.stop="move(index, index + 1)"
               :disabled="index === localList.length - 1"
               class="w-6 h-6 flex items-center justify-center text-xs rounded hover:bg-gray-200 disabled:opacity-20 disabled:cursor-not-allowed text-gray-600"
               aria-label="Move down"
@@ -80,7 +76,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, watch, computed } from 'vue'
 import draggable from 'vuedraggable'
 import type { AflTeam, TeamRanking } from '../types/afl'
 
@@ -98,26 +94,55 @@ const teamMap = computed(() =>
   Object.fromEntries(props.teams.map((t) => [t.id, t]))
 )
 
-const localList = computed<AflTeam[]>({
-  get() {
-    return props.ranking
+// vuedraggable requires a plain ref (not computed) to mutate during drag
+const localList = ref<AflTeam[]>([])
+
+// Sync localList when ranking prop changes (but not when we triggered the change)
+let ignoreNext = false
+watch(
+  () => props.ranking,
+  (ids) => {
+    if (ignoreNext) { ignoreNext = false; return }
+    localList.value = ids
       .map((id) => teamMap.value[id])
       .filter((t): t is AflTeam => Boolean(t))
   },
-  set(newList) {
-    emit('update:ranking', newList.map((t) => t.id))
-  },
-})
+  { immediate: true, deep: true }
+)
 
-function emitRanking() {
+function onDragEnd() {
+  ignoreNext = true
   emit('update:ranking', localList.value.map((t) => t.id))
 }
 
 function move(fromIndex: number, toIndex: number) {
   if (toIndex < 0 || toIndex >= localList.value.length) return
-  const newList = [...localList.value]
-  const [item] = newList.splice(fromIndex, 1)
-  newList.splice(toIndex, 0, item)
-  emit('update:ranking', newList.map((t) => t.id))
+  const next = [...localList.value]
+  const [item] = next.splice(fromIndex, 1)
+  next.splice(toIndex, 0, item)
+  ignoreNext = true
+  localList.value = next
+  emit('update:ranking', next.map((t) => t.id))
 }
 </script>
+
+<!-- Unscoped: sortablejs adds these classes directly to DOM elements, bypassing Vue scoping -->
+<style>
+/* Placeholder gap shown at the drop target position while dragging */
+.ranker-drop-ghost {
+  background-color: #eff6ff !important; /* blue-50 */
+  border: 2px dashed #93c5fd !important; /* blue-300 */
+  border-radius: 0.375rem;
+  opacity: 1 !important;
+}
+.ranker-drop-ghost > * {
+  visibility: hidden; /* keep the height/layout but hide content */
+}
+
+/* The item being held while dragging — elevated look */
+.ranker-chosen {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  border-color: #93c5fd !important; /* blue-300 */
+  z-index: 9999;
+}
+</style>
