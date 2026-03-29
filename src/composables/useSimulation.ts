@@ -165,11 +165,9 @@ function simulateMatches(
     const hRank = rankMap[hId] ?? 999
     const aRank = rankMap[aId] ?? 999
     if (hRank === aRank) continue
-    const favouriteId = hRank < aRank ? hId : aId
-    const underdogId = hRank < aRank ? aId : hId
     const winnerId = random
       ? (Math.random() < homeWinProb(hRank, aRank) ? hId : aId)
-      : favouriteId
+      : (hRank < aRank ? hId : aId)
     const loserId = winnerId === hId ? aId : hId
     simStats[winnerId].wins++; simStats[winnerId].pts += 4; simStats[winnerId].played++
     simStats[loserId].losses++; simStats[loserId].played++
@@ -219,8 +217,6 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef) {
       const hRank = rankMap[hId] ?? 999
       const aRank = rankMap[aId] ?? 999
       if (hRank === aRank) continue
-      const favouriteId = hRank < aRank ? hId : aId
-      const underdogId = hRank < aRank ? aId : hId
       winners[match.id] = Math.random() < homeWinProb(hRank, aRank) ? hId : aId
       // Use same winners for the ladder calculation below
     }

@@ -77,7 +77,7 @@
           :isLoading="false"
           :baselineRanking="predictedLadder.map(r => r.teamId)"
           :simulatedMatchWinners="simulating ? undefined : simulatedMatchWinners"
-          :animated="true"
+          :animated="simulating"
         />
       </div>
 
