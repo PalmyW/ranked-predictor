@@ -16,7 +16,7 @@
       >
         <!-- H/A badge -->
         <span
-          class="shrink-0 w-5 h-5 flex items-center justify-center rounded text-xs font-semibold border"
+          class="shrink-0 size-5 flex items-center justify-center rounded text-xs font-semibold border"
           :class="game.isHome
             ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300'
             : 'bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400'"
@@ -27,14 +27,14 @@
         <span class="flex-1 min-w-0 text-gray-800 dark:text-gray-200 text-xs truncate">{{ game.opponent }}</span>
         <!-- Predicted W/L -->
         <span
-          class="shrink-0 w-5 h-5 flex items-center justify-center rounded text-white text-xs font-bold"
+          class="shrink-0 size-5 flex items-center justify-center rounded text-white text-xs font-bold"
           :class="game.predicted === 'W' ? 'bg-green-500' : 'bg-red-500'"
           title="Predicted"
         >{{ game.predicted }}</span>
         <!-- Simulated W/L -->
         <span
           v-if="game.simulated !== null"
-          class="shrink-0 w-5 h-5 flex items-center justify-center rounded text-white text-xs font-bold opacity-60"
+          class="shrink-0 size-5 flex items-center justify-center rounded text-white text-xs font-bold opacity-60"
           :class="game.simulated === 'W' ? 'bg-green-500' : 'bg-red-500'"
           title="Simulated"
         >{{ game.simulated }}</span>

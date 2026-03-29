@@ -5,11 +5,16 @@ import { TEAMS } from './useAFLData'
 type MatchesRef = { readonly value: readonly AflMatch[] }
 type RankingRef = { readonly value: TeamRanking }
 
-// Win probability scales linearly with rank gap:
-// 1 place apart → 60%, 17 places apart → 95%
-function favouriteWinProb(rankDiff: number): number {
+// Win probability for the home team given (hRank - aRank).
+// Base: 60%–95% scaled by rank gap. Home team gets +5% boost.
+function homeWinProb(hRank: number, aRank: number): number {
+  const rankDiff = hRank - aRank
   const clamped = Math.max(1, Math.min(17, Math.abs(rankDiff)))
-  return 0.60 + (clamped - 1) * (0.35 / 16)
+  const baseProb = 0.60 + (clamped - 1) * (0.35 / 16)
+  const favouriteIsHome = hRank < aRank
+  // Convert base prob to home-team prob, then apply 5% home boost
+  const homeProb = (favouriteIsHome ? baseProb : 1 - baseProb) + 0.05
+  return Math.min(0.95, Math.max(0.05, homeProb))
 }
 
 interface TeamStats {
@@ -51,7 +56,7 @@ function buildStats(matches: readonly AflMatch[]): Record<number, TeamStats> {
 
 interface DifficultyInfo {
   avg: number | null
-  opponents: Array<{ name: string; rank: number; isHome: boolean }>
+  opponents: Array<{ matchId: number; name: string; rank: number; isHome: boolean; predictedWin: boolean; winPct: number }>
 }
 
 // Average rank of remaining opponents for each team, plus ordered opponent list
@@ -60,15 +65,15 @@ function computeDifficulty(
   rankMap: Record<number, number>,
 ): Record<number, DifficultyInfo> {
   const teamMap = Object.fromEntries(TEAMS.map((t) => [t.id, t]))
-  const oppMap: Record<number, Array<{ id: number; isHome: boolean }>> = {}
+  const oppMap: Record<number, Array<{ matchId: number; id: number; isHome: boolean; teamRank: number }>> = {}
   for (const team of TEAMS) oppMap[team.id] = []
 
   for (const match of matches) {
     if (match.status === 'CONCLUDED') continue
     const hId = match.homeTeamId
     const aId = match.awayTeamId
-    if (oppMap[hId]) oppMap[hId].push({ id: aId, isHome: true })
-    if (oppMap[aId]) oppMap[aId].push({ id: hId, isHome: false })
+    if (oppMap[hId]) oppMap[hId].push({ matchId: match.id, id: aId, isHome: true, teamRank: rankMap[hId] ?? 999 })
+    if (oppMap[aId]) oppMap[aId].push({ matchId: match.id, id: hId, isHome: false, teamRank: rankMap[aId] ?? 999 })
   }
 
   const result: Record<number, DifficultyInfo> = {}
@@ -78,7 +83,20 @@ function computeDifficulty(
       result[team.id] = { avg: null, opponents: [] }
     } else {
       const oppDetails = opps
-        .map((o) => ({ name: teamMap[o.id]?.name ?? String(o.id), rank: rankMap[o.id] ?? 0, isHome: o.isHome }))
+        .map((o) => {
+          const oppRank = rankMap[o.id] ?? 999
+          const winPct = o.isHome
+            ? homeWinProb(o.teamRank, oppRank)
+            : 1 - homeWinProb(oppRank, o.teamRank)
+          return {
+            matchId: o.matchId,
+            name: teamMap[o.id]?.name ?? String(o.id),
+            rank: oppRank,
+            isHome: o.isHome,
+            predictedWin: o.teamRank < oppRank,
+            winPct,
+          }
+        })
         .sort((a, b) => a.rank - b.rank)
       const sum = opps.reduce((acc, o) => acc + (rankMap[o.id] ?? 0), 0)
       result[team.id] = { avg: sum / opps.length, opponents: oppDetails }
@@ -102,6 +120,7 @@ function statsToLadder(
       teamId: s.teamId,
       teamName: team?.name ?? String(s.teamId),
       abbreviation: team?.abbreviation ?? '???',
+      iconId: team?.iconId ?? '',
       played: s.played,
       wins: s.wins,
       losses: s.losses,
@@ -149,9 +168,9 @@ function simulateMatches(
     const favouriteId = hRank < aRank ? hId : aId
     const underdogId = hRank < aRank ? aId : hId
     const winnerId = random
-      ? (Math.random() < favouriteWinProb(hRank - aRank) ? favouriteId : underdogId)
+      ? (Math.random() < homeWinProb(hRank, aRank) ? hId : aId)
       : favouriteId
-    const loserId = winnerId === favouriteId ? underdogId : favouriteId
+    const loserId = winnerId === hId ? aId : hId
     simStats[winnerId].wins++; simStats[winnerId].pts += 4; simStats[winnerId].played++
     simStats[loserId].losses++; simStats[loserId].played++
   }
@@ -202,7 +221,7 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef) {
       if (hRank === aRank) continue
       const favouriteId = hRank < aRank ? hId : aId
       const underdogId = hRank < aRank ? aId : hId
-      winners[match.id] = Math.random() < favouriteWinProb(hRank - aRank) ? favouriteId : underdogId
+      winners[match.id] = Math.random() < homeWinProb(hRank, aRank) ? hId : aId
       // Use same winners for the ladder calculation below
     }
     simulatedMatchWinners.value = winners
@@ -223,5 +242,45 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef) {
     simulatedLadder.value = statsToLadder(simStats, matches.value, rankMap)
   }
 
-  return { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate }
+  function getSimulationFrames(): Array<{ roundNumber: number; roundName: string; ladder: LadderRow[] }> {
+    const winners = simulatedMatchWinners.value
+    if (!winners) return []
+
+    const rankMap: Record<number, number> = {}
+    ranking.value.forEach((id, i) => { rankMap[id] = i + 1 })
+
+    // Group remaining matches by round in order
+    const roundMap = new Map<number, { roundName: string; roundMatches: AflMatch[] }>()
+    for (const match of matches.value) {
+      if (match.status === 'CONCLUDED') continue
+      if (!roundMap.has(match.roundNumber)) {
+        roundMap.set(match.roundNumber, { roundName: match.roundName, roundMatches: [] })
+      }
+      roundMap.get(match.roundNumber)!.roundMatches.push(match)
+    }
+    const rounds = Array.from(roundMap.entries()).sort(([a], [b]) => a - b)
+
+    // Accumulate stats round by round starting from actual concluded results
+    const runningStats: Record<number, TeamStats> = {}
+    const base = buildStats(matches.value)
+    for (const [id, s] of Object.entries(base)) runningStats[Number(id)] = { ...s }
+
+    const frames: Array<{ roundNumber: number; roundName: string; ladder: LadderRow[] }> = []
+    for (const [roundNumber, { roundName, roundMatches }] of rounds) {
+      for (const match of roundMatches) {
+        const winnerId = winners[match.id]
+        if (!winnerId) continue
+        const loserId = winnerId === match.homeTeamId ? match.awayTeamId : match.homeTeamId
+        if (!runningStats[winnerId] || !runningStats[loserId]) continue
+        runningStats[winnerId].wins++; runningStats[winnerId].pts += 4; runningStats[winnerId].played++
+        runningStats[loserId].losses++; runningStats[loserId].played++
+      }
+      const snap: Record<number, TeamStats> = {}
+      for (const [id, s] of Object.entries(runningStats)) snap[Number(id)] = { ...s }
+      frames.push({ roundNumber, roundName, ladder: statsToLadder(snap, matches.value, rankMap) })
+    }
+    return frames
+  }
+
+  return { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate, getSimulationFrames }
 }

@@ -7,7 +7,7 @@
           <div
             v-for="(char, ci) in row"
             :key="ci"
-            class="w-6 h-6 flex items-center justify-center text-white font-black text-xs leading-none select-none font-shoulders"
+            class="size-6 flex items-center justify-center text-white font-black text-xs leading-none select-none font-shoulders"
             :class="char === '/' ? 'bg-slate-800 dark:bg-slate-700 text-slate-400 dark:text-slate-500' : 'bg-slate-800 dark:bg-slate-700'"
           >{{ char }}</div>
         </div>
@@ -20,7 +20,7 @@
         </div>
         <button
           @click="$emit('toggle-dark')"
-          class="w-8 h-8 flex items-center justify-center rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          class="size-8 flex items-center justify-center rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
         >
           <span v-if="isDark">☀️</span>

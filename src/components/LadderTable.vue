@@ -40,67 +40,37 @@
           </th>
         </tr>
       </thead>
-      <tbody>
-        <template v-for="(row, i) in ladder" :key="row.teamId">
-          <tr
-            class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-            :class="{
-              'border-b-2 border-red-400': i === 5,
-              'border-b-2 border-blue-400': i === 9,
-              'border-b border-gray-100 dark:border-gray-800': i !== 5 && i !== 9,
-            }"
-          >
-            <td class="py-1.5 text-center text-gray-500 dark:text-gray-500 text-xs">{{ i + 1 }}</td>
-            <td class="py-1.5 pl-2 font-medium text-gray-800 dark:text-gray-200">{{ row.teamName }}</td>
-            <td class="py-1.5 text-center text-gray-600 dark:text-gray-400">{{ row.played }}</td>
-            <td class="py-1.5 text-center text-gray-600 dark:text-gray-400">{{ row.wins }}</td>
-            <td class="py-1.5 text-center text-gray-600 dark:text-gray-400">{{ row.losses }}</td>
-            <td class="py-1.5 text-center text-gray-600 dark:text-gray-400">{{ row.draws }}</td>
-            <td class="py-1.5 text-center font-bold text-gray-700 dark:text-gray-200">{{ row.pts }}</td>
-            <td class="py-1.5 text-center text-gray-600 dark:text-gray-400 text-xs">{{ row.percentage.toFixed(1) }}</td>
-            <td v-if="secondaryBaselineRanking" class="py-1.5 text-center text-xs font-bold tabular-nums">
-              <span v-if="deltaDir(secondaryBaselineMap, row.teamId, i + 1) === 'up'" class="text-green-500">▲{{ deltaAbs(secondaryBaselineMap, row.teamId, i + 1) }}</span>
-              <span v-else-if="deltaDir(secondaryBaselineMap, row.teamId, i + 1) === 'down'" class="text-red-500">▼{{ deltaAbs(secondaryBaselineMap, row.teamId, i + 1) }}</span>
-              <span v-else-if="deltaDir(secondaryBaselineMap, row.teamId, i + 1) === 'same'" class="text-gray-300 dark:text-gray-600">—</span>
-            </td>
-            <td v-if="baselineRanking" class="py-1.5 text-center text-xs font-bold tabular-nums">
-              <span v-if="deltaDir(baselineMap, row.teamId, i + 1) === 'up'" class="text-green-500">▲{{ deltaAbs(baselineMap, row.teamId, i + 1) }}</span>
-              <span v-else-if="deltaDir(baselineMap, row.teamId, i + 1) === 'down'" class="text-red-500">▼{{ deltaAbs(baselineMap, row.teamId, i + 1) }}</span>
-              <span v-else-if="deltaDir(baselineMap, row.teamId, i + 1) === 'same'" class="text-gray-300 dark:text-gray-600">—</span>
-            </td>
-            <td class="py-1.5 text-center text-xs font-semibold" :class="normalizedDiffClass(row.teamId)">
-              <HtmlTooltip v-if="row.remainingOpponents && row.remainingOpponents.length > 0" placement="above">
-                <template #trigger="{ toggle }">
-                  <button @click.stop="toggle" class="hover:underline underline-offset-2 cursor-pointer">
-                    {{ normalizedDiff(row.teamId) }}
-                  </button>
-                </template>
-                <template #content>
-                  <div class="p-3 min-w-[180px]">
-                    <p class="text-gray-500 dark:text-gray-400 mb-2">
-                      Avg position: <span class="font-semibold text-gray-700 dark:text-gray-200">{{ row.difficulty !== null ? row.difficulty.toFixed(1) : '—' }}</span>
-                    </p>
-                    <div class="space-y-1">
-                      <div
-                        v-for="opp in row.remainingOpponents"
-                        :key="opp.name"
-                        class="flex items-center justify-between gap-2"
-                      >
-                        <span
-                          class="shrink-0 w-4 text-center text-xs font-bold rounded px-0.5"
-                          :class="opp.isHome ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'"
-                        >{{ opp.isHome ? 'H' : 'A' }}</span>
-                        <span class="flex-1 text-gray-700 dark:text-gray-200">{{ opp.name }}</span>
-                        <span class="shrink-0 text-gray-400 dark:text-gray-500">#{{ opp.rank }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </template>
-              </HtmlTooltip>
-              <span v-else>{{ normalizedDiff(row.teamId) }}</span>
-            </td>
-          </tr>
-        </template>
+      <TransitionGroup v-if="animated" tag="tbody" name="ladder-row">
+        <LadderTableRow
+          v-for="(row, i) in ladder"
+          :key="row.teamId"
+          :row="row"
+          :index="i"
+          :show-secondary-delta="!!secondaryBaselineRanking"
+          :show-primary-delta="!!baselineRanking"
+          :secondary-baseline-map="secondaryBaselineMap"
+          :baseline-map="baselineMap"
+          :simulated-match-winners="simulatedMatchWinners"
+          :normalized-diff-value="normalizedDiff(row.teamId)"
+          :normalized-diff-class="normalizedDiffClass(row.teamId)"
+          :simple="true"
+        />
+      </TransitionGroup>
+
+      <tbody v-else>
+        <LadderTableRow
+          v-for="(row, i) in ladder"
+          :key="row.teamId"
+          :row="row"
+          :index="i"
+          :show-secondary-delta="!!secondaryBaselineRanking"
+          :show-primary-delta="!!baselineRanking"
+          :secondary-baseline-map="secondaryBaselineMap"
+          :baseline-map="baselineMap"
+          :simulated-match-winners="simulatedMatchWinners"
+          :normalized-diff-value="normalizedDiff(row.teamId)"
+          :normalized-diff-class="normalizedDiffClass(row.teamId)"
+        />
       </tbody>
     </table>
 
@@ -114,6 +84,7 @@
 import { computed } from 'vue'
 import type { LadderRow } from '../types/afl'
 import HtmlTooltip from './HtmlTooltip.vue'
+import LadderTableRow from './LadderTableRow.vue'
 
 function makeBaselineMap(ranking: number[] | undefined): Map<number, number> {
   const map = new Map<number, number>()
@@ -124,23 +95,6 @@ function makeBaselineMap(ranking: number[] | undefined): Map<number, number> {
 const baselineMap = computed(() => makeBaselineMap(props.baselineRanking))
 const secondaryBaselineMap = computed(() => makeBaselineMap(props.secondaryBaselineRanking))
 
-function deltaFromMap(map: Map<number, number>, teamId: number, ladderPos: number): number | null {
-  const baseline = map.get(teamId)
-  if (baseline === undefined) return null
-  return baseline - ladderPos  // positive = moved up, negative = moved down
-}
-
-function deltaDir(map: Map<number, number>, teamId: number, ladderPos: number): 'up' | 'down' | 'same' | null {
-  const d = deltaFromMap(map, teamId, ladderPos)
-  if (d === null) return null
-  if (d > 0) return 'up'
-  if (d < 0) return 'down'
-  return 'same'
-}
-
-function deltaAbs(map: Map<number, number>, teamId: number, ladderPos: number): number {
-  return Math.abs(deltaFromMap(map, teamId, ladderPos) ?? 0)
-}
 
 const props = defineProps<{
   ladder: LadderRow[]
@@ -148,6 +102,8 @@ const props = defineProps<{
   isLoading?: boolean
   baselineRanking?: number[]           // primary ± column
   secondaryBaselineRanking?: number[]  // secondary ± column
+  simulatedMatchWinners?: Record<number, number> | null
+  animated?: boolean
 }>()
 
 const normalizedMap = computed<Map<number, number>>(() => {
@@ -182,3 +138,9 @@ function normalizedDiffClass(teamId: number): string {
   return 'text-green-600'
 }
 </script>
+
+<style scoped>
+.ladder-row-move {
+  transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+</style>

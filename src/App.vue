@@ -13,13 +13,13 @@
         Failed to load fixture data: {{ error }}. Rankings still work but ladder data may be incomplete.
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-6">
         <!-- Left: Team Ranker -->
         <section class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-4">
 
           <!-- Ladder source controls -->
-          <div class="mb-3 flex items-center justify-between gap-2 p-2.5 bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-lg">
-            <span class="flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 shrink-0">
+          <div class="mb-3 p-2.5 bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-lg space-y-2">
+            <span class="flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-gray-400">
               Viewing:
               <span
                 class="px-1.5 py-0.5 rounded text-xs font-semibold"
@@ -30,7 +30,7 @@
                 }"
               >{{ ladderSource === 'live' ? 'Live ladder' : ladderSource === 'shared' ? 'Shared ladder' : 'My ladder' }}</span>
             </span>
-            <div class="flex gap-1.5 shrink-0">
+            <div class="flex gap-1.5">
               <button
                 v-if="savedState && ladderSource !== 'mine'"
                 @click="loadSavedRanking"
@@ -73,6 +73,8 @@
             :isLoading="isLoading"
             :hasMatches="matches.length > 0"
             :simulate="simulate"
+            :getSimulationFrames="getSimulationFrames"
+            :simulatedMatchWinners="simulatedMatchWinners"
           />
 
           <!-- Share -->
@@ -110,7 +112,7 @@ import MatchList from './components/MatchList.vue'
 const { isDark, toggle: toggleDark } = useDarkMode()
 const { matches, teams, isLoading, error } = useAFLData()
 const { ranking, tierSizes, shareUrl, rankedFromUrl, rankedFromStorage, ladderSource, savedState, setRanking, setTierSizes, resetToLadder, loadSavedRanking, saveToMyLadder } = useRanking()
-const { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate } = useSimulation(ranking, matches)
+const { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate, getSimulationFrames } = useSimulation(ranking, matches)
 
 let initialized = false
 watch(actualLadder, (ladder) => {

@@ -13,7 +13,7 @@
       >
         <!-- Border caret (behind, slightly larger) -->
         <div
-          class="absolute w-0 h-0 pointer-events-none"
+          class="absolute size-0 pointer-events-none"
           :class="resolvedPlacement === 'above'
             ? 'top-full border-l-[7px] border-l-transparent border-r-[7px] border-r-transparent border-t-[8px] border-t-gray-200 dark:border-t-gray-700'
             : 'bottom-full -translate-y-0 border-l-[7px] border-l-transparent border-r-[7px] border-r-transparent border-b-[8px] border-b-gray-200 dark:border-b-gray-700'"
@@ -21,7 +21,7 @@
         />
         <!-- Fill caret (front) -->
         <div
-          class="absolute w-0 h-0 pointer-events-none"
+          class="absolute size-0 pointer-events-none"
           :class="resolvedPlacement === 'above'
             ? 'top-full border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[7px] border-t-white dark:border-t-gray-800'
             : 'bottom-full border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[7px] border-b-white dark:border-b-gray-800'"

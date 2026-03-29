@@ -3,6 +3,7 @@ export interface AflTeam {
   name: string
   abbreviation: string
   letter: string
+  iconId: string  // SVG sprite symbol id e.g. "icn-aflc-adel"
 }
 
 export interface AflScore {
@@ -36,6 +37,7 @@ export interface LadderRow {
   teamId: number
   teamName: string
   abbreviation: string
+  iconId: string
   played: number
   wins: number
   losses: number
@@ -46,7 +48,7 @@ export interface LadderRow {
   percentage: number
   isFinalist: boolean
   difficulty: number | null  // avg rank of remaining opponents (lower = harder)
-  remainingOpponents: Array<{ name: string; rank: number; isHome: boolean }>
+  remainingOpponents: Array<{ matchId: number; name: string; rank: number; isHome: boolean; predictedWin: boolean; winPct: number }>
 }
 
 export type TeamRanking = number[]

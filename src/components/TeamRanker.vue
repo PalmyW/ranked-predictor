@@ -34,8 +34,9 @@
                 <span class="w-5 text-center text-xs font-bold shrink-0" :class="TIER_STYLES[tier.name].rank">
                   {{ rankMap[element.id] }}
                 </span>
-                <span class="flex-1 text-sm font-medium min-w-0 truncate text-gray-800 dark:text-gray-200">
-                  {{ element.name }}
+                <span class="flex items-center gap-1.5 flex-1 min-w-0 truncate">
+                  <svg class="size-5 shrink-0"><use :href="`/ranked-predictor/icons.svg#${element.iconId}`" /></svg>
+                  <span class="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{{ element.name }}</span>
                 </span>
                 <button
                   @click.stop="toggleFixture(element.id)"

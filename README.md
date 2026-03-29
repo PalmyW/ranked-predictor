@@ -80,4 +80,4 @@ Each letter maps to a team (A = Adelaide, B = Brisbane Lions, … R = Western Bu
 ## Simulation model
 
 - **Predicted ladder** — Higher-ranked team wins every remaining game deterministically
-- **Simulated ladder** — Win probability scales linearly from 60% (1 rank apart) to 95% (17 ranks apart)
+- **Simulated ladder** — Win probability scales linearly from 60% (1 rank apart) to 95% (17 ranks apart), with a +5% home ground advantage applied on top

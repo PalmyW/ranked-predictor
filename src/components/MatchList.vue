@@ -4,10 +4,10 @@
       <h2 class="text-base font-bold text-gray-800 dark:text-gray-100">Full Fixture</h2>
       <div class="flex gap-3 text-xs text-gray-500 dark:text-gray-400">
         <span class="flex items-center gap-1">
-          <span class="inline-block w-2 h-2 rounded-full bg-green-500"></span> Concluded
+          <span class="inline-block size-2 rounded-full bg-green-500"></span> Concluded
         </span>
         <span class="flex items-center gap-1">
-          <span class="inline-block w-2 h-2 rounded-full bg-blue-400"></span> Live
+          <span class="inline-block size-2 rounded-full bg-blue-400"></span> Live
         </span>
         <span class="flex items-center gap-1">
           <span class="font-bold text-gray-700 dark:text-gray-300">Bold</span> Predicted

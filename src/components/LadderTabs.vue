@@ -41,17 +41,21 @@
                 <template #content>
                   <div class="p-3 max-w-[240px]">
                     <p class="font-semibold mb-1 text-gray-800 dark:text-gray-100">Simulated Ladder</p>
-                    <p class="text-gray-600 dark:text-gray-300 leading-relaxed">Each unplayed game is decided by probability based on your team ranking.</p>
+                    <p class="text-gray-600 dark:text-gray-300 leading-relaxed">Each unplayed game is decided by probability based on your team ranking, with a home ground advantage.</p>
                     <ul class="mt-2 space-y-1 text-gray-600 dark:text-gray-300">
-                      <li>· <span class="font-semibold">1 place apart</span> → 60% win chance</li>
-                      <li>· <span class="font-semibold">17 places apart</span> → 95% win chance</li>
+                      <li>· Higher-ranked team wins <span class="font-semibold">60–95%</span> of the time</li>
+                      <li>· Home team gets a <span class="font-semibold">+5% boost</span></li>
+                      <li>· Equal teams: home wins <span class="font-semibold">55%</span></li>
                     </ul>
                     <p class="mt-2 text-gray-400 dark:text-gray-500">Click Simulate to run a new randomised season.</p>
                   </div>
                 </template>
               </HtmlTooltip>
             </div>
-            <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Win chance scales from 60% (1 place apart) to 95% (17 places apart)</p>
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+              <template v-if="simulating">{{ simStage }}</template>
+              <template v-else>Win chance scales 60–95% by rank gap, home team +5%</template>
+            </p>
           </div>
           <button
             @click="handleSimulate"
@@ -62,25 +66,18 @@
           </button>
         </div>
 
-        <!-- Progress bar -->
-        <div v-if="simulating" class="mb-4">
-          <div class="flex justify-between text-xs text-gray-400 dark:text-gray-500 mb-1">
-            <span>{{ simStage }}</span>
-            <span>{{ Math.round(simProgress) }}%</span>
-          </div>
-          <div class="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-            <div class="h-full bg-blue-500 rounded-full transition-none" :style="{ width: simProgress + '%' }" />
-          </div>
-        </div>
-
-        <div v-if="!simulating && !simulatedLadder" class="text-center py-8 text-gray-400 dark:text-gray-500 text-sm">
+        <div v-if="!simulatedLadder && !simulating" class="text-center py-8 text-gray-400 dark:text-gray-500 text-sm">
           Press Simulate to run a randomised season
         </div>
+
+        <!-- Live animated ladder during simulation, or final result -->
         <LadderTable
-          v-if="!simulating && simulatedLadder"
-          :ladder="simulatedLadder"
+          v-if="animatingLadder || simulatedLadder"
+          :ladder="animatingLadder ?? simulatedLadder ?? []"
           :isLoading="false"
           :baselineRanking="predictedLadder.map(r => r.teamId)"
+          :simulatedMatchWinners="simulating ? undefined : simulatedMatchWinners"
+          :animated="true"
         />
       </div>
 
@@ -112,6 +109,8 @@ const props = defineProps<{
   isLoading: boolean
   hasMatches: boolean
   simulate: () => void
+  getSimulationFrames: () => Array<{ roundNumber: number; roundName: string; ladder: LadderRow[] }>
+  simulatedMatchWinners: Record<number, number> | null
 }>()
 
 const TABS = [
@@ -121,51 +120,39 @@ const TABS = [
 ]
 
 const activeTab = ref('predicted')
-
-// Simulate animation
 const simulating = ref(false)
-const simProgress = ref(0)
 const simStage = ref('')
+const animatingLadder = ref<LadderRow[] | null>(null)
 
-const SIM_STAGES = [
-  { label: 'Analysing fixture data...',       to: 30,  duration: 350 },
-  { label: 'Running match simulations...',    to: 70,  duration: 600 },
-  { label: 'Calculating final standings...', to: 92,  duration: 500 },
-  { label: 'Finalising results...',           to: 100, duration: 250 },
-]
+const ROUND_DELAY_MS = 180
 
-function easeOut(t: number): number {
-  return 1 - Math.pow(1 - t, 2)
-}
-
-function animateProgress(from: number, to: number, duration: number): Promise<void> {
-  return new Promise((resolve) => {
-    const start = performance.now()
-    function step(now: number) {
-      const t = Math.min((now - start) / duration, 1)
-      simProgress.value = from + (to - from) * easeOut(t)
-      if (t < 1) requestAnimationFrame(step)
-      else resolve()
-    }
-    requestAnimationFrame(step)
-  })
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms))
 }
 
 async function handleSimulate() {
   if (simulating.value || props.isLoading || !props.hasMatches) return
   simulating.value = true
-  simProgress.value = 0
+  animatingLadder.value = null
+  simStage.value = 'Simulating season...'
 
-  let from = 0
-  for (const stage of SIM_STAGES) {
-    simStage.value = stage.label
-    if (stage === SIM_STAGES[SIM_STAGES.length - 1]) props.simulate()
-    await animateProgress(from, stage.to, stage.duration)
-    from = stage.to
+  // Run the actual simulation (instantaneous)
+  props.simulate()
+
+  // Get per-round frames
+  const frames = props.getSimulationFrames()
+
+  // Animate round by round
+  for (let i = 0; i < frames.length; i++) {
+    const frame = frames[i]
+    simStage.value = frame.roundName
+    animatingLadder.value = frame.ladder
+    await sleep(ROUND_DELAY_MS)
   }
 
-  await new Promise((r) => setTimeout(r, 150))
+  await sleep(200)
+  animatingLadder.value = null
   simulating.value = false
-  simProgress.value = 0
+  simStage.value = ''
 }
 </script>

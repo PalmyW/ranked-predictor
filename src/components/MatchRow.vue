@@ -9,7 +9,7 @@
     <!-- Status dot -->
     <span class="shrink-0 mr-2">
       <span
-        class="inline-block w-2 h-2 rounded-full"
+        class="inline-block size-2 rounded-full"
         :class="{
           'bg-green-500': match.status === 'CONCLUDED',
           'bg-blue-400 animate-pulse': match.status === 'LIVE',
