@@ -39,18 +39,6 @@ npm run build     # production build
 npm run preview   # preview production build locally
 ```
 
-Fixture data is loaded from `public/data/fixture.json`. To fetch fresh data locally:
-
-```bash
-curl -fsSL \
-  -H 'account: afl' \
-  -H 'origin: https://www.afl.com.au' \
-  -H 'referer: https://www.afl.com.au/' \
-  -H 'user-agent: Mozilla/5.0' \
-  'https://aflapi.afl.com.au/afl/v2/matches?pageSize=300&competitionId=1&compSeasonId=85' \
-  -o public/data/fixture.json
-```
-
 ---
 
 ## CI/CD
