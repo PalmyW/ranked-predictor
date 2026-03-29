@@ -1,4 +1,4 @@
-name: Sync Deploy Branch
+name: Build and Deploy
 
 on:
   push:
@@ -8,22 +8,14 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  sync:
+  deploy:
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Force-reset deploy to main
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -B deploy
-          git push origin deploy --force
 
       - name: Fetch fixture data
         run: |
@@ -36,8 +28,17 @@ jobs:
             'https://aflapi.afl.com.au/afl/v2/matches?pageSize=300&competitionId=1&compSeasonId=85' \
             -o public/data/fixture.json
 
-      - name: Commit and push fixture
-        run: |
-          git add public/data/fixture.json
-          git diff --staged --quiet || git commit -m "chore: update AFL fixture data"
-          git push origin deploy
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - name: Deploy to gh-pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
