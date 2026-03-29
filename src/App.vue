@@ -33,12 +33,12 @@
             <div class="flex gap-1.5">
               <button
                 v-if="savedState && ladderSource !== 'mine'"
-                @click="loadSavedRanking"
+                @click="handleLoadSaved"
                 class="px-2 py-1 text-xs font-semibold rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >My ladder</button>
               <button
                 v-if="ladderSource !== 'mine'"
-                @click="saveToMyLadder"
+                @click="handleSave"
                 class="px-2 py-1 text-xs font-semibold rounded border border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-colors"
               >Save</button>
               <button
@@ -103,6 +103,7 @@ import { useAFLData } from './composables/useAFLData'
 import { useRanking } from './composables/useRanking'
 import { useSimulation } from './composables/useSimulation'
 import { useDarkMode } from './composables/useDarkMode'
+import { useAnalytics } from './composables/useAnalytics'
 import AppHeader from './components/AppHeader.vue'
 import LadderTabs from './components/LadderTabs.vue'
 import TeamRanker from './components/TeamRanker.vue'
@@ -113,6 +114,7 @@ const { isDark, toggle: toggleDark } = useDarkMode()
 const { matches, teams, isLoading, error } = useAFLData()
 const { ranking, tierSizes, shareUrl, rankedFromUrl, rankedFromStorage, ladderSource, savedState, setRanking, setTierSizes, resetToLadder, loadSavedRanking, saveToMyLadder } = useRanking()
 const { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate, getSimulationFrames } = useSimulation(ranking, matches)
+const analytics = useAnalytics()
 
 let initialized = false
 watch(actualLadder, (ladder) => {
@@ -120,6 +122,7 @@ watch(actualLadder, (ladder) => {
   if (ladder.length === 0) return
   initialized = true
   if (!rankedFromUrl && !rankedFromStorage) resetToLadder(ladder)
+  if (rankedFromUrl) analytics.trackSharedRankingLoaded()
 })
 
 watch(shareUrl, (url) => {
@@ -127,6 +130,20 @@ watch(shareUrl, (url) => {
 }, { immediate: true })
 
 function handleReset() {
-  if (actualLadder.value.length > 0) resetToLadder(actualLadder.value)
+  if (actualLadder.value.length > 0) {
+    analytics.trackLadderSourceChange('live')
+    resetToLadder(actualLadder.value)
+  }
+}
+
+function handleLoadSaved() {
+  analytics.trackLadderSourceChange('saved')
+  loadSavedRanking()
+}
+
+function handleSave() {
+  analytics.trackSaveRanking()
+  analytics.trackLadderSourceChange('saved_from_shared')
+  saveToMyLadder()
 }
 </script>

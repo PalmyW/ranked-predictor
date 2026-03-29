@@ -24,8 +24,11 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useAnalytics } from '../composables/useAnalytics'
 
 defineProps<{ shareUrl: string }>()
+
+const analytics = useAnalytics()
 
 const inputEl = ref<HTMLInputElement | null>(null)
 const copied = ref(false)
@@ -44,6 +47,7 @@ async function copy() {
     inputEl.value?.select()
     document.execCommand('copy')
   }
+  analytics.trackShareCopy()
   copied.value = true
   setTimeout(() => { copied.value = false }, 2000)
 }

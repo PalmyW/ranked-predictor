@@ -71,6 +71,7 @@ import type { AflTeam, AflMatch, TeamRanking } from '../types/afl'
 import { DEFAULT_TIER_SIZES } from '../composables/useRanking'
 import TeamFixturePopover from './TeamFixturePopover.vue'
 import type { FixtureGame } from './TeamFixturePopover.vue'
+import { useAnalytics } from '../composables/useAnalytics'
 
 const TIER_NAMES = ['S', 'A', 'B', 'C', 'D', 'E', 'F'] as const
 type TierName = (typeof TIER_NAMES)[number]
@@ -133,14 +134,22 @@ const rankMap = computed<Record<number, number>>(() => {
 
 function onDragEnd() {
   ignoreNext = true
+  analytics.trackRankingDrag()
   emit('update:ranking', tiers.value.flatMap((t) => t.teams).map((t) => t.id))
   emit('update:tierSizes', tiers.value.map((t) => t.teams.length))
 }
 
+const analytics = useAnalytics()
+
 const openFixtureTeamId = ref<number | null>(null)
 
 function toggleFixture(teamId: number) {
-  openFixtureTeamId.value = openFixtureTeamId.value === teamId ? null : teamId
+  const opening = openFixtureTeamId.value !== teamId
+  openFixtureTeamId.value = opening ? teamId : null
+  if (opening) {
+    const team = teamMap.value[teamId]
+    if (team) analytics.trackFixtureOpen(team.name)
+  }
 }
 
 function remainingFixture(teamId: number): FixtureGame[] {

@@ -5,7 +5,7 @@
       <button
         v-for="tab in TABS"
         :key="tab.id"
-        @click="activeTab = tab.id"
+        @click="switchTab(tab.id)"
         class="flex-1 py-2.5 text-sm font-semibold transition-colors"
         :class="activeTab === tab.id
           ? 'text-blue-500 border-b-2 border-blue-500 -mb-px'
@@ -100,6 +100,7 @@ import { ref } from 'vue'
 import type { LadderRow, TeamRanking } from '../types/afl'
 import LadderTable from './LadderTable.vue'
 import HtmlTooltip from './HtmlTooltip.vue'
+import { useAnalytics } from '../composables/useAnalytics'
 
 const props = defineProps<{
   predictedLadder: LadderRow[]
@@ -119,6 +120,8 @@ const TABS = [
   { id: 'current',   label: 'Current' },
 ]
 
+const analytics = useAnalytics()
+
 const activeTab = ref('predicted')
 const simulating = ref(false)
 const simStage = ref('')
@@ -130,8 +133,14 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms))
 }
 
+function switchTab(id: string) {
+  activeTab.value = id
+  analytics.trackTabSwitch(id as 'predicted' | 'simulated' | 'current')
+}
+
 async function handleSimulate() {
   if (simulating.value || props.isLoading || !props.hasMatches) return
+  analytics.trackSimulate()
   simulating.value = true
   animatingLadder.value = null
   simStage.value = 'Simulating season...'
