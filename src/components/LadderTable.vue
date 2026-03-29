@@ -84,9 +84,13 @@
                       <div
                         v-for="opp in row.remainingOpponents"
                         :key="opp.name"
-                        class="flex items-center justify-between gap-3"
+                        class="flex items-center justify-between gap-2"
                       >
-                        <span class="text-gray-700 dark:text-gray-200">{{ opp.name }}</span>
+                        <span
+                          class="shrink-0 w-4 text-center text-xs font-bold rounded px-0.5"
+                          :class="opp.isHome ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'"
+                        >{{ opp.isHome ? 'H' : 'A' }}</span>
+                        <span class="flex-1 text-gray-700 dark:text-gray-200">{{ opp.name }}</span>
                         <span class="shrink-0 text-gray-400 dark:text-gray-500">#{{ opp.rank }}</span>
                       </div>
                     </div>

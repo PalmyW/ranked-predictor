@@ -46,7 +46,7 @@ export interface LadderRow {
   percentage: number
   isFinalist: boolean
   difficulty: number | null  // avg rank of remaining opponents (lower = harder)
-  remainingOpponents: Array<{ name: string; rank: number }>
+  remainingOpponents: Array<{ name: string; rank: number; isHome: boolean }>
 }
 
 export type TeamRanking = number[]

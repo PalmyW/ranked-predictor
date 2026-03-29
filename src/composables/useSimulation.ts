@@ -51,7 +51,7 @@ function buildStats(matches: readonly AflMatch[]): Record<number, TeamStats> {
 
 interface DifficultyInfo {
   avg: number | null
-  opponents: Array<{ name: string; rank: number }>
+  opponents: Array<{ name: string; rank: number; isHome: boolean }>
 }
 
 // Average rank of remaining opponents for each team, plus ordered opponent list
@@ -60,15 +60,15 @@ function computeDifficulty(
   rankMap: Record<number, number>,
 ): Record<number, DifficultyInfo> {
   const teamMap = Object.fromEntries(TEAMS.map((t) => [t.id, t]))
-  const oppMap: Record<number, number[]> = {}
+  const oppMap: Record<number, Array<{ id: number; isHome: boolean }>> = {}
   for (const team of TEAMS) oppMap[team.id] = []
 
   for (const match of matches) {
     if (match.status === 'CONCLUDED') continue
     const hId = match.homeTeamId
     const aId = match.awayTeamId
-    if (oppMap[hId]) oppMap[hId].push(aId)
-    if (oppMap[aId]) oppMap[aId].push(hId)
+    if (oppMap[hId]) oppMap[hId].push({ id: aId, isHome: true })
+    if (oppMap[aId]) oppMap[aId].push({ id: hId, isHome: false })
   }
 
   const result: Record<number, DifficultyInfo> = {}
@@ -78,9 +78,9 @@ function computeDifficulty(
       result[team.id] = { avg: null, opponents: [] }
     } else {
       const oppDetails = opps
-        .map((id) => ({ name: teamMap[id]?.name ?? String(id), rank: rankMap[id] ?? 0 }))
+        .map((o) => ({ name: teamMap[o.id]?.name ?? String(o.id), rank: rankMap[o.id] ?? 0, isHome: o.isHome }))
         .sort((a, b) => a.rank - b.rank)
-      const sum = opps.reduce((acc, id) => acc + (rankMap[id] ?? 0), 0)
+      const sum = opps.reduce((acc, o) => acc + (rankMap[o.id] ?? 0), 0)
       result[team.id] = { avg: sum / opps.length, opponents: oppDetails }
     }
   }
