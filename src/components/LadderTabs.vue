@@ -127,7 +127,7 @@ const simulating = ref(false)
 const simStage = ref('')
 const animatingLadder = ref<LadderRow[] | null>(null)
 
-const ROUND_DELAY_MS = 180
+const ROUND_DELAY_MS = 500
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms))
