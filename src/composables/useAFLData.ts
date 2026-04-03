@@ -37,7 +37,9 @@ function parseMatch(raw: Record<string, unknown>): AflMatch | null {
   if (!homeId || !awayId) return null
 
   const round = raw.round as Record<string, unknown>
-  const status = raw.status as string
+  const rawStatus = raw.status as string
+  // POSTGAME is a transitional state after the siren — treat as CONCLUDED
+  const status = rawStatus === 'POSTGAME' ? 'CONCLUDED' : rawStatus
   if (!VALID_STATUSES.has(status as MatchStatus)) return null
 
   const homeScore = home?.score as { goals: number; behinds: number; totalScore: number } | undefined | null
