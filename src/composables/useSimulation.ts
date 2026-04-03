@@ -5,16 +5,19 @@ import { TEAMS } from './useAFLData'
 type MatchesRef = { readonly value: readonly AflMatch[] }
 type RankingRef = { readonly value: TeamRanking }
 
-// Win probability for the home team given (hRank - aRank).
-// Base: 60%–95% scaled by rank gap. Home team gets ×1.05 multiplicative boost.
+// Elo-style logistic win probability for the home team.
+// Each rank maps to a pseudo-Elo rating (rank 1 → 1550, rank 18 → 1250).
+// Home advantage is modelled as an additive +60 Elo points (~58.6% for equal teams).
+const ELO_TOP_RATING = 1550
+const ELO_SPREAD = 300      // total rating range across 18 teams
+const ELO_HOME_ADV = 60     // additive home advantage in Elo points
+const ELO_DIVISOR = 400     // standard Elo scaling divisor
+
 function homeWinProb(hRank: number, aRank: number): number {
-  const rankDiff = hRank - aRank
-  const clamped = Math.max(1, Math.min(17, Math.abs(rankDiff)))
-  const baseProb = 0.60 + (clamped - 1) * (0.35 / 16)
-  const favouriteIsHome = hRank < aRank
-  // Convert base prob to home-team prob, then apply multiplicative home boost
-  const homeProb = (favouriteIsHome ? baseProb : 1 - baseProb) * 1.05
-  return Math.min(0.95, Math.max(0.05, homeProb))
+  const homeRating = ELO_TOP_RATING - (hRank - 1) * (ELO_SPREAD / 17) + ELO_HOME_ADV
+  const awayRating = ELO_TOP_RATING - (aRank - 1) * (ELO_SPREAD / 17)
+  const prob = 1 / (1 + Math.pow(10, (awayRating - homeRating) / ELO_DIVISOR))
+  return Math.min(0.95, Math.max(0.05, prob))
 }
 
 interface TeamStats {
@@ -164,7 +167,6 @@ function simulateMatches(
     if (!simStats[hId] || !simStats[aId]) continue
     const hRank = rankMap[hId] ?? 999
     const aRank = rankMap[aId] ?? 999
-    if (hRank === aRank) continue
     const winnerId = random
       ? (Math.random() < homeWinProb(hRank, aRank) ? hId : aId)
       : (hRank < aRank ? hId : aId)
@@ -216,7 +218,6 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef) {
       if (!hId || !aId) continue
       const hRank = rankMap[hId] ?? 999
       const aRank = rankMap[aId] ?? 999
-      if (hRank === aRank) continue
       winners[match.id] = Math.random() < homeWinProb(hRank, aRank) ? hId : aId
       // Use same winners for the ladder calculation below
     }
