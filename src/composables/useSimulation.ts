@@ -6,14 +6,14 @@ type MatchesRef = { readonly value: readonly AflMatch[] }
 type RankingRef = { readonly value: TeamRanking }
 
 // Win probability for the home team given (hRank - aRank).
-// Base: 60%–95% scaled by rank gap. Home team gets +5% boost.
+// Base: 60%–95% scaled by rank gap. Home team gets ×1.05 multiplicative boost.
 function homeWinProb(hRank: number, aRank: number): number {
   const rankDiff = hRank - aRank
   const clamped = Math.max(1, Math.min(17, Math.abs(rankDiff)))
   const baseProb = 0.60 + (clamped - 1) * (0.35 / 16)
   const favouriteIsHome = hRank < aRank
-  // Convert base prob to home-team prob, then apply 5% home boost
-  const homeProb = (favouriteIsHome ? baseProb : 1 - baseProb) + 0.05
+  // Convert base prob to home-team prob, then apply multiplicative home boost
+  const homeProb = (favouriteIsHome ? baseProb : 1 - baseProb) * 1.05
   return Math.min(0.95, Math.max(0.05, homeProb))
 }
 
@@ -97,7 +97,7 @@ function computeDifficulty(
             winPct,
           }
         })
-        .sort((a, b) => a.rank - b.rank)
+        .sort((a, b) => b.winPct - a.winPct)
       const sum = opps.reduce((acc, o) => acc + (rankMap[o.id] ?? 0), 0)
       result[team.id] = { avg: sum / opps.length, opponents: oppDetails }
     }

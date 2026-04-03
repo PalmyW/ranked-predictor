@@ -43,6 +43,12 @@ function parseMatch(raw: Record<string, unknown>): AflMatch | null {
   const homeScore = home?.score as { goals: number; behinds: number; totalScore: number } | undefined | null
   const awayScore = away?.score as { goals: number; behinds: number; totalScore: number } | undefined | null
 
+  const utcStartTime = raw.utcStartTime as string
+  let resolvedStatus = status as MatchStatus
+  if (resolvedStatus !== 'CONCLUDED' && utcStartTime && Date.now() >= new Date(utcStartTime).getTime()) {
+    resolvedStatus = 'LIVE'
+  }
+
   return {
     id: raw.id as number,
     roundNumber: round.roundNumber as number,
@@ -53,8 +59,8 @@ function parseMatch(raw: Record<string, unknown>): AflMatch | null {
     awayTeamName: awayTeam?.name as string,
     homeScore: homeScore ?? null,
     awayScore: awayScore ?? null,
-    status: status as MatchStatus,
-    utcStartTime: raw.utcStartTime as string,
+    status: resolvedStatus,
+    utcStartTime,
   }
 }
 

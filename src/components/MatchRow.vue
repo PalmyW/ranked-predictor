@@ -21,9 +21,12 @@
     <!-- Concluded: show scores -->
     <template v-if="match.status === 'CONCLUDED' && match.homeScore && match.awayScore">
       <span
-        class="flex-1 min-w-0 truncate"
+        class="flex-1 min-w-0 flex items-center gap-1.5 truncate"
         :class="match.homeScore.totalScore > match.awayScore.totalScore ? 'font-bold text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-500'"
-      >{{ match.homeTeamName }}</span>
+      >
+        <svg v-if="homeIconId" class="size-5 shrink-0"><use :href="`/ranked-predictor/icons.svg#${homeIconId}`" /></svg>
+        <span class="truncate">{{ match.homeTeamName }}</span>
+      </span>
       <span class="shrink-0 mx-2 text-xs font-mono tabular-nums text-gray-700 dark:text-gray-300 font-semibold">
         {{ match.homeScore.goals }}.{{ match.homeScore.behinds }}
         <span class="text-gray-900 dark:text-gray-100">({{ match.homeScore.totalScore }})</span>
@@ -34,21 +37,31 @@
         <span class="text-gray-900 dark:text-gray-100">({{ match.awayScore.totalScore }})</span>
       </span>
       <span
-        class="flex-1 min-w-0 truncate text-right"
+        class="flex-1 min-w-0 flex items-center justify-end gap-1.5 truncate"
         :class="match.awayScore.totalScore > match.homeScore.totalScore ? 'font-bold text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-500'"
-      >{{ match.awayTeamName }}</span>
+      >
+        <span class="truncate">{{ match.awayTeamName }}</span>
+        <svg v-if="awayIconId" class="size-5 shrink-0"><use :href="`/ranked-predictor/icons.svg#${awayIconId}`" /></svg>
+      </span>
     </template>
 
     <!-- Live -->
     <template v-else-if="match.status === 'LIVE'">
-      <span class="flex-1 truncate text-blue-700 dark:text-blue-400 font-medium">{{ match.homeTeamName }}</span>
+      <span class="flex-1 flex items-center gap-1.5 truncate text-blue-700 dark:text-blue-400 font-medium">
+        <svg v-if="homeIconId" class="size-5 shrink-0"><use :href="`/ranked-predictor/icons.svg#${homeIconId}`" /></svg>
+        <span class="truncate">{{ match.homeTeamName }}</span>
+      </span>
       <span class="shrink-0 mx-2 text-xs text-blue-500 dark:text-blue-400 font-semibold">LIVE</span>
-      <span class="flex-1 truncate text-right text-blue-700 dark:text-blue-400 font-medium">{{ match.awayTeamName }}</span>
+      <span class="flex-1 flex items-center justify-end gap-1.5 truncate text-blue-700 dark:text-blue-400 font-medium">
+        <span class="truncate">{{ match.awayTeamName }}</span>
+        <svg v-if="awayIconId" class="size-5 shrink-0"><use :href="`/ranked-predictor/icons.svg#${awayIconId}`" /></svg>
+      </span>
     </template>
 
     <!-- Future: predicted + simulated winners -->
     <template v-else>
       <span class="flex-1 min-w-0 flex items-center gap-1 truncate">
+        <svg v-if="homeIconId" class="size-5 shrink-0" :class="predictedWinnerId === match.homeTeamId ? 'opacity-100' : 'opacity-30'"><use :href="`/ranked-predictor/icons.svg#${homeIconId}`" /></svg>
         <span :class="predictedWinnerId === match.homeTeamId ? 'font-bold text-gray-800 dark:text-gray-100' : 'text-gray-400 dark:text-gray-600'">
           {{ match.homeTeamName }}
         </span>
@@ -70,6 +83,7 @@
         <span :class="predictedWinnerId === match.awayTeamId ? 'font-bold text-gray-800 dark:text-gray-100' : 'text-gray-400 dark:text-gray-600'">
           {{ match.awayTeamName }}
         </span>
+        <svg v-if="awayIconId" class="size-5 shrink-0" :class="predictedWinnerId === match.awayTeamId ? 'opacity-100' : 'opacity-30'"><use :href="`/ranked-predictor/icons.svg#${awayIconId}`" /></svg>
       </span>
     </template>
 
@@ -83,6 +97,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { AflMatch } from '../types/afl'
+import { TEAMS } from '../composables/useAFLData'
 
 const props = defineProps<{
   match: AflMatch
@@ -90,6 +105,9 @@ const props = defineProps<{
   rankMap: Record<number, number>
   simulatedMatchWinners: Record<number, number> | null
 }>()
+
+const homeIconId = computed(() => TEAMS.find(t => t.id === props.match.homeTeamId)?.iconId ?? null)
+const awayIconId = computed(() => TEAMS.find(t => t.id === props.match.awayTeamId)?.iconId ?? null)
 
 const predictedWinnerId = computed<number | null>(() => {
   const hRank = props.rankMap[props.match.homeTeamId] ?? 999
