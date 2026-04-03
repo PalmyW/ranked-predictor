@@ -36,9 +36,19 @@
         v-for="match in displayedRound.matches"
         :key="match.id"
         data-match-card
-        class="flex flex-col justify-center min-w-[136px] pt-3 pb-2 px-3 gap-0.5 transition-colors cursor-default hover:bg-gray-50 dark:hover:bg-gray-800/60"
+        class="flex flex-col justify-start min-w-[136px] pt-3 pb-2 px-3 gap-0.5 transition-colors cursor-default hover:bg-gray-50 dark:hover:bg-gray-800/60"
         :class="match.status === 'LIVE' ? 'border-l-2 border-blue-400 bg-blue-50/30 dark:bg-blue-950/20 hover:bg-blue-50/50 dark:hover:bg-blue-950/30' : ''"
       >
+        <!-- Status (LIVE / FT only) -->
+        <div class="flex py-px">
+          <span
+            v-if="match.status === 'LIVE'"
+            class="px-1.5 py-px rounded text-[9px] font-bold tracking-widest uppercase bg-blue-500/15 text-blue-500 dark:text-blue-400"
+          >Live</span>
+          <span v-else-if="match.status === 'CONCLUDED'" class="text-[9px] text-gray-300 dark:text-gray-700 tracking-widest uppercase">FT</span>
+          <span v-else class="text-[9px] opacity-0">FT</span>
+        </div>
+
         <!-- Home team -->
         <div class="flex items-center gap-1 w-full">
           <svg v-if="iconId(match.homeTeamId)" class="size-4 shrink-0 opacity-80">
@@ -47,7 +57,7 @@
           <span
             class="text-[11px] font-bold tracking-wide truncate"
             :class="isHomeWinner(match) ? 'text-gray-900 dark:text-white' : match.status === 'CONCLUDED' ? 'text-gray-400 dark:text-gray-600' : predictedWinnerId(match) === match.homeTeamId ? 'text-gray-800 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'"
-          >{{ abbrev(match.homeTeamId) }}</span>
+          ><TeamFixtureSummaryPopup :teamId="match.homeTeamId" :teamName="match.homeTeamName" :label="abbrev(match.homeTeamId)" /></span>
           <span
             v-if="match.status !== 'CONCLUDED' && match.status !== 'LIVE' && predictedWinnerId(match) === match.homeTeamId"
             class="shrink-0 px-1 rounded text-[9px] font-bold leading-tight text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/40"
@@ -65,15 +75,6 @@
           >{{ match.homeScore.totalScore }}</span>
         </div>
 
-        <!-- Status (LIVE / FT only) -->
-        <div class="flex justify-center py-px">
-          <span
-            v-if="match.status === 'LIVE'"
-            class="px-1.5 py-px rounded text-[9px] font-bold tracking-widest uppercase bg-blue-500/15 text-blue-500 dark:text-blue-400"
-          >Live</span>
-          <span v-else-if="match.status === 'CONCLUDED'" class="text-[9px] text-gray-300 dark:text-gray-700 tracking-widest uppercase">FT</span>
-        </div>
-
         <!-- Away team -->
         <div class="flex items-center gap-1 w-full">
           <svg v-if="iconId(match.awayTeamId)" class="size-4 shrink-0 opacity-80">
@@ -82,7 +83,7 @@
           <span
             class="text-[11px] font-bold tracking-wide truncate"
             :class="isAwayWinner(match) ? 'text-gray-900 dark:text-white' : match.status === 'CONCLUDED' ? 'text-gray-400 dark:text-gray-600' : predictedWinnerId(match) === match.awayTeamId ? 'text-gray-800 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'"
-          >{{ abbrev(match.awayTeamId) }}</span>
+          ><TeamFixtureSummaryPopup :teamId="match.awayTeamId" :teamName="match.awayTeamName" :label="abbrev(match.awayTeamId)" /></span>
           <span
             v-if="match.status !== 'CONCLUDED' && match.status !== 'LIVE' && predictedWinnerId(match) === match.awayTeamId"
             class="shrink-0 px-1 rounded text-[9px] font-bold leading-tight text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/40"
@@ -117,7 +118,7 @@
             <svg v-if="iconId(teamId)" class="size-3.5 shrink-0 opacity-50">
               <use :href="`/ranked-predictor/icons.svg#${iconId(teamId)}`" />
             </svg>
-            <span class="text-[11px] font-bold text-gray-400 dark:text-gray-600 tracking-wide">{{ abbrev(teamId) }}</span>
+            <span class="text-[11px] font-bold text-gray-400 dark:text-gray-600 tracking-wide"><TeamFixtureSummaryPopup :teamId="teamId" :teamName="teamName(teamId)" :label="abbrev(teamId)" /></span>
           </div>
         </div>
       </div>
@@ -129,6 +130,7 @@
 import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import type { AflMatch, TeamRanking } from '../types/afl'
 import { TEAMS } from '../composables/useAFLData'
+import TeamFixtureSummaryPopup from './TeamFixtureSummaryPopup.vue'
 
 const props = defineProps<{
   matches: readonly AflMatch[]
@@ -216,6 +218,7 @@ function predictedWinnerId(match: AflMatch): number | null {
 
 function iconId(teamId: number) { return TEAMS.find(t => t.id === teamId)?.iconId ?? null }
 function abbrev(teamId: number) { return TEAMS.find(t => t.id === teamId)?.abbreviation ?? String(teamId) }
+function teamName(teamId: number) { return TEAMS.find(t => t.id === teamId)?.name ?? String(teamId) }
 
 function isHomeWinner(match: AflMatch) {
   if (match.status !== 'CONCLUDED' || !match.homeScore || !match.awayScore) return false

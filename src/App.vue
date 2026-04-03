@@ -101,7 +101,7 @@
 </template>
 
 <script setup lang="ts">
-import { watch } from 'vue'
+import { watch, provide } from 'vue'
 import { useAFLData } from './composables/useAFLData'
 import { useRanking } from './composables/useRanking'
 import { useSimulation } from './composables/useSimulation'
@@ -119,6 +119,9 @@ const { matches, teams, isLoading, error } = useAFLData()
 const { ranking, tierSizes, shareUrl, rankedFromUrl, rankedFromStorage, ladderSource, savedState, setRanking, setTierSizes, resetToLadder, loadSavedRanking, saveToMyLadder } = useRanking()
 const { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate, getSimulationFrames } = useSimulation(ranking, matches)
 const analytics = useAnalytics()
+
+provide('matches', matches)
+provide('ranking', ranking)
 
 let initialized = false
 watch(actualLadder, (ladder) => {

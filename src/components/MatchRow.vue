@@ -25,7 +25,7 @@
         :class="match.homeScore.totalScore > match.awayScore.totalScore ? 'font-bold text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-500'"
       >
         <svg v-if="homeIconId" class="size-5 shrink-0"><use :href="`/ranked-predictor/icons.svg#${homeIconId}`" /></svg>
-        <span class="truncate">{{ match.homeTeamName }}</span>
+        <TeamFixtureSummaryPopup :teamId="match.homeTeamId" :teamName="match.homeTeamName" />
       </span>
       <span class="shrink-0 mx-2 text-xs font-mono tabular-nums text-gray-700 dark:text-gray-300 font-semibold">
         {{ match.homeScore.goals }}.{{ match.homeScore.behinds }}
@@ -40,7 +40,7 @@
         class="flex-1 min-w-0 flex items-center justify-end gap-1.5 truncate"
         :class="match.awayScore.totalScore > match.homeScore.totalScore ? 'font-bold text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-500'"
       >
-        <span class="truncate">{{ match.awayTeamName }}</span>
+        <TeamFixtureSummaryPopup :teamId="match.awayTeamId" :teamName="match.awayTeamName" />
         <svg v-if="awayIconId" class="size-5 shrink-0"><use :href="`/ranked-predictor/icons.svg#${awayIconId}`" /></svg>
       </span>
     </template>
@@ -49,11 +49,11 @@
     <template v-else-if="match.status === 'LIVE'">
       <span class="flex-1 flex items-center gap-1.5 truncate text-blue-700 dark:text-blue-400 font-medium">
         <svg v-if="homeIconId" class="size-5 shrink-0"><use :href="`/ranked-predictor/icons.svg#${homeIconId}`" /></svg>
-        <span class="truncate">{{ match.homeTeamName }}</span>
+        <TeamFixtureSummaryPopup :teamId="match.homeTeamId" :teamName="match.homeTeamName" />
       </span>
       <span class="shrink-0 mx-2 text-xs text-blue-500 dark:text-blue-400 font-semibold">LIVE</span>
       <span class="flex-1 flex items-center justify-end gap-1.5 truncate text-blue-700 dark:text-blue-400 font-medium">
-        <span class="truncate">{{ match.awayTeamName }}</span>
+        <TeamFixtureSummaryPopup :teamId="match.awayTeamId" :teamName="match.awayTeamName" />
         <svg v-if="awayIconId" class="size-5 shrink-0"><use :href="`/ranked-predictor/icons.svg#${awayIconId}`" /></svg>
       </span>
     </template>
@@ -63,7 +63,7 @@
       <span class="flex-1 min-w-0 flex items-center gap-1 truncate">
         <svg v-if="homeIconId" class="size-5 shrink-0" :class="predictedWinnerId === match.homeTeamId ? 'opacity-100' : 'opacity-30'"><use :href="`/ranked-predictor/icons.svg#${homeIconId}`" /></svg>
         <span :class="predictedWinnerId === match.homeTeamId ? 'font-bold text-gray-800 dark:text-gray-100' : 'text-gray-400 dark:text-gray-600'">
-          {{ match.homeTeamName }}
+          <TeamFixtureSummaryPopup :teamId="match.homeTeamId" :teamName="match.homeTeamName" />
         </span>
         <span
           v-if="simulatedMatchWinners && simulatedMatchWinners[match.id] === match.homeTeamId"
@@ -81,7 +81,7 @@
           title="Simulated winner"
         >S</span>
         <span :class="predictedWinnerId === match.awayTeamId ? 'font-bold text-gray-800 dark:text-gray-100' : 'text-gray-400 dark:text-gray-600'">
-          {{ match.awayTeamName }}
+          <TeamFixtureSummaryPopup :teamId="match.awayTeamId" :teamName="match.awayTeamName" />
         </span>
         <svg v-if="awayIconId" class="size-5 shrink-0" :class="predictedWinnerId === match.awayTeamId ? 'opacity-100' : 'opacity-30'"><use :href="`/ranked-predictor/icons.svg#${awayIconId}`" /></svg>
       </span>
@@ -102,6 +102,7 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import type { AflMatch } from '../types/afl'
 import { TEAMS } from '../composables/useAFLData'
+import TeamFixtureSummaryPopup from './TeamFixtureSummaryPopup.vue'
 
 const props = defineProps<{
   match: AflMatch

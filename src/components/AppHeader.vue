@@ -42,10 +42,8 @@ defineEmits<{
   (e: 'toggle-dark'): void
 }>()
 
-// Row 1: "DONT CALL ME A CHAMP, MATE" (26 positions)
-// Row 2: "DATA" + slashes padded to 26
 const LOGO_ROWS: string[][] = [
-  ['D','O','N','T',' ','C','A','L','L',' ','M','E',' ','A',' ','C','H','A','M','P',',',' ','M','A','T','E','!'],
-  ['D','A','T','A','/','/','/','/','/','/','/','/','/','/','/','/','/','/','/','/','/','/','/','/','/','/','/' ],
+  ['P','A','L','M','Y'],
+  ['D','A','T','A','/'],
 ]
 </script>

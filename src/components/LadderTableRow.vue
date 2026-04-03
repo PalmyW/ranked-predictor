@@ -11,7 +11,7 @@
     <td class="py-1.5 pl-2 font-medium text-gray-800 dark:text-gray-200">
       <span class="flex items-center gap-1.5">
         <svg class="size-7 shrink-0"><use :href="`/ranked-predictor/icons.svg#${row.iconId}`" /></svg>
-        {{ row.teamName }}
+        <TeamFixtureSummaryPopup :teamId="row.teamId" :teamName="row.teamName" />
       </span>
     </td>
     <td class="py-1.5 text-center text-gray-600 dark:text-gray-400">{{ row.played }}</td>
@@ -88,6 +88,7 @@
 <script setup lang="ts">
 import type { LadderRow } from '../types/afl'
 import HtmlTooltip from './HtmlTooltip.vue'
+import TeamFixtureSummaryPopup from './TeamFixtureSummaryPopup.vue'
 
 const props = defineProps<{
   row: LadderRow

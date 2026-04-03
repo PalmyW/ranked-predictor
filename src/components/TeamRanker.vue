@@ -36,7 +36,9 @@
                 </span>
                 <span class="flex items-center gap-1.5 flex-1 min-w-0 truncate">
                   <svg class="size-5 shrink-0"><use :href="`/ranked-predictor/icons.svg#${element.iconId}`" /></svg>
-                  <span class="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{{ element.name }}</span>
+                  <span class="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                    <TeamFixtureSummaryPopup :teamId="element.id" :teamName="element.name" />
+                  </span>
                 </span>
                 <button
                   @click.stop="toggleFixture(element.id)"
@@ -70,6 +72,7 @@ import draggable from 'vuedraggable'
 import type { AflTeam, AflMatch, TeamRanking } from '../types/afl'
 import { DEFAULT_TIER_SIZES } from '../composables/useRanking'
 import TeamFixturePopover from './TeamFixturePopover.vue'
+import TeamFixtureSummaryPopup from './TeamFixtureSummaryPopup.vue'
 import type { FixtureGame } from './TeamFixturePopover.vue'
 import { useAnalytics } from '../composables/useAnalytics'
 
