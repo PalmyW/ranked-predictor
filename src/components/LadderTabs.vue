@@ -6,12 +6,12 @@
         v-for="tab in TABS"
         :key="tab.id"
         @click="switchTab(tab.id)"
-        class="flex-1 py-2.5 text-sm font-semibold transition-colors"
+        class="flex-1 flex items-center justify-center gap-1 py-2.5 text-sm font-semibold transition-colors"
         :class="activeTab === tab.id
           ? 'text-blue-500 border-b-2 border-blue-500 -mb-px'
           : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
       >
-        {{ tab.label }}
+<span v-if="tab.badge" :class="tab.badgeClass">{{ tab.badge }}</span>{{ tab.label }}
       </button>
     </div>
 
@@ -115,9 +115,9 @@ const props = defineProps<{
 }>()
 
 const TABS = [
-  { id: 'predicted', label: 'Predicted' },
-  { id: 'simulated', label: 'Simulated' },
-  { id: 'current',   label: 'Current' },
+  { id: 'predicted', badge: 'P', badgeClass: 'px-1 rounded text-[1em] font-bold leading-tight bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400', label: 'redicted' },
+  { id: 'simulated', badge: 'S', badgeClass: 'px-1 rounded text-[1em] font-bold leading-tight bg-purple-500 text-white', label: 'imulated' },
+  { id: 'current',   badge: null, badgeClass: '', label: 'Current' },
 ]
 
 const analytics = useAnalytics()

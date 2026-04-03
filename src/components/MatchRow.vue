@@ -88,14 +88,18 @@
     </template>
 
     <!-- Date -->
-    <span v-if="match.status !== 'CONCLUDED'" class="shrink-0 ml-2 text-xs text-gray-400 dark:text-gray-600 hidden sm:block">
-      {{ formattedDate }}
+    <span
+      v-if="match.status !== 'CONCLUDED' && match.status !== 'LIVE' && countdown"
+      class="shrink-0 ml-2 text-xs text-gray-400 dark:text-gray-600 hidden sm:block cursor-default"
+      :title="fullTimestamp"
+    >
+      {{ countdown }}
     </span>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import type { AflMatch } from '../types/afl'
 import { TEAMS } from '../composables/useAFLData'
 
@@ -116,12 +120,34 @@ const predictedWinnerId = computed<number | null>(() => {
   return hRank < aRank ? props.match.homeTeamId : props.match.awayTeamId
 })
 
-const formattedDate = computed(() => {
+const now = ref(Date.now())
+let timer: ReturnType<typeof setInterval> | null = null
+onMounted(() => { timer = setInterval(() => { now.value = Date.now() }, 30_000) })
+onUnmounted(() => { if (timer !== null) clearInterval(timer) })
+
+const fullTimestamp = computed(() => {
   try {
-    return new Date(props.match.utcStartTime).toLocaleDateString('en-AU', {
-      weekday: 'short', month: 'short', day: 'numeric',
+    return new Date(props.match.utcStartTime).toLocaleString('en-AU', {
+      weekday: 'long', day: 'numeric', month: 'long',
+      hour: 'numeric', minute: '2-digit', hour12: true,
       timeZone: 'Australia/Melbourne',
+      timeZoneName: 'short',
     })
+  } catch {
+    return ''
+  }
+})
+
+const countdown = computed(() => {
+  try {
+    const diff = new Date(props.match.utcStartTime).getTime() - now.value
+    if (diff <= 0) return ''
+    const totalMins = Math.floor(diff / 60_000)
+    const hours = Math.floor(totalMins / 60)
+    const days = Math.floor(hours / 24)
+    if (days >= 1) return `in ${days}d ${hours % 24}h`
+    if (hours >= 1) return `in ${hours}h ${totalMins % 60}m`
+    return `in ${totalMins}m`
   } catch {
     return ''
   }

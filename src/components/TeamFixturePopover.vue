@@ -9,6 +9,14 @@
       No remaining games
     </div>
     <div v-else class="max-h-72 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
+      <!-- Column labels -->
+      <div class="flex items-center gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-800/60">
+        <span class="shrink-0 size-5" />
+        <span class="shrink-0 w-6" />
+        <span class="flex-1 min-w-0" />
+        <span class="shrink-0 size-5 flex items-center justify-center rounded px-1 text-[10px] font-bold leading-tight bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400">P</span>
+        <span v-if="games.some(g => g.simulated !== null)" class="shrink-0 size-5 flex items-center justify-center rounded px-1 text-[10px] font-bold leading-tight bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400">S</span>
+      </div>
       <div
         v-for="game in games"
         :key="game.matchId"

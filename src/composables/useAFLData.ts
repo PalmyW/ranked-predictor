@@ -49,6 +49,9 @@ function parseMatch(raw: Record<string, unknown>): AflMatch | null {
     resolvedStatus = 'LIVE'
   }
 
+  const byes = round.byes as Array<{ id: number }> | undefined
+  const byeTeamIds = byes?.map(b => b.id) ?? []
+
   return {
     id: raw.id as number,
     roundNumber: round.roundNumber as number,
@@ -61,6 +64,7 @@ function parseMatch(raw: Record<string, unknown>): AflMatch | null {
     awayScore: awayScore ?? null,
     status: resolvedStatus,
     utcStartTime,
+    byeTeamIds,
   }
 }
 

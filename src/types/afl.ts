@@ -32,6 +32,7 @@ export interface AflMatch {
   awayScore: AflScore | null
   status: MatchStatus
   utcStartTime: string
+  byeTeamIds: readonly number[]
 }
 
 export interface LadderRow {

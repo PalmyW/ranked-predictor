@@ -1,11 +1,14 @@
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors">
-    <AppHeader
-      :isLoading="isLoading"
-      :matchCount="matches.length"
-      :isDark="isDark"
-      @toggle-dark="toggleDark"
-    />
+    <div>
+      <AppHeader
+        :isLoading="isLoading"
+        :matchCount="matches.length"
+        :isDark="isDark"
+        @toggle-dark="toggleDark"
+      />
+      <RoundBanner v-if="!isLoading && matches.length > 0" :matches="matches" :ranking="ranking" :simulatedMatchWinners="simulatedMatchWinners" />
+    </div>
 
     <main class="max-w-6xl mx-auto px-4 py-6">
       <!-- Error banner -->
@@ -105,6 +108,7 @@ import { useSimulation } from './composables/useSimulation'
 import { useDarkMode } from './composables/useDarkMode'
 import { useAnalytics } from './composables/useAnalytics'
 import AppHeader from './components/AppHeader.vue'
+import RoundBanner from './components/RoundBanner.vue'
 import LadderTabs from './components/LadderTabs.vue'
 import TeamRanker from './components/TeamRanker.vue'
 import ShareBar from './components/ShareBar.vue'

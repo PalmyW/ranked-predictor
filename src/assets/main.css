@@ -7,3 +7,8 @@
     font-family: "Big Shoulders", sans-serif;
   }
 }
+
+/* Carlton's logo is dark — add a subtle white glow in dark mode so it's visible */
+.dark svg:has(use[href*="icn-aflc-carl"]) {
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.6));
+}
