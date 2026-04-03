@@ -73,29 +73,54 @@ const matches = ref<AflMatch[]>([])
 const isLoading = ref(false)
 const error = ref<string | null>(null)
 let fetched = false
+let lastTimestamp: string | null = null
+let pollingStarted = false
+const POLL_INTERVAL_MS = 60_000
+
+function fetchFixture(): Promise<void> {
+  const url = `${import.meta.env.BASE_URL}data/fixture.json`
+  return fetch(url, { cache: 'no-store' })
+    .then((res) => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      return res.json()
+    })
+    .then((data: { matches?: unknown[] }) => {
+      const raw = data.matches ?? []
+      matches.value = (raw as Record<string, unknown>[])
+        .map(parseMatch)
+        .filter((m): m is AflMatch => m !== null)
+    })
+    .catch((err: unknown) => {
+      error.value = err instanceof Error ? err.message : 'Failed to load fixture data'
+    })
+}
+
+function startPolling() {
+  if (pollingStarted) return
+  pollingStarted = true
+  const tsUrl = `${import.meta.env.BASE_URL}data/last-updated.json`
+  setInterval(() => {
+    fetch(tsUrl, { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { updatedAt?: string } | null) => {
+        const ts = data?.updatedAt ?? null
+        if (ts && lastTimestamp !== null && ts !== lastTimestamp) {
+          fetchFixture()
+        }
+        if (ts) lastTimestamp = ts
+      })
+      .catch(() => { /* silent — polling failure is non-critical */ })
+  }, POLL_INTERVAL_MS)
+}
 
 export function useAFLData() {
   if (!fetched) {
     fetched = true
     isLoading.value = true
-
-    const url = `${import.meta.env.BASE_URL}data/fixture.json`
-    fetch(url)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return res.json()
-      })
-      .then((data: { matches?: unknown[] }) => {
-        const raw = data.matches ?? []
-        matches.value = (raw as Record<string, unknown>[])
-          .map(parseMatch)
-          .filter((m): m is AflMatch => m !== null)
-      })
-      .catch((err: unknown) => {
-        error.value = err instanceof Error ? err.message : 'Failed to load fixture data'
-      })
+    fetchFixture()
       .finally(() => {
         isLoading.value = false
+        startPolling()
       })
   }
 

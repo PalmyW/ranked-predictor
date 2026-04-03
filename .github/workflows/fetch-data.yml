@@ -35,6 +35,9 @@ jobs:
             'https://aflapi.afl.com.au/afl/v2/matches?pageSize=300&competitionId=1&compSeasonId=85' \
             -o public/data/fixture.json
 
+      - name: Write timestamp
+        run: echo "{\"updatedAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > public/data/last-updated.json
+
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -57,6 +60,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/data/fixture.json
+          git add public/data/fixture.json public/data/last-updated.json
           git diff --staged --quiet || git commit -m "chore: update AFL fixture data"
           git push

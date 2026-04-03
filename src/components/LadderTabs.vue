@@ -75,7 +75,8 @@
           v-if="animatingLadder || simulatedLadder"
           :ladder="animatingLadder ?? simulatedLadder ?? []"
           :isLoading="false"
-          :baselineRanking="predictedLadder.map(r => r.teamId)"
+          :baselineRanking="actualLadder.map(r => r.teamId)"
+          :secondaryBaselineRanking="ranking"
           :simulatedMatchWinners="simulating ? undefined : simulatedMatchWinners"
           :animated="simulating"
         />
