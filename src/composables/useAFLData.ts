@@ -23,7 +23,7 @@ export const TEAMS: AflTeam[] = [
 ]
 
 const VALID_STATUSES = new Set<MatchStatus>([
-  'CONCLUDED', 'LIVE', 'SCHEDULED', 'PLACEHOLDER', 'UNCONFIRMED_TEAMS',
+  'CONCLUDED', 'LIVE', 'SCHEDULED', 'PLACEHOLDER', 'UNCONFIRMED_TEAMS', 'CONFIRMED_TEAMS',
 ])
 
 function parseMatch(raw: Record<string, unknown>): AflMatch | null {

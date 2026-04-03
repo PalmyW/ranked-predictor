@@ -18,6 +18,7 @@ export type MatchStatus =
   | 'SCHEDULED'
   | 'PLACEHOLDER'
   | 'UNCONFIRMED_TEAMS'
+  | 'CONFIRMED_TEAMS'
 
 export interface AflMatch {
   id: number

@@ -42,6 +42,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Format fixture with prettier
+        run: npx prettier --write public/data/fixture.json
+
       - run: npm run build
 
       - name: Deploy to gh-pages
