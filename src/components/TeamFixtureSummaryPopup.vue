@@ -23,7 +23,7 @@
           <p class="text-gray-400 dark:text-gray-500 text-xs italic">No double-up opponents</p>
         </div>
 
-        <!-- Home / Away difficulty -->
+        <!-- Home / Away difficulty (remaining) -->
         <div class="text-xs space-y-1.5 border-t border-gray-100 dark:border-gray-700 pt-2">
           <div class="flex items-center gap-2">
             <span class="shrink-0 w-4 text-center text-xs font-bold rounded px-0.5 bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400">H</span>
@@ -39,6 +39,18 @@
               {{ awayMatches.length }} games
               <span class="text-gray-400 dark:text-gray-500">· avg opp. rank </span>
               <span class="font-semibold">{{ awayAvgRank !== null ? awayAvgRank.toFixed(1) : '—' }}</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- Played difficulty -->
+        <div v-if="concludedMatches.length" class="text-xs border-t border-gray-100 dark:border-gray-700 pt-2">
+          <div class="flex items-center gap-2">
+            <span class="shrink-0 w-4 text-center text-xs font-bold rounded px-0.5 bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400">✓</span>
+            <span class="text-gray-700 dark:text-gray-200">
+              {{ concludedMatches.length }} played
+              <span class="text-gray-400 dark:text-gray-500">· avg opp. rank </span>
+              <span class="font-semibold">{{ playedAvgRank !== null ? playedAvgRank.toFixed(1) : '—' }}</span>
             </span>
           </div>
         </div>
@@ -106,5 +118,20 @@ const awayAvgRank = computed<number | null>(() => {
   if (!awayMatches.value.length) return null
   const sum = awayMatches.value.reduce((acc, m) => acc + (rankMap.value[m.homeTeamId] ?? 0), 0)
   return sum / awayMatches.value.length
+})
+
+const concludedMatches = computed(() =>
+  matches.value.filter(
+    (m) => (m.homeTeamId === props.teamId || m.awayTeamId === props.teamId) && m.status === 'CONCLUDED'
+  )
+)
+
+const playedAvgRank = computed<number | null>(() => {
+  if (!concludedMatches.value.length) return null
+  const sum = concludedMatches.value.reduce((acc, m) => {
+    const oppId = m.homeTeamId === props.teamId ? m.awayTeamId : m.homeTeamId
+    return acc + (rankMap.value[oppId] ?? 0)
+  }, 0)
+  return sum / concludedMatches.value.length
 })
 </script>

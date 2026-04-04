@@ -53,6 +53,7 @@
                 v-if="openFixtureTeamId === element.id"
                 :teamName="element.name"
                 :games="remainingFixture(element.id)"
+                :byeRounds="byeRounds(element.id)"
                 @close="openFixtureTeamId = null"
               />
             </div>
@@ -173,6 +174,19 @@ function remainingFixture(teamId: number): FixtureGame[] {
       }
     })
     .sort((a, b) => a.roundNumber - b.roundNumber)
+}
+
+function byeRounds(teamId: number): number[] {
+  const gameRounds = new Set(
+    props.matches
+      .filter((m) => m.status !== 'CONCLUDED' && (m.homeTeamId === teamId || m.awayTeamId === teamId))
+      .map((m) => m.roundNumber)
+  )
+  return props.matches
+    .filter((m) => m.status !== 'CONCLUDED' && m.byeTeamIds.includes(teamId) && !gameRounds.has(m.roundNumber))
+    .map((m) => m.roundNumber)
+    .filter((r, i, arr) => arr.indexOf(r) === i)
+    .sort((a, b) => a - b)
 }
 </script>
 
