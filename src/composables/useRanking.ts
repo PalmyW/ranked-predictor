@@ -166,6 +166,29 @@ export function useRanking() {
     ladderSource.value = 'mine'
   }
 
+  // If the user has a saved ranking but no history yet, seed the previous round with it.
+  // This gives the power rankings a baseline to diff against on first load.
+  function seedHistoryFromSavedRanking(currentRound: number) {
+    if (Object.keys(rankingHistory.value).length > 0) return // already has history
+    if (!savedState.value) return // no saved ranking to seed from
+    if (ladderSource.value === 'shared') return
+    if (currentRound < 1) return // need round >= 1 so round - 1 is valid
+
+    const previousRound = currentRound - 1
+    const seedRanking = savedState.value.ranking
+    const seedEncoded = encodeRanking(seedRanking, savedState.value.tierSizes)
+
+    let stored: Record<string, string> = {}
+    try {
+      const raw = localStorage.getItem(HISTORY_KEY)
+      if (raw) stored = JSON.parse(raw)
+    } catch { /* ignore */ }
+
+    stored[String(previousRound)] = seedEncoded
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(stored))
+    rankingHistory.value = { ...rankingHistory.value, [previousRound]: [...seedRanking] }
+  }
+
   // Save a snapshot of the current ranking for the given round, if not already stored.
   // Skips shared ladders so a viewed-but-not-saved shared ranking doesn't pollute history.
   function snapshotRoundRanking(roundNumber: number) {
@@ -199,6 +222,7 @@ export function useRanking() {
     moveTeam,
     loadSavedRanking,
     saveToMyLadder,
+    seedHistoryFromSavedRanking,
     snapshotRoundRanking,
   }
 }

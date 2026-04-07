@@ -117,30 +117,26 @@ import MatchList from './components/MatchList.vue'
 
 const { isDark, toggle: toggleDark } = useDarkMode()
 const { matches, teams, isLoading, error } = useAFLData()
-const { ranking, tierSizes, shareUrl, rankedFromUrl, rankedFromStorage, ladderSource, savedState, rankingHistory, setRanking, setTierSizes, resetToLadder, loadSavedRanking, saveToMyLadder, snapshotRoundRanking } = useRanking()
+const { ranking, tierSizes, shareUrl, rankedFromUrl, rankedFromStorage, ladderSource, savedState, rankingHistory, setRanking, setTierSizes, resetToLadder, loadSavedRanking, saveToMyLadder, seedHistoryFromSavedRanking, snapshotRoundRanking } = useRanking()
 const { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate, getSimulationFrames } = useSimulation(ranking, matches)
 const analytics = useAnalytics()
 
 provide('matches', matches)
 provide('ranking', ranking)
 
+// The round to snapshot against: the last round where every match is concluded
 const currentRoundNumber = computed(() => {
   if (matches.value.length === 0) return null
-  const roundMap = new Map<number, { concluded: number; total: number; hasLive: boolean }>()
+  const roundMap = new Map<number, { concluded: number; total: number }>()
   for (const m of matches.value) {
-    if (!roundMap.has(m.roundNumber)) roundMap.set(m.roundNumber, { concluded: 0, total: 0, hasLive: false })
+    if (!roundMap.has(m.roundNumber)) roundMap.set(m.roundNumber, { concluded: 0, total: 0 })
     const r = roundMap.get(m.roundNumber)!
     r.total++
     if (m.status === 'CONCLUDED') r.concluded++
-    if (m.status === 'LIVE') r.hasLive = true
   }
   const rounds = Array.from(roundMap.entries()).sort(([a], [b]) => a - b)
-  const inProgress = rounds.find(([, r]) => r.concluded > 0 && r.concluded < r.total)
-  if (inProgress) return inProgress[0]
-  const live = rounds.find(([, r]) => r.hasLive)
-  if (live) return live[0]
-  const upcoming = rounds.find(([, r]) => r.concluded === 0)
-  return upcoming?.[0] ?? rounds[rounds.length - 1]?.[0] ?? null
+  const completed = rounds.filter(([, r]) => r.total > 0 && r.concluded === r.total)
+  return completed[completed.length - 1]?.[0] ?? null
 })
 
 let initialized = false
@@ -153,7 +149,10 @@ watch(actualLadder, (ladder) => {
   if (rankedFromUrl) analytics.trackSharedRankingLoaded()
   // Snapshot after ranking is finalised for this session
   const round = currentRoundNumber.value
-  if (round !== null) snapshotRoundRanking(round)
+  if (round !== null) {
+    seedHistoryFromSavedRanking(round)
+    snapshotRoundRanking(round)
+  }
 })
 
 // Handle round advancing while the app is already open (after initialisation)
