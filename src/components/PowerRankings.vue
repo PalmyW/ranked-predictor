@@ -1,5 +1,6 @@
 <template>
   <div
+    ref="captureEl"
     class="relative select-none overflow-hidden rounded-lg text-white"
     style="background: #0a0d14"
   >
@@ -91,21 +92,34 @@
           </div>
         </div>
 
-        <!-- Round history pills -->
-        <div v-if="sortedRounds.length > 1" class="mt-4 flex flex-wrap gap-1.5">
-          <span class="self-center text-xs text-gray-500">History:</span>
+        <!-- Round history pills + screenshot (hidden during capture) -->
+        <div v-if="!capturing" class="mt-4 flex flex-wrap items-center gap-1.5">
+          <template v-if="sortedRounds.length > 1">
+            <span class="self-center text-xs text-gray-500">History:</span>
+            <button
+              v-for="round in sortedRounds"
+              :key="round"
+              @click="selectedRound = round"
+              class="rounded px-2 py-0.5 text-xs font-semibold transition-colors"
+              :class="
+                selectedRound === round
+                  ? 'bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/50'
+                  : 'bg-white/5 text-gray-400 hover:bg-white/10'
+              "
+            >
+              {{ roundPill(round) }}
+            </button>
+          </template>
           <button
-            v-for="round in sortedRounds"
-            :key="round"
-            @click="selectedRound = round"
-            class="rounded px-2 py-0.5 text-xs font-semibold transition-colors"
-            :class="
-              selectedRound === round
-                ? 'bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/50'
-                : 'bg-white/5 text-gray-400 hover:bg-white/10'
-            "
+            @click="screenshot"
+            title="Save as image"
+            class="ml-auto rounded p-1.5 text-gray-500 transition-colors hover:bg-white/10 hover:text-white"
           >
-            {{ roundPill(round) }}
+            <svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
           </button>
         </div>
       </div>
@@ -137,6 +151,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from 'vue'
+import { toPng } from 'html-to-image'
 import type { TeamRanking } from '../types/afl'
 import { TEAMS } from '../composables/useAFLData'
 
@@ -148,6 +163,25 @@ const props = defineProps<{
 const LABELS_KEY = 'afl-power-rankings-labels-2026'
 
 const teamMap = Object.fromEntries(TEAMS.map((t) => [t.id, t]))
+
+// --- Screenshot ---
+const captureEl = ref<HTMLDivElement | null>(null)
+const capturing = ref(false)
+
+async function screenshot() {
+  if (!captureEl.value) return
+  capturing.value = true
+  await new Promise((r) => setTimeout(r, 50)) // let UI hide pills/button
+  try {
+    const dataUrl = await toPng(captureEl.value, { pixelRatio: 2 })
+    const link = document.createElement('a')
+    link.download = 'power-rankings.png'
+    link.href = dataUrl
+    link.click()
+  } finally {
+    capturing.value = false
+  }
+}
 
 // --- Editable label state ---
 function loadLabels() {
