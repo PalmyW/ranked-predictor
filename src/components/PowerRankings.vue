@@ -16,41 +16,42 @@
       "
     />
 
-    <div class="relative flex">
-      <!-- Main content -->
-      <div class="min-w-0 flex-1 px-5 pb-4 pt-5">
-        <!-- Header -->
-        <div class="mb-4 pr-[28px] text-center">
-          <div
-            ref="yearEl"
-            contenteditable="true"
-            spellcheck="false"
-            @keydown.enter.prevent="yearEl?.blur()"
-            @blur="save('year', yearEl?.innerText)"
-            class="inline-block cursor-text rounded px-1 py-0.5 text-xs font-bold uppercase tracking-[0.5em] text-gray-400 outline-none transition-colors hover:bg-white/5 focus:bg-white/10"
-          />
-          <div
-            ref="titleEl"
-            contenteditable="true"
-            spellcheck="false"
-            @keydown.enter.prevent="titleEl?.blur()"
-            @blur="save('title', titleEl?.innerText)"
-            class="mt-0.5 block cursor-text rounded px-1 py-0.5 font-black uppercase leading-none tracking-widest text-white outline-none transition-colors hover:bg-white/5 focus:bg-white/10"
-            style="font-size: clamp(1.4rem, 4vw, 2rem)"
-          />
-          <div class="mb-1 mt-3 h-px bg-white/20" />
-        </div>
-
-        <!-- No history -->
+    <div class="relative">
+      <!-- Header (full width) -->
+      <div class="px-5 pt-5 text-center">
         <div
-          v-if="rows.length === 0"
-          class="py-10 text-center text-sm text-gray-500"
-        >
-          Changes will appear after the next round
-        </div>
+          ref="yearEl"
+          contenteditable="true"
+          spellcheck="false"
+          @keydown.enter.prevent="yearEl?.blur()"
+          @blur="save('year', yearEl?.innerText)"
+          class="inline-block cursor-text rounded px-1 py-0.5 text-xs font-bold uppercase tracking-[0.5em] text-gray-400 outline-none transition-colors hover:bg-white/5 focus:bg-white/10"
+        />
+        <div
+          ref="titleEl"
+          contenteditable="true"
+          spellcheck="false"
+          @keydown.enter.prevent="titleEl?.blur()"
+          @blur="save('title', titleEl?.innerText)"
+          class="mt-0.5 block cursor-text rounded px-1 py-0.5 font-black uppercase leading-none tracking-widest text-white outline-none transition-colors hover:bg-white/5 focus:bg-white/10"
+          style="font-size: clamp(1.4rem, 4vw, 2rem)"
+        />
+        <div class="mb-1 mr-[28px] mt-3 h-px bg-white/20" />
+      </div>
 
-        <!-- Team rows -->
-        <div v-else class="space-y-0">
+      <!-- Rows + vertical round label -->
+      <div class="flex">
+        <div class="min-w-0 flex-1 px-5 pb-4 pt-2">
+          <!-- No history -->
+          <div
+            v-if="rows.length === 0"
+            class="py-10 text-center text-sm text-gray-500"
+          >
+            Changes will appear after the next round
+          </div>
+
+          <!-- Team rows -->
+          <div v-else class="space-y-0">
           <div
             v-for="(row, i) in rows"
             :key="row.teamId"
@@ -122,28 +123,29 @@
             </svg>
           </button>
         </div>
-      </div>
+        </div>
 
-      <!-- Right sidebar: vertical round label -->
-      <div
-        class="flex shrink-0 items-center justify-center border-l border-white/10"
-        style="width: 28px"
-      >
+        <!-- Right sidebar: vertical round label -->
         <div
-          ref="roundEl"
-          contenteditable="true"
-          spellcheck="false"
-          @keydown.enter.prevent="roundEl?.blur()"
-          @blur="save('roundLabel', roundEl?.innerText)"
-          class="cursor-text rounded px-0.5 text-center font-black uppercase text-white outline-none transition-colors hover:bg-white/5 focus:bg-white/10"
-          style="
-            writing-mode: vertical-rl;
-            transform: rotate(180deg);
-            font-size: 0.75rem;
-            letter-spacing: 0.35em;
-            white-space: nowrap;
-          "
-        />
+          class="flex shrink-0 items-center justify-center border-l border-white/10"
+          style="width: 28px"
+        >
+          <div
+            ref="roundEl"
+            contenteditable="true"
+            spellcheck="false"
+            @keydown.enter.prevent="roundEl?.blur()"
+            @blur="save('roundLabel', roundEl?.innerText)"
+            class="cursor-text rounded px-0.5 text-center font-black uppercase text-white outline-none transition-colors hover:bg-white/5 focus:bg-white/10"
+            style="
+              writing-mode: vertical-rl;
+              transform: rotate(180deg);
+              font-size: 0.75rem;
+              letter-spacing: 0.35em;
+              white-space: nowrap;
+            "
+          />
+        </div>
       </div>
     </div>
   </div>
