@@ -125,8 +125,10 @@ export function useRanking() {
 
   // Persist to localStorage on every change (except when viewing a shared ladder before any interaction)
   watch(encodedRanking, (encoded) => {
-    if (ladderSource.value !== 'shared') {
-      localStorage.setItem(STORAGE_KEY, encoded)
+    localStorage.setItem(STORAGE_KEY, encoded)
+    // Any reorder while viewing a shared ladder claims it as the user's own
+    if (ladderSource.value === 'shared') {
+      ladderSource.value = 'mine'
     }
   })
 
@@ -171,7 +173,6 @@ export function useRanking() {
   function seedHistoryFromSavedRanking(currentRound: number) {
     if (Object.keys(rankingHistory.value).length > 0) return // already has history
     if (!savedState.value) return // no saved ranking to seed from
-    if (ladderSource.value === 'shared') return
     if (currentRound < 1) return // need round >= 1 so round - 1 is valid
 
     const previousRound = currentRound - 1
@@ -187,6 +188,19 @@ export function useRanking() {
     stored[String(previousRound)] = seedEncoded
     localStorage.setItem(HISTORY_KEY, JSON.stringify(stored))
     rankingHistory.value = { ...rankingHistory.value, [previousRound]: [...seedRanking] }
+  }
+
+  // Always overwrite the snapshot for a given round with the current ranking.
+  // Used to keep the current round's history entry in sync as the user edits.
+  function updateRoundSnapshot(roundNumber: number) {
+    let stored: Record<string, string> = {}
+    try {
+      const raw = localStorage.getItem(HISTORY_KEY)
+      if (raw) stored = JSON.parse(raw)
+    } catch { /* ignore */ }
+    stored[String(roundNumber)] = encodedRanking.value
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(stored))
+    rankingHistory.value = { ...rankingHistory.value, [roundNumber]: [...ranking.value] }
   }
 
   // Save a snapshot of the current ranking for the given round, if not already stored.
@@ -224,5 +238,6 @@ export function useRanking() {
     saveToMyLadder,
     seedHistoryFromSavedRanking,
     snapshotRoundRanking,
+    updateRoundSnapshot,
   }
 }

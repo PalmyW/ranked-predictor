@@ -117,7 +117,7 @@ import MatchList from './components/MatchList.vue'
 
 const { isDark, toggle: toggleDark } = useDarkMode()
 const { matches, teams, isLoading, error } = useAFLData()
-const { ranking, tierSizes, shareUrl, rankedFromUrl, rankedFromStorage, ladderSource, savedState, rankingHistory, setRanking, setTierSizes, resetToLadder, loadSavedRanking, saveToMyLadder, seedHistoryFromSavedRanking, snapshotRoundRanking } = useRanking()
+const { ranking, tierSizes, shareUrl, rankedFromUrl, rankedFromStorage, ladderSource, savedState, rankingHistory, setRanking, setTierSizes, resetToLadder, loadSavedRanking, saveToMyLadder, seedHistoryFromSavedRanking, snapshotRoundRanking, updateRoundSnapshot } = useRanking()
 const { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate, getSimulationFrames } = useSimulation(ranking, matches)
 const analytics = useAnalytics()
 
@@ -159,6 +159,13 @@ watch(actualLadder, (ladder) => {
 watch(currentRoundNumber, (roundNum) => {
   if (roundNum !== null && initialized) snapshotRoundRanking(roundNum)
 })
+
+// Keep the current round's history entry in sync with every ranking change
+watch(ranking, () => {
+  if (!initialized) return
+  const round = currentRoundNumber.value
+  if (round !== null) updateRoundSnapshot(round)
+}, { deep: true })
 
 watch(shareUrl, (url) => {
   history.replaceState(null, '', url)
