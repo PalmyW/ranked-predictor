@@ -20,7 +20,7 @@
       <!-- Main content -->
       <div class="min-w-0 flex-1 px-5 pb-4 pt-5">
         <!-- Header -->
-        <div class="mb-4 text-center">
+        <div class="mb-4 pr-[28px] text-center">
           <div
             ref="yearEl"
             contenteditable="true"
@@ -139,7 +139,7 @@
           style="
             writing-mode: vertical-rl;
             transform: rotate(180deg);
-            font-size: 0.6rem;
+            font-size: 0.75rem;
             letter-spacing: 0.35em;
             white-space: nowrap;
           "
@@ -172,13 +172,36 @@ async function screenshot() {
   if (!captureEl.value) return
   capturing.value = true
   await new Promise((r) => setTimeout(r, 50)) // let UI hide pills/button
+
+  // html-to-image can't resolve external SVG <use> hrefs, so inline the sprite
+  // temporarily and switch to fragment-only references before capturing.
+  let spriteEl: Element | null = null
+  const useEls: { el: Element; original: string }[] = []
   try {
+    const spriteRes = await fetch('/ranked-predictor/icons.svg')
+    const spriteText = await spriteRes.text()
+    const wrapper = document.createElement('div')
+    wrapper.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden'
+    wrapper.innerHTML = spriteText
+    spriteEl = wrapper
+    captureEl.value.prepend(wrapper)
+
+    captureEl.value.querySelectorAll('use[href]').forEach((use) => {
+      const href = use.getAttribute('href') ?? ''
+      useEls.push({ el: use, original: href })
+      const fragment = href.split('#')[1]
+      if (fragment) use.setAttribute('href', `#${fragment}`)
+    })
+
     const dataUrl = await toPng(captureEl.value, { pixelRatio: 2 })
     const link = document.createElement('a')
     link.download = 'power-rankings.png'
     link.href = dataUrl
     link.click()
   } finally {
+    // Restore original hrefs and remove inlined sprite
+    useEls.forEach(({ el, original }) => el.setAttribute('href', original))
+    spriteEl?.remove()
     capturing.value = false
   }
 }
