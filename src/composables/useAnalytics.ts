@@ -11,7 +11,7 @@ function track(name: string, params?: Record<string, unknown>) {
 export function useAnalytics() {
   return {
     /** User switched ladder tab */
-    trackTabSwitch(tab: 'predicted' | 'simulated' | 'current') {
+    trackTabSwitch(tab: 'predicted' | 'simulated' | 'current' | 'power') {
       track('tab_switch', { tab })
     },
 

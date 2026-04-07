@@ -3,6 +3,7 @@ import type { TeamRanking, LadderRow } from '../types/afl'
 import { TEAMS } from './useAFLData'
 
 const STORAGE_KEY = 'afl-ranking-2026'
+const HISTORY_KEY = 'afl-ranking-history-2026'
 
 // Default tier sizes: S=1, A=2, B-F=3 each (total 18)
 export const DEFAULT_TIER_SIZES = [1, 2, 3, 3, 3, 3, 3]
@@ -82,12 +83,29 @@ function loadInitialState(): {
   return { ranking: defaultRanking(), tierSizes: [...DEFAULT_TIER_SIZES], source: 'default', stored: null }
 }
 
+function loadHistory(): Record<number, TeamRanking> {
+  const raw = localStorage.getItem(HISTORY_KEY)
+  if (!raw) return {}
+  try {
+    const stored: Record<string, string> = JSON.parse(raw)
+    const result: Record<number, TeamRanking> = {}
+    for (const [key, encoded] of Object.entries(stored)) {
+      const decoded = decodeRanking(encoded)
+      if (decoded) result[Number(key)] = decoded.ranking
+    }
+    return result
+  } catch {
+    return {}
+  }
+}
+
 const { ranking: initialRanking, tierSizes: initialTierSizes, source: initialSource, stored: initialStored } = loadInitialState()
 
 const ranking = ref<TeamRanking>(initialRanking)
 const tierSizes = ref<number[]>(initialTierSizes)
 const rankedFromUrl = initialSource === 'url'
 const rankedFromStorage = initialSource === 'storage'
+const rankingHistory = ref<Record<number, TeamRanking>>(loadHistory())
 
 type LadderSource = 'live' | 'shared' | 'mine'
 const ladderSource = ref<LadderSource>(
@@ -148,6 +166,23 @@ export function useRanking() {
     ladderSource.value = 'mine'
   }
 
+  // Save a snapshot of the current ranking for the given round, if not already stored.
+  // Skips shared ladders so a viewed-but-not-saved shared ranking doesn't pollute history.
+  function snapshotRoundRanking(roundNumber: number) {
+    if (ladderSource.value === 'shared') return
+    if (rankingHistory.value[roundNumber]) return
+    let stored: Record<string, string> = {}
+    try {
+      const raw = localStorage.getItem(HISTORY_KEY)
+      if (raw) stored = JSON.parse(raw)
+    } catch {
+      // Malformed history — start fresh rather than propagating an error
+    }
+    stored[String(roundNumber)] = encodedRanking.value
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(stored))
+    rankingHistory.value = { ...rankingHistory.value, [roundNumber]: [...ranking.value] }
+  }
+
   return {
     ranking,
     tierSizes,
@@ -157,11 +192,13 @@ export function useRanking() {
     rankedFromStorage,
     ladderSource,
     savedState,
+    rankingHistory,
     setRanking,
     setTierSizes,
     resetToLadder,
     moveTeam,
     loadSavedRanking,
     saveToMyLadder,
+    snapshotRoundRanking,
   }
 }

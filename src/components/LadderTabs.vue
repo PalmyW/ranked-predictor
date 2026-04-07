@@ -92,6 +92,11 @@
         </div>
         <LadderTable :ladder="actualLadder" :isLoading="isLoading" />
       </div>
+
+      <!-- Power Rankings -->
+      <div v-else-if="activeTab === 'power'">
+        <PowerRankings :ranking="ranking" :rankingHistory="rankingHistory" />
+      </div>
     </div>
   </div>
 </template>
@@ -101,6 +106,7 @@ import { ref } from 'vue'
 import type { LadderRow, TeamRanking } from '../types/afl'
 import LadderTable from './LadderTable.vue'
 import HtmlTooltip from './HtmlTooltip.vue'
+import PowerRankings from './PowerRankings.vue'
 import { useAnalytics } from '../composables/useAnalytics'
 
 const props = defineProps<{
@@ -108,6 +114,7 @@ const props = defineProps<{
   simulatedLadder: LadderRow[] | null
   actualLadder: LadderRow[]
   ranking: TeamRanking
+  rankingHistory: Record<number, TeamRanking>
   isLoading: boolean
   hasMatches: boolean
   simulate: () => void
@@ -119,6 +126,7 @@ const TABS = [
   { id: 'predicted', badge: 'P', badgeClass: 'px-1 rounded text-[1em] font-bold leading-tight bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400', label: 'redicted' },
   { id: 'simulated', badge: 'S', badgeClass: 'px-1 rounded text-[1em] font-bold leading-tight bg-purple-500 text-white', label: 'imulated' },
   { id: 'current',   badge: null, badgeClass: '', label: 'Current' },
+  { id: 'power',     badge: '↕', badgeClass: 'text-[1em] font-bold text-amber-500 dark:text-amber-400', label: ' Power' },
 ]
 
 const analytics = useAnalytics()
@@ -136,7 +144,7 @@ function sleep(ms: number): Promise<void> {
 
 function switchTab(id: string) {
   activeTab.value = id
-  analytics.trackTabSwitch(id as 'predicted' | 'simulated' | 'current')
+  analytics.trackTabSwitch(id as 'predicted' | 'simulated' | 'current' | 'power')
 }
 
 async function handleSimulate() {
