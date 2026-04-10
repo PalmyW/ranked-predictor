@@ -124,19 +124,17 @@ const analytics = useAnalytics()
 provide('matches', matches)
 provide('ranking', ranking)
 
-// The round to snapshot against: the last round where every match is concluded
+// The round to snapshot against: the highest round where at least one match has started.
+// As soon as the first match of round N goes live, all ranking changes are saved under round N.
 const currentRoundNumber = computed(() => {
   if (matches.value.length === 0) return null
-  const roundMap = new Map<number, { concluded: number; total: number }>()
+  let max: number | null = null
   for (const m of matches.value) {
-    if (!roundMap.has(m.roundNumber)) roundMap.set(m.roundNumber, { concluded: 0, total: 0 })
-    const r = roundMap.get(m.roundNumber)!
-    r.total++
-    if (m.status === 'CONCLUDED') r.concluded++
+    if (m.status === 'LIVE' || m.status === 'CONCLUDED') {
+      if (max === null || m.roundNumber > max) max = m.roundNumber
+    }
   }
-  const rounds = Array.from(roundMap.entries()).sort(([a], [b]) => a - b)
-  const completed = rounds.filter(([, r]) => r.total > 0 && r.concluded === r.total)
-  return completed[completed.length - 1]?.[0] ?? null
+  return max
 })
 
 let initialized = false
