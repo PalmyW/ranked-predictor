@@ -15,17 +15,18 @@
         </p>
         <div v-if="lastSixResults.length" class="flex gap-1">
           <span
-            v-for="(result, i) in lastSixResults"
+            v-for="(r, i) in lastSixResults"
             :key="i"
-            class="flex size-5 items-center justify-center rounded text-[10px] font-bold"
+            class="flex size-5 cursor-default items-center justify-center rounded text-[10px] font-bold"
             :class="
-              result === 'W'
+              r.result === 'W'
                 ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
-                : result === 'L'
+                : r.result === 'L'
                   ? 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400'
                   : 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500'
             "
-            >{{ result }}</span
+            :title="r.tooltip"
+            >{{ r.result }}</span
           >
         </div>
 
@@ -191,19 +192,27 @@ const concludedMatches = computed(() =>
   ),
 )
 
-const lastSixResults = computed<('W' | 'L' | 'D')[]>(() => {
+const lastSixResults = computed<{ result: 'W' | 'L' | 'D'; tooltip: string }[]>(() => {
   const sorted = [...concludedMatches.value].sort(
     (a, b) =>
       new Date(a.utcStartTime).getTime() - new Date(b.utcStartTime).getTime(),
   )
   return sorted.slice(-6).map((m) => {
     const isHome = m.homeTeamId === props.teamId
+    const oppName = isHome ? m.awayTeamName : m.homeTeamName
     const teamScore = isHome ? m.homeScore?.totalScore : m.awayScore?.totalScore
     const oppScore = isHome ? m.awayScore?.totalScore : m.homeScore?.totalScore
-    if (teamScore == null || oppScore == null) return 'D'
-    if (teamScore > oppScore) return 'W'
-    if (teamScore < oppScore) return 'L'
-    return 'D'
+    let result: 'W' | 'L' | 'D' = 'D'
+    if (teamScore != null && oppScore != null) {
+      if (teamScore > oppScore) result = 'W'
+      else if (teamScore < oppScore) result = 'L'
+    }
+    const margin =
+      teamScore != null && oppScore != null
+        ? `by ${Math.abs(teamScore - oppScore)}`
+        : '—'
+    const tooltip = `vs ${oppName} (${result === 'W' ? 'won' : result === 'L' ? 'lost' : 'drew'} ${margin})`
+    return { result, tooltip }
   })
 })
 
