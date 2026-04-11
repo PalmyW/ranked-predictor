@@ -36,7 +36,7 @@
           class="mt-0.5 block cursor-text rounded px-1 py-0.5 font-black uppercase leading-none tracking-widest text-white outline-none transition-colors hover:bg-white/5 focus:bg-white/10"
           style="font-size: clamp(1.4rem, 4vw, 2rem)"
         />
-        <div class="mb-1 mr-[28px] mt-3 h-px bg-white/20" />
+        <div class="mb-0 mr-[7px] mt-3 h-px bg-white/20" />
       </div>
 
       <!-- Rows + vertical round label -->
@@ -52,77 +52,93 @@
 
           <!-- Team rows -->
           <div v-else class="space-y-0">
-          <div
-            v-for="(row, i) in rows"
-            :key="row.teamId"
-            class="flex items-center gap-2 border-b transition-colors"
-            :class="[
-              i === 5 ? 'border-b-2 border-b-red-500' : i === 9 ? 'border-b-2 border-b-blue-500' : 'border-b border-b-white/10',
-              'py-1.5 hover:bg-white/5',
-            ]"
-          >
-            <!-- Team name -->
-            <span
-              class="flex-1 truncate text-right text-xs font-bold uppercase tracking-wide sm:text-sm"
-              style="letter-spacing: 0.06em"
+            <div
+              v-for="(row, i) in rows"
+              :key="row.teamId"
+              class="flex items-center gap-2 border-b transition-colors"
+              :class="[
+                i === 5
+                  ? 'border-b-2 border-b-red-500'
+                  : i === 9
+                    ? 'border-b-2 border-b-blue-500'
+                    : 'border-b border-b-white/10',
+                'py-1.5 hover:bg-white/5',
+              ]"
             >
-              {{ row.teamName }}
-            </span>
-            <!-- Logo -->
-            <svg class="size-7 shrink-0">
-              <use :href="`/ranked-predictor/icons.svg#${row.iconId}`" />
-            </svg>
-            <!-- Rank -->
-            <span
-              class="w-5 shrink-0 text-right text-sm font-black tabular-nums text-white"
-              >{{ i + 1 }}</span
-            >
-            <!-- Movement -->
-            <span
-              class="w-9 shrink-0 text-right text-xs font-bold tabular-nums"
-            >
-              <span v-if="row.delta === null" class="text-gray-500">NEW</span>
-              <span v-else-if="row.delta > 0" class="text-green-400"
-                >▲{{ row.delta }}</span
+              <!-- Team name -->
+              <span
+                class="flex-1 truncate text-right text-xs font-bold uppercase tracking-wide sm:text-sm"
+                style="letter-spacing: 0.06em"
               >
-              <span v-else-if="row.delta < 0" class="text-red-400"
-                >▼{{ Math.abs(row.delta) }}</span
+                {{ row.teamName }}
+              </span>
+              <!-- Logo -->
+              <svg class="size-7 shrink-0">
+                <use :href="`/ranked-predictor/icons.svg#${row.iconId}`" />
+              </svg>
+              <!-- Rank -->
+              <span
+                class="w-5 shrink-0 text-right text-sm font-black tabular-nums text-white"
+                >{{ i + 1 }}</span
               >
-              <span v-else class="text-gray-500">—</span>
-            </span>
+              <!-- Movement -->
+              <span
+                class="w-9 shrink-0 text-right text-xs font-bold tabular-nums"
+              >
+                <span v-if="row.delta === null" class="text-gray-500">NEW</span>
+                <span v-else-if="row.delta > 0" class="text-green-400"
+                  >▲{{ row.delta }}</span
+                >
+                <span v-else-if="row.delta < 0" class="text-red-400"
+                  >▼{{ Math.abs(row.delta) }}</span
+                >
+                <span v-else class="text-gray-500">—</span>
+              </span>
+            </div>
           </div>
-        </div>
 
-        <!-- Round history pills + screenshot (hidden during capture) -->
-        <div v-if="!capturing" class="mt-4 flex flex-wrap items-center gap-1.5">
-          <template v-if="sortedRounds.length > 1">
-            <span class="self-center text-xs text-gray-500">History:</span>
-            <button
-              v-for="round in sortedRounds"
-              :key="round"
-              @click="selectedRound = round"
-              class="rounded px-2 py-0.5 text-xs font-semibold transition-colors"
-              :class="
-                selectedRound === round
-                  ? 'bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/50'
-                  : 'bg-white/5 text-gray-400 hover:bg-white/10'
-              "
-            >
-              {{ roundPill(round) }}
-            </button>
-          </template>
-          <button
-            @click="screenshot"
-            title="Save as image"
-            class="ml-auto rounded p-1.5 text-gray-500 transition-colors hover:bg-white/10 hover:text-white"
+          <!-- Round history pills + screenshot (hidden during capture) -->
+          <div
+            v-if="!capturing"
+            class="mt-4 flex flex-wrap items-center gap-1.5"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-          </button>
-        </div>
+            <template v-if="sortedRounds.length > 1">
+              <span class="self-center text-xs text-gray-500">History:</span>
+              <button
+                v-for="round in sortedRounds"
+                :key="round"
+                @click="selectedRound = round"
+                class="rounded px-2 py-0.5 text-xs font-semibold transition-colors"
+                :class="
+                  selectedRound === round
+                    ? 'bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/50'
+                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                "
+              >
+                {{ roundPill(round) }}
+              </button>
+            </template>
+            <button
+              @click="screenshot"
+              title="Save as image"
+              class="ml-auto rounded p-1.5 text-gray-500 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="size-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         <!-- Right sidebar: vertical round label -->
