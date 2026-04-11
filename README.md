@@ -10,7 +10,8 @@ An interactive AFL 2026 season prediction tool. Drag your 18 teams into strength
 
 - **Tier-based ranking** — Drag teams between 7 tiers (S through F). Higher tier always wins.
 - **Three ladder views** — Current standings, predicted (deterministic), and randomised simulation
-- **Schedule difficulty** — Each team's remaining draw rated 1–18 with home/away breakdown
+- **Schedule difficulty** — Each team's remaining draw rated 1–18 with home/away breakdown; team popup shows last 6 W/L results and double-up opponents
+- **Live data sync** — Fixture polled every 15s; header shows time since last data sync
 - **Shareable URLs** — Ranking encoded in the URL, restores on load
 - **Persistent state** — Saves to localStorage, with controls to switch between live/shared/saved rankings
 - **Dark mode** — Follows system preference, toggleable
@@ -37,7 +38,14 @@ npm run dev
 ```bash
 npm run build     # production build
 npm run preview   # preview production build locally
+npm run fetch-data  # pull latest fixture from AFL API into public/data/fixture.json
 ```
+
+---
+
+## Data
+
+Fixture data is fetched from the AFL API and stored as `public/data/fixture.json`. A companion file `public/data/last-updated.json` records the UTC timestamp of the last fetch. The app polls `last-updated.json` every 15s and re-fetches the fixture if the timestamp changes.
 
 ---
 
@@ -46,10 +54,13 @@ npm run preview   # preview production build locally
 | Workflow | Trigger | What it does |
 |---|---|---|
 | `sync-deploy.yml` | Push to `main` | Fetches fresh fixture, builds, deploys to `gh-pages` |
-| `fetch-data.yml` | Scheduled (Fri–Mon after games) | Fetches fixture, builds, deploys, commits updated fixture to `main` |
-| `deploy.yml` | Manual (`workflow_dispatch`) | Build and deploy from `main` |
+| `fetch-data.yml` | Scheduled | Fetches fixture, writes timestamp, builds, deploys, commits data to `main` |
+| `deploy.yml` | Manual (`workflow_dispatch`) | Builds from current `main` and deploys to `gh-pages` |
 
-The scheduled fetch runs after AFL game windows (UTC): 6am, 9am, and noon on Fri/Sat/Sun/Mon.
+`fetch-data.yml` schedule:
+- **Every 5 minutes** on Thu–Sun, 01:00–13:00 UTC (11am–11pm AEST game window)
+- **Hourly** on Mon–Wed
+- **Hourly** on Thu–Sun outside game hours
 
 ---
 
