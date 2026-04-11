@@ -74,6 +74,7 @@ function parseMatch(raw: Record<string, unknown>): AflMatch | null {
 const matches = ref<AflMatch[]>([])
 const isLoading = ref(false)
 const error = ref<string | null>(null)
+const syncedAt = ref<Date | null>(null)
 let fetched = false
 let lastTimestamp: string | null = null
 let pollingStarted = false
@@ -97,29 +98,32 @@ function fetchFixture(): Promise<void> {
     })
 }
 
+function fetchTimestamp(): Promise<void> {
+  const tsUrl = `${import.meta.env.BASE_URL}data/last-updated.json`
+  return fetch(tsUrl, { cache: 'no-store' })
+    .then((res) => (res.ok ? res.json() : null))
+    .then((data: { updatedAt?: string } | null) => {
+      const ts = data?.updatedAt ?? null
+      if (ts) {
+        if (lastTimestamp !== null && ts !== lastTimestamp) fetchFixture()
+        lastTimestamp = ts
+        syncedAt.value = new Date(ts)
+      }
+    })
+    .catch(() => { /* silent — polling failure is non-critical */ })
+}
+
 function startPolling() {
   if (pollingStarted) return
   pollingStarted = true
-  const tsUrl = `${import.meta.env.BASE_URL}data/last-updated.json`
-  setInterval(() => {
-    fetch(tsUrl, { cache: 'no-store' })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { updatedAt?: string } | null) => {
-        const ts = data?.updatedAt ?? null
-        if (ts && lastTimestamp !== null && ts !== lastTimestamp) {
-          fetchFixture()
-        }
-        if (ts) lastTimestamp = ts
-      })
-      .catch(() => { /* silent — polling failure is non-critical */ })
-  }, POLL_INTERVAL_MS)
+  setInterval(fetchTimestamp, POLL_INTERVAL_MS)
 }
 
 export function useAFLData() {
   if (!fetched) {
     fetched = true
     isLoading.value = true
-    fetchFixture()
+    Promise.all([fetchFixture(), fetchTimestamp()])
       .finally(() => {
         isLoading.value = false
         startPolling()
@@ -131,5 +135,6 @@ export function useAFLData() {
     teams: TEAMS,
     isLoading: readonly(isLoading),
     error: readonly(error),
+    syncedAt: readonly(syncedAt),
   }
 }

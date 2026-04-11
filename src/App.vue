@@ -3,7 +3,7 @@
     <div>
       <AppHeader
         :isLoading="isLoading"
-        :matchCount="matches.length"
+        :syncedAt="syncedAt"
         :isDark="isDark"
         @toggle-dark="toggleDark"
       />
@@ -116,7 +116,7 @@ import ShareBar from './components/ShareBar.vue'
 import MatchList from './components/MatchList.vue'
 
 const { isDark, toggle: toggleDark } = useDarkMode()
-const { matches, teams, isLoading, error } = useAFLData()
+const { matches, teams, isLoading, error, syncedAt } = useAFLData()
 const { ranking, tierSizes, shareUrl, rankedFromUrl, rankedFromStorage, ladderSource, savedState, rankingHistory, setRanking, setTierSizes, resetToLadder, loadSavedRanking, saveToMyLadder, seedHistoryFromSavedRanking, snapshotRoundRanking, updateRoundSnapshot } = useRanking()
 const { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate, getSimulationFrames } = useSimulation(ranking, matches)
 const analytics = useAnalytics()

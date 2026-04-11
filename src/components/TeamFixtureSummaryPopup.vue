@@ -9,6 +9,18 @@
     <template #content>
       <div class="p-3 min-w-[200px] space-y-2.5">
         <p class="font-semibold text-gray-800 dark:text-gray-100 text-xs">{{ teamName }}</p>
+        <div v-if="lastSixResults.length" class="flex gap-1">
+          <span
+            v-for="(result, i) in lastSixResults"
+            :key="i"
+            class="size-5 flex items-center justify-center text-[10px] font-bold rounded"
+            :class="result === 'W'
+              ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
+              : result === 'L'
+                ? 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400'
+                : 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500'"
+          >{{ result }}</span>
+        </div>
 
         <!-- Double-up opponents -->
         <div v-if="doubleOpponents.length">
@@ -125,6 +137,21 @@ const concludedMatches = computed(() =>
     (m) => (m.homeTeamId === props.teamId || m.awayTeamId === props.teamId) && m.status === 'CONCLUDED'
   )
 )
+
+const lastSixResults = computed<('W' | 'L' | 'D')[]>(() => {
+  const sorted = [...concludedMatches.value].sort(
+    (a, b) => new Date(a.utcStartTime).getTime() - new Date(b.utcStartTime).getTime()
+  )
+  return sorted.slice(-6).map((m) => {
+    const isHome = m.homeTeamId === props.teamId
+    const teamScore = isHome ? m.homeScore?.totalScore : m.awayScore?.totalScore
+    const oppScore = isHome ? m.awayScore?.totalScore : m.homeScore?.totalScore
+    if (teamScore == null || oppScore == null) return 'D'
+    if (teamScore > oppScore) return 'W'
+    if (teamScore < oppScore) return 'L'
+    return 'D'
+  })
+})
 
 const playedAvgRank = computed<number | null>(() => {
   if (!concludedMatches.value.length) return null
