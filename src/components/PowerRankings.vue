@@ -51,16 +51,16 @@
           </div>
 
           <!-- Team rows -->
-          <div v-else class="space-y-0">
+          <TransitionGroup v-else tag="div" name="power-row" class="space-y-0">
             <div
               v-for="(row, i) in rows"
               :key="row.teamId"
               class="flex items-center gap-2 border-b transition-colors"
               :class="[
                 i === 5
-                  ? 'border-b-2 border-b-red-500'
+                  ? ['border-b-2', isAnimating ? 'border-b-transparent' : 'border-b-red-500']
                   : i === 9
-                    ? 'border-b-2 border-b-blue-500'
+                    ? ['border-b-2', isAnimating ? 'border-b-transparent' : 'border-b-blue-500']
                     : 'border-b border-b-white/10',
                 'py-1.5 hover:bg-white/5',
               ]"
@@ -95,7 +95,7 @@
                 <span v-else class="text-gray-500">—</span>
               </span>
             </div>
-          </div>
+          </TransitionGroup>
 
           <!-- Round history pills + screenshot (hidden during capture) -->
           <div
@@ -282,6 +282,15 @@ watch(
   { immediate: true },
 )
 
+// Hide position-separator borders during row reorder animation, then fade them back in
+const isAnimating = ref(false)
+let animTimer: ReturnType<typeof setTimeout> | null = null
+watch(selectedRound, () => {
+  isAnimating.value = true
+  if (animTimer) clearTimeout(animTimer)
+  animTimer = setTimeout(() => { isAnimating.value = false }, 350)
+})
+
 // Keep the round label in sync with whichever round is selected
 watch(
   selectedRound,
@@ -345,3 +354,9 @@ const rows = computed<PowerRow[]>(() => {
   })
 })
 </script>
+
+<style scoped>
+.power-row-move {
+  transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+</style>

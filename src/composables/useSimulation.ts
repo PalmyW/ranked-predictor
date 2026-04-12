@@ -13,6 +13,11 @@ const ELO_SPREAD = 300      // total rating range across 18 teams
 const ELO_HOME_ADV = 60     // additive home advantage in Elo points
 const ELO_DIVISOR = 400     // standard Elo scaling divisor
 
+const AVG_WIN_MARGIN = 32   // average AFL winning margin in points
+const AVG_AFL_SCORE  = 85   // average points per team per game
+const SIM_WIN_SCORE  = AVG_AFL_SCORE + Math.round(AVG_WIN_MARGIN / 2)  // 101
+const SIM_LOSS_SCORE = AVG_AFL_SCORE - Math.round(AVG_WIN_MARGIN / 2)  // 69
+
 function homeWinProb(hRank: number, aRank: number): number {
   const homeRating = ELO_TOP_RATING - (hRank - 1) * (ELO_SPREAD / 17) + ELO_HOME_ADV
   const awayRating = ELO_TOP_RATING - (aRank - 1) * (ELO_SPREAD / 17)
@@ -172,7 +177,9 @@ function simulateMatches(
       : (hRank < aRank ? hId : aId)
     const loserId = winnerId === hId ? aId : hId
     simStats[winnerId].wins++; simStats[winnerId].pts += 4; simStats[winnerId].played++
+    simStats[winnerId].for += SIM_WIN_SCORE; simStats[winnerId].against += SIM_LOSS_SCORE
     simStats[loserId].losses++; simStats[loserId].played++
+    simStats[loserId].for += SIM_LOSS_SCORE; simStats[loserId].against += SIM_WIN_SCORE
   }
 
   return statsToLadder(simStats, matches, rankMap)
@@ -234,7 +241,9 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef) {
       const loserId = winnerId === match.homeTeamId ? match.awayTeamId : match.homeTeamId
       if (!simStats[winnerId] || !simStats[loserId]) continue
       simStats[winnerId].wins++; simStats[winnerId].pts += 4; simStats[winnerId].played++
+      simStats[winnerId].for += SIM_WIN_SCORE; simStats[winnerId].against += SIM_LOSS_SCORE
       simStats[loserId].losses++; simStats[loserId].played++
+      simStats[loserId].for += SIM_LOSS_SCORE; simStats[loserId].against += SIM_WIN_SCORE
     }
     simulatedLadder.value = statsToLadder(simStats, matches.value, rankMap)
   }
@@ -270,7 +279,9 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef) {
         const loserId = winnerId === match.homeTeamId ? match.awayTeamId : match.homeTeamId
         if (!runningStats[winnerId] || !runningStats[loserId]) continue
         runningStats[winnerId].wins++; runningStats[winnerId].pts += 4; runningStats[winnerId].played++
+        runningStats[winnerId].for += SIM_WIN_SCORE; runningStats[winnerId].against += SIM_LOSS_SCORE
         runningStats[loserId].losses++; runningStats[loserId].played++
+        runningStats[loserId].for += SIM_LOSS_SCORE; runningStats[loserId].against += SIM_WIN_SCORE
       }
       const snap: Record<number, TeamStats> = {}
       for (const [id, s] of Object.entries(runningStats)) snap[Number(id)] = { ...s }
