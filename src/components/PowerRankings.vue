@@ -172,6 +172,7 @@ import { computed, ref, watch, onMounted } from 'vue'
 import { toPng } from 'html-to-image'
 import type { TeamRanking } from '../types/afl'
 import { TEAMS } from '../composables/useAFLData'
+import { powerRankingsTitle, titleToFilename } from '../composables/usePowerRankingsTitle'
 
 const props = defineProps<{
   ranking: TeamRanking
@@ -213,7 +214,7 @@ async function screenshot() {
 
     const dataUrl = await toPng(captureEl.value, { pixelRatio: 2 })
     const link = document.createElement('a')
-    link.download = 'power-rankings.png'
+    link.download = titleToFilename(title.value)
     link.href = dataUrl
     link.click()
   } finally {
@@ -247,7 +248,7 @@ const roundEl = ref<HTMLDivElement | null>(null)
 function save(key: 'year' | 'title' | 'roundLabel', raw: string | undefined) {
   const value = raw?.trim() ?? ''
   if (key === 'year') year.value = value
-  else if (key === 'title') title.value = value
+  else if (key === 'title') { title.value = value; powerRankingsTitle.value = value }
   else roundLabel.value = value
   const labels = loadLabels()
   labels[key] = value

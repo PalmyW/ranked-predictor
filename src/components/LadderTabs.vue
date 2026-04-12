@@ -102,12 +102,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import type { LadderRow, TeamRanking } from '../types/afl'
 import LadderTable from './LadderTable.vue'
 import HtmlTooltip from './HtmlTooltip.vue'
 import PowerRankings from './PowerRankings.vue'
 import { useAnalytics } from '../composables/useAnalytics'
+import { powerRankingsTitle, firstMeaningfulWord } from '../composables/usePowerRankingsTitle'
 
 const props = defineProps<{
   predictedLadder: LadderRow[]
@@ -122,12 +123,14 @@ const props = defineProps<{
   simulatedMatchWinners: Record<number, number> | null
 }>()
 
-const TABS = [
+const powerLabel = computed(() => ' ' + firstMeaningfulWord(powerRankingsTitle.value))
+
+const TABS = computed(() => [
   { id: 'predicted', badge: 'P', badgeClass: 'px-1 rounded text-[1em] font-bold leading-tight bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400', label: 'redicted' },
   { id: 'simulated', badge: 'S', badgeClass: 'px-1 rounded text-[1em] font-bold leading-tight bg-purple-500 text-white', label: 'imulated' },
   { id: 'current',   badge: null, badgeClass: '', label: 'Current' },
-  { id: 'power',     badge: '↕', badgeClass: 'text-[1em] font-bold text-amber-500 dark:text-amber-400', label: ' Power' },
-]
+  { id: 'power',     badge: '↕', badgeClass: 'text-[1em] font-bold text-amber-500 dark:text-amber-400', label: powerLabel.value },
+])
 
 const analytics = useAnalytics()
 
