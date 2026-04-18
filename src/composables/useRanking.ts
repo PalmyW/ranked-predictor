@@ -83,19 +83,23 @@ function loadInitialState(): {
   return { ranking: defaultRanking(), tierSizes: [...DEFAULT_TIER_SIZES], source: 'default', stored: null }
 }
 
-function loadHistory(): Record<number, TeamRanking> {
+function loadHistory(): { rankings: Record<number, TeamRanking>; tierSizesHistory: Record<number, number[]> } {
   const raw = localStorage.getItem(HISTORY_KEY)
-  if (!raw) return {}
+  if (!raw) return { rankings: {}, tierSizesHistory: {} }
   try {
     const stored: Record<string, string> = JSON.parse(raw)
-    const result: Record<number, TeamRanking> = {}
+    const rankings: Record<number, TeamRanking> = {}
+    const tierSizesHistory: Record<number, number[]> = {}
     for (const [key, encoded] of Object.entries(stored)) {
       const decoded = decodeRanking(encoded)
-      if (decoded) result[Number(key)] = decoded.ranking
+      if (decoded) {
+        rankings[Number(key)] = decoded.ranking
+        tierSizesHistory[Number(key)] = decoded.tierSizes
+      }
     }
-    return result
+    return { rankings, tierSizesHistory }
   } catch {
-    return {}
+    return { rankings: {}, tierSizesHistory: {} }
   }
 }
 
@@ -105,7 +109,9 @@ const ranking = ref<TeamRanking>(initialRanking)
 const tierSizes = ref<number[]>(initialTierSizes)
 const rankedFromUrl = initialSource === 'url'
 const rankedFromStorage = initialSource === 'storage'
-const rankingHistory = ref<Record<number, TeamRanking>>(loadHistory())
+const { rankings: initialHistory, tierSizesHistory: initialTierSizesHistory } = loadHistory()
+const rankingHistory = ref<Record<number, TeamRanking>>(initialHistory)
+const tierSizesHistory = ref<Record<number, number[]>>(initialTierSizesHistory)
 
 type LadderSource = 'live' | 'shared' | 'mine'
 const ladderSource = ref<LadderSource>(
@@ -188,6 +194,7 @@ export function useRanking() {
     stored[String(previousRound)] = seedEncoded
     localStorage.setItem(HISTORY_KEY, JSON.stringify(stored))
     rankingHistory.value = { ...rankingHistory.value, [previousRound]: [...seedRanking] }
+    tierSizesHistory.value = { ...tierSizesHistory.value, [previousRound]: [...savedState.value.tierSizes] }
   }
 
   // Always overwrite the snapshot for a given round with the current ranking.
@@ -201,6 +208,7 @@ export function useRanking() {
     stored[String(roundNumber)] = encodedRanking.value
     localStorage.setItem(HISTORY_KEY, JSON.stringify(stored))
     rankingHistory.value = { ...rankingHistory.value, [roundNumber]: [...ranking.value] }
+    tierSizesHistory.value = { ...tierSizesHistory.value, [roundNumber]: [...tierSizes.value] }
   }
 
   // Save a snapshot of the current ranking for the given round, if not already stored.
@@ -218,6 +226,7 @@ export function useRanking() {
     stored[String(roundNumber)] = encodedRanking.value
     localStorage.setItem(HISTORY_KEY, JSON.stringify(stored))
     rankingHistory.value = { ...rankingHistory.value, [roundNumber]: [...ranking.value] }
+    tierSizesHistory.value = { ...tierSizesHistory.value, [roundNumber]: [...tierSizes.value] }
   }
 
   return {
@@ -230,6 +239,7 @@ export function useRanking() {
     ladderSource,
     savedState,
     rankingHistory,
+    tierSizesHistory,
     setRanking,
     setTierSizes,
     resetToLadder,

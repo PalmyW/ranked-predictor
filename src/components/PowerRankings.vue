@@ -65,6 +65,11 @@
                 'py-1.5 hover:bg-white/5',
               ]"
             >
+              <!-- Tier badge -->
+              <span
+                class="w-5 shrink-0 rounded py-[3px] text-center text-[0.6rem] font-black uppercase leading-none tracking-wide"
+                :class="TIER_BADGE_CLASS[tierForIndex[i]] ?? 'bg-white/8 text-gray-500 ring-1 ring-white/15'"
+              >{{ tierForIndex[i] }}</span>
               <!-- Team name -->
               <span
                 class="flex-1 truncate text-right text-xs font-bold uppercase tracking-wide sm:text-sm"
@@ -173,6 +178,7 @@ import { toPng } from 'html-to-image'
 import type { TeamRanking } from '../types/afl'
 import { TEAMS } from '../composables/useAFLData'
 import { powerRankingsTitle, titleToFilename } from '../composables/usePowerRankingsTitle'
+import { useRanking } from '../composables/useRanking'
 
 const props = defineProps<{
   ranking: TeamRanking
@@ -182,6 +188,33 @@ const props = defineProps<{
 const LABELS_KEY = 'afl-power-rankings-labels-2026'
 
 const teamMap = Object.fromEntries(TEAMS.map((t) => [t.id, t]))
+
+// --- Tier labels ---
+const TIER_NAMES = ['S', 'A', 'B', 'C', 'D', 'E', 'F'] as const
+const { tierSizes, tierSizesHistory } = useRanking()
+
+const tierForIndex = computed<string[]>(() => {
+  const sizes =
+    selectedRound.value !== null && selectedRound.value !== currentSnapshotRound.value
+      ? (tierSizesHistory.value[selectedRound.value] ?? tierSizes.value)
+      : tierSizes.value
+  const map: string[] = []
+  TIER_NAMES.forEach((name, i) => {
+    const count = sizes[i] ?? 0
+    for (let j = 0; j < count; j++) map.push(name)
+  })
+  return map
+})
+
+const TIER_BADGE_CLASS: Record<string, string> = {
+  S: 'bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/40',
+  A: 'bg-green-500/20 text-green-400 ring-1 ring-green-500/40',
+  B: 'bg-teal-500/20 text-teal-400 ring-1 ring-teal-500/40',
+  C: 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/40',
+  D: 'bg-purple-500/20 text-purple-400 ring-1 ring-purple-500/40',
+  E: 'bg-orange-500/20 text-orange-400 ring-1 ring-orange-500/40',
+  F: 'bg-red-500/20 text-red-400 ring-1 ring-red-500/40',
+}
 
 // --- Screenshot ---
 const captureEl = ref<HTMLDivElement | null>(null)
