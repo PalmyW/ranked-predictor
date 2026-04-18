@@ -58,18 +58,43 @@
               class="flex items-center gap-2 border-b transition-colors"
               :class="[
                 i === 5
-                  ? ['border-b-2', isAnimating ? 'border-b-transparent' : 'border-b-red-500']
+                  ? [
+                      'border-b-2',
+                      isAnimating ? 'border-b-transparent' : 'border-b-red-500',
+                    ]
                   : i === 9
-                    ? ['border-b-2', isAnimating ? 'border-b-transparent' : 'border-b-blue-500']
+                    ? [
+                        'border-b-2',
+                        isAnimating
+                          ? 'border-b-transparent'
+                          : 'border-b-blue-500',
+                      ]
                     : 'border-b border-b-white/10',
                 'py-1.5 hover:bg-white/5',
               ]"
             >
-              <!-- Tier badge -->
-              <span
-                class="w-5 shrink-0 rounded py-[3px] text-center text-[0.6rem] font-black uppercase leading-none tracking-wide"
-                :class="TIER_BADGE_CLASS[tierForIndex[i]] ?? 'bg-white/8 text-gray-500 ring-1 ring-white/15'"
-              >{{ tierForIndex[i] }}</span>
+              <!-- Tier badge + change arrow -->
+              <span class="flex shrink-0 items-center gap-0.5">
+                <span
+                  class="w-5 rounded py-[3px] text-center text-[0.6rem] font-black uppercase leading-none tracking-wide"
+                  :class="
+                    TIER_BADGE_CLASS[tierForIndex[i]] ??
+                    'bg-white/8 text-gray-500 ring-1 ring-white/15'
+                  "
+                  >{{ tierForIndex[i] }}</span
+                >
+                <span
+                  v-if="row.tierChange === 'up'"
+                  class="ml-1 text-[0.6rem] font-black leading-none text-green-400"
+                  >▲</span
+                >
+                <span
+                  v-else-if="row.tierChange === 'down'"
+                  class="ml-1 text-[0.6rem] font-black leading-none text-red-400"
+                  >▼</span
+                >
+                <span v-else class="w-2 shrink-0" />
+              </span>
               <!-- Team name -->
               <span
                 class="flex-1 truncate text-right text-xs font-bold uppercase tracking-wide sm:text-sm"
@@ -177,7 +202,10 @@ import { computed, ref, watch, onMounted } from 'vue'
 import { toPng } from 'html-to-image'
 import type { TeamRanking } from '../types/afl'
 import { TEAMS } from '../composables/useAFLData'
-import { powerRankingsTitle, titleToFilename } from '../composables/usePowerRankingsTitle'
+import {
+  powerRankingsTitle,
+  titleToFilename,
+} from '../composables/usePowerRankingsTitle'
 import { useRanking } from '../composables/useRanking'
 
 const props = defineProps<{
@@ -193,16 +221,34 @@ const teamMap = Object.fromEntries(TEAMS.map((t) => [t.id, t]))
 const TIER_NAMES = ['S', 'A', 'B', 'C', 'D', 'E', 'F'] as const
 const { tierSizes, tierSizesHistory } = useRanking()
 
-const tierForIndex = computed<string[]>(() => {
-  const sizes =
-    selectedRound.value !== null && selectedRound.value !== currentSnapshotRound.value
-      ? (tierSizesHistory.value[selectedRound.value] ?? tierSizes.value)
-      : tierSizes.value
+function buildTierForIndex(sizes: number[]): string[] {
   const map: string[] = []
   TIER_NAMES.forEach((name, i) => {
     const count = sizes[i] ?? 0
     for (let j = 0; j < count; j++) map.push(name)
   })
+  return map
+}
+
+const tierForIndex = computed<string[]>(() => {
+  const sizes =
+    selectedRound.value !== null &&
+    selectedRound.value !== currentSnapshotRound.value
+      ? (tierSizesHistory.value[selectedRound.value] ?? tierSizes.value)
+      : tierSizes.value
+  return buildTierForIndex(sizes)
+})
+
+// Maps teamId → tier letter for the previous round
+const previousTierByTeamId = computed<Map<number, string>>(() => {
+  const map = new Map<number, string>()
+  if (previousRound.value === null) return map
+  const prevRanking = props.rankingHistory[previousRound.value]
+  if (!prevRanking) return map
+  const prevSizes =
+    tierSizesHistory.value[previousRound.value] ?? tierSizes.value
+  const prevTiers = buildTierForIndex(prevSizes)
+  prevRanking.forEach((teamId, i) => map.set(teamId, prevTiers[i]))
   return map
 })
 
@@ -281,8 +327,10 @@ const roundEl = ref<HTMLDivElement | null>(null)
 function save(key: 'year' | 'title' | 'roundLabel', raw: string | undefined) {
   const value = raw?.trim() ?? ''
   if (key === 'year') year.value = value
-  else if (key === 'title') { title.value = value; powerRankingsTitle.value = value }
-  else roundLabel.value = value
+  else if (key === 'title') {
+    title.value = value
+    powerRankingsTitle.value = value
+  } else roundLabel.value = value
   const labels = loadLabels()
   labels[key] = value
   localStorage.setItem(LABELS_KEY, JSON.stringify(labels))
@@ -322,7 +370,9 @@ let animTimer: ReturnType<typeof setTimeout> | null = null
 watch(selectedRound, () => {
   isAnimating.value = true
   if (animTimer) clearTimeout(animTimer)
-  animTimer = setTimeout(() => { isAnimating.value = false }, 350)
+  animTimer = setTimeout(() => {
+    isAnimating.value = false
+  }, 350)
 })
 
 // Keep the round label in sync with whichever round is selected
@@ -354,6 +404,7 @@ interface PowerRow {
   iconId: string
   previousRank: number | null
   delta: number | null
+  tierChange: 'up' | 'down' | null
 }
 
 const rows = computed<PowerRow[]>(() => {
@@ -374,16 +425,30 @@ const rows = computed<PowerRow[]>(() => {
   const prevRankMap = new Map<number, number>()
   if (prev) prev.forEach((id, i) => prevRankMap.set(id, i + 1))
 
+  const currentTiers = tierForIndex.value
+  const prevTiers = previousTierByTeamId.value
+
   return snapshot.map((teamId, i) => {
     const team = teamMap[teamId]
     const prevRank = prevRankMap.get(teamId) ?? null
     const delta = prevRank !== null ? prevRank - (i + 1) : null
+    const currentTier = currentTiers[i]
+    const prevTier = prevTiers.get(teamId)
+    let tierChange: 'up' | 'down' | null = null
+    if (prevTier && prevTier !== currentTier) {
+      tierChange =
+        TIER_NAMES.indexOf(prevTier as (typeof TIER_NAMES)[number]) >
+        TIER_NAMES.indexOf(currentTier as (typeof TIER_NAMES)[number])
+          ? 'up'
+          : 'down'
+    }
     return {
       teamId,
       teamName: team?.name ?? String(teamId),
       iconId: team?.iconId ?? '',
       previousRank: prevRank,
       delta,
+      tierChange,
     }
   })
 })
