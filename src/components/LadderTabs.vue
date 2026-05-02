@@ -97,6 +97,11 @@
       <div v-else-if="activeTab === 'power'">
         <PowerRankings :ranking="ranking" :rankingHistory="rankingHistory" />
       </div>
+
+      <!-- Circle of Parity -->
+      <div v-else-if="activeTab === 'parity'">
+        <CircleOfParity />
+      </div>
     </div>
   </div>
 </template>
@@ -107,6 +112,7 @@ import type { LadderRow, TeamRanking } from '../types/afl'
 import LadderTable from './LadderTable.vue'
 import HtmlTooltip from './HtmlTooltip.vue'
 import PowerRankings from './PowerRankings.vue'
+import CircleOfParity from './CircleOfParity.vue'
 import { useAnalytics } from '../composables/useAnalytics'
 import { powerRankingsTitle, firstMeaningfulWord } from '../composables/usePowerRankingsTitle'
 
@@ -130,6 +136,7 @@ const TABS = computed(() => [
   { id: 'simulated', badge: 'S', badgeClass: 'px-1 rounded text-[1em] font-bold leading-tight bg-purple-500 text-white', label: 'imulated' },
   { id: 'current',   badge: null, badgeClass: '', label: 'Current' },
   { id: 'power',     badge: '↕', badgeClass: 'text-[1em] font-bold text-amber-500 dark:text-amber-400', label: powerLabel.value },
+  { id: 'parity',   badge: null, badgeClass: '', label: 'Parity' },
 ])
 
 const analytics = useAnalytics()
@@ -147,7 +154,7 @@ function sleep(ms: number): Promise<void> {
 
 function switchTab(id: string) {
   activeTab.value = id
-  analytics.trackTabSwitch(id as 'predicted' | 'simulated' | 'current' | 'power')
+  analytics.trackTabSwitch(id as 'predicted' | 'simulated' | 'current' | 'power' | 'parity')
 }
 
 async function handleSimulate() {
