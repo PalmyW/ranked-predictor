@@ -107,7 +107,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import type { LadderRow, TeamRanking } from '../types/afl'
 import LadderTable from './LadderTable.vue'
 import HtmlTooltip from './HtmlTooltip.vue'
@@ -141,7 +141,14 @@ const TABS = computed(() => [
 
 const analytics = useAnalytics()
 
-const activeTab = ref('predicted')
+const VALID_TAB_IDS = new Set(['predicted', 'simulated', 'current', 'power', 'parity'])
+
+function tabFromHash(): string {
+  const hash = window.location.hash.slice(1)
+  return VALID_TAB_IDS.has(hash) ? hash : 'predicted'
+}
+
+const activeTab = ref(tabFromHash())
 const simulating = ref(false)
 const simStage = ref('')
 const animatingLadder = ref<LadderRow[] | null>(null)
@@ -154,8 +161,17 @@ function sleep(ms: number): Promise<void> {
 
 function switchTab(id: string) {
   activeTab.value = id
+  window.location.hash = id
   analytics.trackTabSwitch(id as 'predicted' | 'simulated' | 'current' | 'power' | 'parity')
 }
+
+function onHashChange() {
+  const tab = tabFromHash()
+  if (tab !== activeTab.value) activeTab.value = tab
+}
+
+onMounted(() => window.addEventListener('hashchange', onHashChange))
+onUnmounted(() => window.removeEventListener('hashchange', onHashChange))
 
 async function handleSimulate() {
   if (simulating.value || props.isLoading || !props.hasMatches) return
