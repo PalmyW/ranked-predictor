@@ -75,26 +75,6 @@
       marker-end="url(#cop-arrow)"
     />
 
-    <!-- Arrow labels (round + margin) -->
-    <text
-      v-for="(label, i) in arrowLabels"
-      :key="`alabel-${i}`"
-      :x="label.x"
-      :y="label.y"
-      text-anchor="middle"
-      dominant-baseline="middle"
-      :font-size="arrowLabelSize"
-      font-family="system-ui, sans-serif"
-      :stroke="textOutlineColor"
-      stroke-width="3"
-      stroke-linejoin="round"
-      paint-order="stroke"
-      :fill="labelColor"
-    >
-      <tspan :x="label.x" dy="-0.55em">{{ label.line1 }}</tspan>
-      <tspan :x="label.x" dy="1.1em">{{ label.line2 }}</tspan>
-    </text>
-
     <!-- Bum crack -->
     <path
       v-if="shapeId === 'bum'"
@@ -106,7 +86,7 @@
       opacity="0.55"
     />
 
-    <!-- Team nodes (rendered above labels) -->
+    <!-- Team nodes -->
     <g v-for="(node, i) in cycleNodes" :key="`node-${i}`">
       <circle :cx="node.x" :cy="node.y" r="22" :fill="iconBgColor" :stroke="arrowColor" stroke-width="1" />
       <svg :x="node.x - 16" :y="node.y - 16" width="32" height="32" overflow="visible">
@@ -122,6 +102,26 @@
         font-family="system-ui, sans-serif"
         :fill="labelColor"
       >{{ node.abbr }}</text>
+    </g>
+
+    <!-- Arrow info dots: small circle on each arrow midpoint, tooltip on hover -->
+    <g
+      v-for="(dot, i) in arrowDots"
+      :key="`dot-${i}`"
+      style="cursor: default"
+    >
+      <title>{{ dot.tooltip }}</title>
+      <circle :cx="dot.cx" :cy="dot.cy" r="9" :fill="arrowColor" />
+      <text
+        :x="dot.cx"
+        :y="dot.cy"
+        text-anchor="middle"
+        dominant-baseline="middle"
+        font-size="6.5"
+        font-weight="700"
+        font-family="system-ui, sans-serif"
+        :fill="iconBgColor"
+      >{{ dot.badge }}</text>
     </g>
   </svg>
 
@@ -185,7 +185,7 @@ const SHAPES = [
   { id: 'circle',  label: 'Circle'  },
   { id: 'oval',    label: 'Oval'    },
   { id: 'star',    label: 'Star'    },
-  { id: 'diamond', label: 'Diamond' },
+  { id: 'square',  label: 'Square'  },
   { id: 'potato',  label: '🥔 Potato' },
   { id: 'bum',     label: '🍑 Bum'   },
 ] as const
@@ -193,7 +193,10 @@ const SHAPES = [
 type ShapeId = typeof SHAPES[number]['id']
 
 const SHAPE_KEY = 'afl-circle-parity-shape'
-const shapeId = ref<ShapeId>((localStorage.getItem(SHAPE_KEY) as ShapeId | null) ?? 'circle')
+const storedShape = localStorage.getItem(SHAPE_KEY)
+const shapeId = ref<ShapeId>(
+  SHAPES.some(s => s.id === storedShape) ? (storedShape as ShapeId) : 'circle'
+)
 watch(shapeId, v => localStorage.setItem(SHAPE_KEY, v))
 
 function computeIconPos(i: number, n: number): { x: number; y: number } {
@@ -207,15 +210,14 @@ function computeIconPos(i: number, n: number): { x: number; y: number } {
       const r = i % 2 === 0 ? 175 : 95
       return { x: CENTER + r * Math.cos(a), y: CENTER + r * Math.sin(a) }
     }
-    case 'diamond': {
-      // Rotated ellipse (45°)
-      const xr = 200, yr = 115
-      const rx = xr * Math.cos(a), ry = yr * Math.sin(a)
-      const rot = Math.PI / 4
-      return {
-        x: CENTER + rx * Math.cos(rot) - ry * Math.sin(rot),
-        y: CENTER + rx * Math.sin(rot) + ry * Math.cos(rot),
-      }
+    case 'square': {
+      // Distribute teams evenly around a square perimeter, starting at top-centre
+      const s = 155
+      const pos = ((i / n) * 4 + 0.5) % 4  // 0..4, offset so team 0 sits at top-centre
+      if (pos < 1) return { x: CENTER - s + pos * 2 * s,         y: CENTER - s }
+      if (pos < 2) return { x: CENTER + s,                        y: CENTER - s + (pos - 1) * 2 * s }
+      if (pos < 3) return { x: CENTER + s - (pos - 2) * 2 * s,   y: CENTER + s }
+      return                { x: CENTER - s,                       y: CENTER + s - (pos - 3) * 2 * s }
     }
     case 'potato': {
       // Tilted ellipse (portrait, slight clockwise lean) with concave upper-left dent
@@ -253,11 +255,32 @@ function computeIconPos(i: number, n: number): { x: number; y: number } {
   }
 }
 
-function computeLabelPos(ix: number, iy: number): { x: number; y: number } {
-  const dx = ix - CENTER, dy = iy - CENTER
+function computeLabelPos(ix: number, iy: number, teamIndex: number, n: number, extraPush = 0): { x: number; y: number } {
+  let dx: number, dy: number
+  let push = 34 + extraPush
+
+  if (shapeId.value === 'bum') {
+    // Use per-cheek circle center so labels point outward from each cheek, not from overall CENTER
+    const half = Math.round(n / 2)
+    const refX = teamIndex < half ? CENTER - 60 : CENTER + 60
+    const refY = CENTER + 10
+    dx = ix - refX; dy = iy - refY
+  } else if (shapeId.value === 'square') {
+    // Use edge normal (perpendicular to the side the team sits on) for clean outward labels
+    const pos = ((teamIndex / n) * 4 + 0.5) % 4
+    if (pos < 1)      { dx =  0; dy = -1 }
+    else if (pos < 2) { dx =  1; dy =  0 }
+    else if (pos < 3) { dx =  0; dy =  1 }
+    else              { dx = -1; dy =  0 }
+  } else if (shapeId.value === 'star') {
+    dx = ix - CENTER; dy = iy - CENTER
+    push = (teamIndex % 2 === 0 ? 34 : 50) + extraPush
+  } else {
+    dx = ix - CENTER; dy = iy - CENTER
+  }
+
   const len = Math.sqrt(dx * dx + dy * dy) || 1
-  const d = len + 30
-  return { x: CENTER + (dx / len) * d, y: CENTER + (dy / len) * d }
+  return { x: ix + (dx / len) * push, y: iy + (dy / len) * push }
 }
 
 // --- Types ---
@@ -348,18 +371,18 @@ const cycleData = computed(() => {
 const cycle   = computed(() => cycleData.value.cycle)
 const details = computed(() => cycleData.value.details)
 
-// --- Round abbreviation ---
+// --- Geometry helpers ---
 
-function abbreviateRound(name: string): string {
-  const m = name.match(/(\d+)/)
-  if (m) return `Rd ${m[1]}`
-  return name.split(' ').filter(Boolean).map(w => w[0].toUpperCase()).join('')
+function bezierPoint(
+  p0: {x:number,y:number}, cp: {x:number,y:number}, p1: {x:number,y:number}, t: number
+): {x:number,y:number} {
+  const mt = 1 - t
+  return { x: mt*mt*p0.x + 2*mt*t*cp.x + t*t*p1.x, y: mt*mt*p0.y + 2*mt*t*cp.y + t*t*p1.y }
 }
 
 // --- Geometry ---
 
 function iconPos(i: number) { return computeIconPos(i, cycle.value.length) }
-function labelPos(i: number) { const p = iconPos(i); return computeLabelPos(p.x, p.y) }
 
 function shortenPoint(from: { x: number; y: number }, toward: { x: number; y: number }, d: number) {
   const dx = toward.x - from.x, dy = toward.y - from.y
@@ -372,7 +395,10 @@ function arrowControlPoint(i: number) {
   const n = cycle.value.length
   const p1 = iconPos(i), p2 = iconPos((i + 1) % n)
   const midX = (p1.x + p2.x) / 2, midY = (p1.y + p2.y) / 2
-  return { x: midX + (CENTER - midX) * CURVE_PULL, y: midY + (CENTER - midY) * CURVE_PULL }
+  // Star arrows are nearly straight lines between alternating inner/outer nodes —
+  // less pull keeps control points away from the inner node icons
+  const pull = shapeId.value === 'star' ? 0.10 : CURVE_PULL
+  return { x: midX + (CENTER - midX) * pull, y: midY + (CENTER - midY) * pull }
 }
 
 function arrowPath(i: number): string {
@@ -388,38 +414,49 @@ function arrowPath(i: number): string {
 
 interface CycleNode { x: number; y: number; labelX: number; labelY: number; iconId: string; abbr: string }
 
-const cycleNodes = computed<CycleNode[]>(() =>
-  cycle.value.map((teamId, i) => {
-    const p = iconPos(i), l = labelPos(i)
-    const team = teamMap[teamId]
-    return { x: p.x, y: p.y, labelX: l.x, labelY: l.y, iconId: team?.iconId ?? '', abbr: team?.abbreviation ?? String(teamId) }
-  })
-)
-
-// --- Arrow labels ---
-
-interface ArrowLabel { x: number; y: number; line1: string; line2: string }
-
-const arrowLabels = computed<ArrowLabel[]>(() => {
-  const det = details.value
+const cycleNodes = computed<CycleNode[]>(() => {
   const n = cycle.value.length
-  return cycle.value.map((winnerId, i) => {
-    const loserId = cycle.value[(i + 1) % n]
-    const cp = arrowControlPoint(i)
-    const d = det.get(`${winnerId}-${loserId}`)
-    return { x: cp.x, y: cp.y, line1: d ? abbreviateRound(d.roundName) : '', line2: d ? `by ${d.margin} pts` : '' }
+  return cycle.value.map((teamId, i) => {
+    const p = iconPos(i)
+    const lp = computeLabelPos(p.x, p.y, i, n)
+    const team = teamMap[teamId]
+    return { x: p.x, y: p.y, labelX: lp.x, labelY: lp.y, iconId: team?.iconId ?? '', abbr: team?.abbreviation ?? String(teamId) }
   })
 })
 
-const arrowLabelSize = computed(() => {
+// --- Arrow dots ---
+
+interface ArrowDot { cx: number; cy: number; badge: string; tooltip: string }
+
+function roundBadge(name: string): string {
+  const m = name.match(/(\d+)/)
+  if (m) return `R${m[1]}`
+  return name.split(' ').filter(Boolean).map(w => w[0].toUpperCase()).join('')
+}
+
+const arrowDots = computed<ArrowDot[]>(() => {
+  const det = details.value
   const n = cycle.value.length
-  if (n <= 6) return 9; if (n <= 10) return 8; if (n <= 14) return 7; return 6
+  if (n === 0) return []
+  return cycle.value.map((winnerId, i) => {
+    const loserId = cycle.value[(i + 1) % n]
+    const p0 = iconPos(i), p1 = iconPos((i + 1) % n)
+    const cp = arrowControlPoint(i)
+    // Use the actual drawn arrow endpoints (shortened away from icon circles) so
+    // the dot centre lands on the visual midpoint of the rendered line
+    const arrowStart = shortenPoint(p0, cp, ICON_CLEAR)
+    const arrowEnd   = shortenPoint(p1, cp, ICON_CLEAR)
+    const mid = bezierPoint(arrowStart, cp, arrowEnd, 0.5)
+    const d = det.get(`${winnerId}-${loserId}`)
+    const badge = d ? roundBadge(d.roundName) : ''
+    const tooltip = d ? `${d.roundName} · won by ${d.margin} pts` : ''
+    return { cx: mid.x, cy: mid.y, badge, tooltip }
+  })
 })
 
 // --- Colors ---
 
-const arrowColor       = computed(() => isDark.value ? '#90CCE5' : '#508398')
-const iconBgColor      = computed(() => isDark.value ? '#282A2C' : '#F4F5F6')
-const labelColor       = computed(() => isDark.value ? '#C2C9CC' : '#383B3D')
-const textOutlineColor = computed(() => isDark.value ? '#1A1C1E' : '#FFFFFF')
+const arrowColor  = computed(() => isDark.value ? '#90CCE5' : '#508398')
+const iconBgColor = computed(() => isDark.value ? '#282A2C' : '#F4F5F6')
+const labelColor  = computed(() => isDark.value ? '#C2C9CC' : '#383B3D')
 </script>
