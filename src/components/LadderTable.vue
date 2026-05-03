@@ -11,14 +11,14 @@
         <tr class="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs uppercase tracking-wide">
           <th class="w-8 py-2 text-center font-semibold">#</th>
           <th class="py-2 text-left pl-2 font-semibold">Team</th>
-          <th class="w-8 py-2 text-center font-semibold">P</th>
-          <th class="w-8 py-2 text-center font-semibold">W</th>
-          <th class="w-8 py-2 text-center font-semibold">L</th>
-          <th class="w-8 py-2 text-center font-semibold">D</th>
+          <th class="w-8 py-2 text-center font-semibold hidden sm:table-cell">P</th>
+          <th class="w-8 py-2 text-center font-semibold hidden sm:table-cell">W</th>
+          <th class="w-8 py-2 text-center font-semibold hidden sm:table-cell">L</th>
+          <th class="w-8 py-2 text-center font-semibold hidden sm:table-cell">D</th>
           <th class="w-10 py-2 text-center font-semibold">Pts</th>
-          <th class="w-16 py-2 text-center font-semibold">%</th>
-          <th v-if="secondaryBaselineRanking" class="w-10 py-2 text-center font-semibold text-gray-400 dark:text-gray-500" title="vs your tier ranking">Tier</th>
-          <th v-if="baselineRanking" class="w-10 py-2 text-center font-semibold text-gray-400 dark:text-gray-500" title="vs current ladder">Now</th>
+          <th class="w-14 py-2 text-center font-semibold">%</th>
+          <th v-if="secondaryBaselineRanking" class="w-10 py-2 text-center font-semibold text-gray-400 dark:text-gray-500 hidden sm:table-cell" title="vs your tier ranking">Tier</th>
+          <th v-if="baselineRanking" class="w-10 py-2 text-center font-semibold text-gray-400 dark:text-gray-500 hidden sm:table-cell" title="vs current ladder">Now</th>
           <th class="w-14 py-2 text-center font-semibold">
             <span class="inline-flex items-center justify-center gap-0.5">
               Diff

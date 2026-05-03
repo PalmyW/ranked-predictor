@@ -14,22 +14,22 @@
         <TeamFixtureSummaryPopup :teamId="row.teamId" :teamName="row.teamName" />
       </span>
     </td>
-    <td class="py-1.5 text-center text-gray-600 dark:text-gray-400">{{ row.played }}</td>
-    <td class="py-1.5 text-center text-gray-600 dark:text-gray-400">{{ row.wins }}</td>
-    <td class="py-1.5 text-center text-gray-600 dark:text-gray-400">{{ row.losses }}</td>
-    <td class="py-1.5 text-center text-gray-600 dark:text-gray-400">{{ row.draws }}</td>
+    <td class="py-1.5 text-center text-gray-600 dark:text-gray-400 hidden sm:table-cell">{{ row.played }}</td>
+    <td class="py-1.5 text-center text-gray-600 dark:text-gray-400 hidden sm:table-cell">{{ row.wins }}</td>
+    <td class="py-1.5 text-center text-gray-600 dark:text-gray-400 hidden sm:table-cell">{{ row.losses }}</td>
+    <td class="py-1.5 text-center text-gray-600 dark:text-gray-400 hidden sm:table-cell">{{ row.draws }}</td>
     <td class="py-1.5 text-center font-bold text-gray-700 dark:text-gray-200">{{ row.pts }}</td>
     <td class="py-1.5 text-center text-gray-600 dark:text-gray-400 text-xs">{{ row.percentage.toFixed(1) }}</td>
 
     <!-- Secondary delta (Tier) -->
-    <td v-if="showSecondaryDelta" class="py-1.5 text-center text-xs font-bold tabular-nums">
+    <td v-if="showSecondaryDelta" class="py-1.5 text-center text-xs font-bold tabular-nums hidden sm:table-cell">
       <span v-if="deltaDir(secondaryBaselineMap, row.teamId, index + 1) === 'up'" class="text-green-500">▲{{ deltaAbs(secondaryBaselineMap, row.teamId, index + 1) }}</span>
       <span v-else-if="deltaDir(secondaryBaselineMap, row.teamId, index + 1) === 'down'" class="text-red-500">▼{{ deltaAbs(secondaryBaselineMap, row.teamId, index + 1) }}</span>
       <span v-else-if="deltaDir(secondaryBaselineMap, row.teamId, index + 1) === 'same'" class="text-gray-300 dark:text-gray-600">—</span>
     </td>
 
     <!-- Primary delta (Now) -->
-    <td v-if="showPrimaryDelta" class="py-1.5 text-center text-xs font-bold tabular-nums">
+    <td v-if="showPrimaryDelta" class="py-1.5 text-center text-xs font-bold tabular-nums hidden sm:table-cell">
       <span v-if="deltaDir(baselineMap, row.teamId, index + 1) === 'up'" class="text-green-500">▲{{ deltaAbs(baselineMap, row.teamId, index + 1) }}</span>
       <span v-else-if="deltaDir(baselineMap, row.teamId, index + 1) === 'down'" class="text-red-500">▼{{ deltaAbs(baselineMap, row.teamId, index + 1) }}</span>
       <span v-else-if="deltaDir(baselineMap, row.teamId, index + 1) === 'same'" class="text-gray-300 dark:text-gray-600">—</span>
