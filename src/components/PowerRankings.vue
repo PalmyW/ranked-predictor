@@ -4,16 +4,10 @@
     class="relative select-none overflow-hidden rounded-lg text-white"
     style="background: #0a0d14"
   >
-    <!-- Subtle gradient accent -->
+    <!-- Subtle gradient accent — hue shifts per round -->
     <div
-      class="pointer-events-none absolute inset-0"
-      style="
-        background: radial-gradient(
-          ellipse at 30% 0%,
-          rgba(59, 130, 246, 0.08) 0%,
-          transparent 60%
-        );
-      "
+      class="pointer-events-none absolute inset-0 transition-[background] duration-700"
+      :style="`background: radial-gradient(ellipse at 30% 0%, ${weekAccentColor} 0%, transparent 75%)`"
     />
 
     <div class="relative">
@@ -355,6 +349,11 @@ const currentSnapshotRound = computed(
 )
 
 const selectedRound = ref<number | null>(currentSnapshotRound.value)
+
+const weekAccentColor = computed(() => {
+  const hue = ((selectedRound.value ?? 0) * 47) % 360
+  return `hsla(${hue}, 90%, 65%, 0.18)`
+})
 
 watch(
   currentSnapshotRound,
