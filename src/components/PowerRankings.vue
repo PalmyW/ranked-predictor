@@ -36,94 +36,203 @@
       <!-- Rows + vertical round label -->
       <div class="flex">
         <div class="min-w-0 flex-1 px-5 pb-4 pt-2">
-          <!-- No history -->
-          <div
-            v-if="rows.length === 0"
-            class="py-10 text-center text-sm text-gray-500"
-          >
-            Changes will appear after the next round
-          </div>
 
-          <!-- Team rows -->
-          <TransitionGroup v-else tag="div" name="power-row" class="space-y-0">
+          <!-- TABLE VIEW -->
+          <div v-show="activeView === 'table'">
+            <!-- No history -->
             <div
-              v-for="(row, i) in rows"
-              :key="row.teamId"
-              class="flex items-center gap-2 border-b transition-colors"
-              :class="[
-                i === 5
-                  ? [
-                      'border-b-2',
-                      isAnimating ? 'border-b-transparent' : 'border-b-red-500',
-                    ]
-                  : i === 9
+              v-if="rows.length === 0"
+              class="py-10 text-center text-sm text-gray-500"
+            >
+              Changes will appear after the next round
+            </div>
+
+            <!-- Team rows -->
+            <TransitionGroup v-else tag="div" name="power-row" class="space-y-0">
+              <div
+                v-for="(row, i) in rows"
+                :key="row.teamId"
+                class="flex items-center gap-2 border-b transition-colors"
+                :class="[
+                  i === 5
                     ? [
                         'border-b-2',
-                        isAnimating
-                          ? 'border-b-transparent'
-                          : 'border-b-blue-500',
+                        isAnimating ? 'border-b-transparent' : 'border-b-red-500',
                       ]
-                    : 'border-b border-b-white/10',
-                'py-1.5 hover:bg-white/5',
-              ]"
-            >
-              <!-- Tier badge + change arrow -->
-              <span class="flex shrink-0 items-center gap-0.5">
-                <span
-                  class="w-5 rounded py-[3px] text-center text-[0.6rem] font-black uppercase leading-none tracking-wide"
-                  :class="
-                    TIER_BADGE_CLASS[tierForIndex[i]] ??
-                    'bg-white/8 text-gray-500 ring-1 ring-white/15'
-                  "
-                  >{{ tierForIndex[i] }}</span
-                >
-                <span
-                  v-if="row.tierChange === 'up'"
-                  class="ml-1 text-[0.6rem] font-black leading-none text-green-400"
-                  >▲</span
-                >
-                <span
-                  v-else-if="row.tierChange === 'down'"
-                  class="ml-1 text-[0.6rem] font-black leading-none text-red-400"
-                  >▼</span
-                >
-                <span v-else class="w-2 shrink-0" />
-              </span>
-              <!-- Team name -->
-              <span
-                class="flex-1 truncate text-right text-xs font-bold uppercase tracking-wide sm:text-sm"
-                style="letter-spacing: 0.06em"
+                    : i === 9
+                      ? [
+                          'border-b-2',
+                          isAnimating
+                            ? 'border-b-transparent'
+                            : 'border-b-blue-500',
+                        ]
+                      : 'border-b border-b-white/10',
+                  'py-1.5 hover:bg-white/5',
+                ]"
               >
-                {{ row.teamName }}
-              </span>
-              <!-- Logo -->
-              <svg class="size-7 shrink-0">
-                <use :href="`/ranked-predictor/icons.svg#${row.iconId}`" />
-              </svg>
-              <!-- Rank -->
-              <span
-                class="w-5 shrink-0 text-right text-sm font-black tabular-nums text-white"
-                >{{ i + 1 }}</span
-              >
-              <!-- Movement -->
-              <span
-                class="w-9 shrink-0 text-right text-xs font-bold tabular-nums"
-              >
-                <span v-if="row.delta === null" class="text-gray-500">NEW</span>
-                <span v-else-if="row.delta > 0" class="text-green-400"
-                  >▲{{ row.delta }}</span
+                <!-- Tier badge + change arrow -->
+                <span class="flex shrink-0 items-center gap-0.5">
+                  <span
+                    class="w-5 rounded py-[3px] text-center text-[0.6rem] font-black uppercase leading-none tracking-wide"
+                    :class="
+                      TIER_BADGE_CLASS[tierForIndex[i]] ??
+                      'bg-white/8 text-gray-500 ring-1 ring-white/15'
+                    "
+                    >{{ tierForIndex[i] }}</span
+                  >
+                  <span
+                    v-if="row.tierChange === 'up'"
+                    class="ml-1 text-[0.6rem] font-black leading-none text-green-400"
+                    >▲</span
+                  >
+                  <span
+                    v-else-if="row.tierChange === 'down'"
+                    class="ml-1 text-[0.6rem] font-black leading-none text-red-400"
+                    >▼</span
+                  >
+                  <span v-else class="w-2 shrink-0" />
+                </span>
+                <!-- Team name -->
+                <span
+                  class="flex-1 truncate text-right text-xs font-bold uppercase tracking-wide sm:text-sm"
+                  style="letter-spacing: 0.06em"
                 >
-                <span v-else-if="row.delta < 0" class="text-red-400"
-                  >▼{{ Math.abs(row.delta) }}</span
+                  {{ row.teamName }}
+                </span>
+                <!-- Logo -->
+                <svg class="size-7 shrink-0">
+                  <use :href="`/ranked-predictor/icons.svg#${row.iconId}`" />
+                </svg>
+                <!-- Rank -->
+                <span
+                  class="w-5 shrink-0 text-right text-sm font-black tabular-nums text-white"
+                  >{{ i + 1 }}</span
                 >
-                <span v-else class="text-gray-500">—</span>
-              </span>
-            </div>
-          </TransitionGroup>
+                <!-- Movement -->
+                <span
+                  class="w-9 shrink-0 text-right text-xs font-bold tabular-nums"
+                >
+                  <span v-if="row.delta === null" class="text-gray-500">NEW</span>
+                  <span v-else-if="row.delta > 0" class="text-green-400"
+                    >▲{{ row.delta }}</span
+                  >
+                  <span v-else-if="row.delta < 0" class="text-red-400"
+                    >▼{{ Math.abs(row.delta) }}</span
+                  >
+                  <span v-else class="text-gray-500">—</span>
+                </span>
+              </div>
+            </TransitionGroup>
+          </div>
 
-          <!-- Round history pills + screenshot (hidden during capture) -->
+          <!-- GRAPH VIEW -->
+          <div v-show="activeView === 'graph'" class="py-2">
+            <div
+              v-if="sortedRounds.length < 2"
+              class="py-10 text-center text-sm text-gray-500"
+            >
+              Snapshot at least two rounds to see the worm chart
+            </div>
+
+            <svg
+              v-else
+              viewBox="0 0 600 450"
+              class="w-full"
+              style="overflow: visible"
+              aria-label="Power rankings worm chart"
+            >
+              <!-- Top 4 reference line -->
+              <line
+                :x1="CHART.x0" :y1="yRef4" :x2="CHART.x1" :y2="yRef4"
+                stroke="rgba(239,68,68,0.3)" stroke-width="1" stroke-dasharray="4,3"
+              />
+              <!-- Top 8 reference line -->
+              <line
+                :x1="CHART.x0" :y1="yRef8" :x2="CHART.x1" :y2="yRef8"
+                stroke="rgba(59,130,246,0.3)" stroke-width="1" stroke-dasharray="4,3"
+              />
+
+              <!-- Y-axis position labels -->
+              <text
+                v-for="pos in [1, 4, 5, 8, 9, 14, 18]"
+                :key="pos"
+                :x="CHART.x0 - 4"
+                :y="yScale(pos) + 3.5"
+                text-anchor="end"
+                font-size="8"
+                font-family="system-ui,sans-serif"
+                fill="rgba(255,255,255,0.3)"
+              >{{ pos }}</text>
+
+              <!-- X-axis gridlines + round labels -->
+              <g v-for="(r, idx) in sortedRounds" :key="`xcol-${r}`">
+                <line
+                  :x1="xScale(idx)" :y1="CHART.y0"
+                  :x2="xScale(idx)" :y2="CHART.y1"
+                  stroke="rgba(255,255,255,0.05)" stroke-width="1"
+                />
+                <text
+                  :x="xScale(idx)"
+                  :y="CHART.y1 + 5"
+                  text-anchor="end"
+                  font-size="8"
+                  font-family="system-ui,sans-serif"
+                  fill="rgba(255,255,255,0.3)"
+                  :transform="`rotate(-45, ${xScale(idx)}, ${CHART.y1 + 5})`"
+                >{{ roundPill(r) }}</text>
+              </g>
+
+              <!-- Team worm lines -->
+              <path
+                v-for="d in wormData"
+                :key="`line-${d.team.id}`"
+                :d="buildWormPath(d.points)"
+                fill="none"
+                :stroke="d.color"
+                stroke-width="2"
+                stroke-opacity="0.85"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+
+              <!-- Team logos at final position -->
+              <g v-for="d in wormData" :key="`logo-${d.team.id}`">
+                <template v-if="d.points.length">
+                  <!-- Dark backdrop circle -->
+                  <circle
+                    :cx="CHART.x1 + 16"
+                    :cy="d.points[d.points.length - 1].y"
+                    r="13"
+                    fill="#0a0d14"
+                  />
+                  <!-- Coloured ring -->
+                  <circle
+                    :cx="CHART.x1 + 16"
+                    :cy="d.points[d.points.length - 1].y"
+                    r="12"
+                    fill="none"
+                    :stroke="d.color"
+                    stroke-width="1"
+                    stroke-opacity="0.5"
+                  />
+                  <!-- Team icon -->
+                  <svg
+                    :x="CHART.x1 + 4"
+                    :y="d.points[d.points.length - 1].y - 12"
+                    width="24"
+                    height="24"
+                    overflow="visible"
+                  >
+                    <use :href="`/ranked-predictor/icons.svg#${d.team.iconId}`" />
+                  </svg>
+                </template>
+              </g>
+            </svg>
+          </div>
+
+          <!-- Round history pills + screenshot (table mode) -->
           <div
-            v-if="!capturing"
+            v-if="!capturing && activeView === 'table'"
             class="mt-4 flex flex-wrap items-center gap-1.5"
           >
             <template v-if="sortedRounds.length > 1">
@@ -163,10 +272,59 @@
               </svg>
             </button>
           </div>
+
+          <!-- Segmented control (always visible) + screenshot in graph mode -->
+          <div v-if="!capturing" class="mt-3 flex items-center">
+            <div class="flex-1" />
+            <div class="flex overflow-hidden rounded ring-1 ring-white/15">
+              <button
+                @click="activeView = 'table'"
+                class="px-3 py-1 text-xs font-semibold transition-colors"
+                :class="
+                  activeView === 'table'
+                    ? 'bg-white/15 text-white'
+                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                "
+              >Table</button>
+              <button
+                @click="activeView = 'graph'"
+                class="border-l border-white/15 px-3 py-1 text-xs font-semibold transition-colors"
+                :class="
+                  activeView === 'graph'
+                    ? 'bg-white/15 text-white'
+                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                "
+              >Graph</button>
+            </div>
+            <div class="flex flex-1 justify-end">
+              <button
+                v-if="activeView === 'graph'"
+                @click="screenshot"
+                title="Save as image"
+                class="rounded p-1.5 text-gray-500 transition-colors hover:bg-white/10 hover:text-white"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="size-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
 
-        <!-- Right sidebar: vertical round label -->
+        <!-- Right sidebar: vertical round label (table mode only) -->
         <div
+          v-show="activeView === 'table'"
           class="flex shrink-0 items-center justify-center border-l border-white/10"
           style="width: 28px"
         >
@@ -194,7 +352,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from 'vue'
 import { toPng } from 'html-to-image'
-import type { TeamRanking } from '../types/afl'
+import type { TeamRanking, AflTeam } from '../types/afl'
 import { TEAMS } from '../composables/useAFLData'
 import {
   powerRankingsTitle,
@@ -210,6 +368,31 @@ const props = defineProps<{
 const LABELS_KEY = 'afl-power-rankings-labels-2026'
 
 const teamMap = Object.fromEntries(TEAMS.map((t) => [t.id, t]))
+
+// --- Team brand colours (adjusted for dark background visibility) ---
+const TEAM_COLORS: Record<number, string> = {
+  1:  '#E6002D', // Adelaide Crows
+  2:  '#A52834', // Brisbane Lions
+  5:  '#1565C0', // Carlton
+  3:  '#C8C8C8', // Collingwood (black → light grey on dark bg)
+  12: '#FF4136', // Essendon
+  14: '#6A3688', // Fremantle
+  10: '#1E6EB5', // Geelong Cats
+  4:  '#FFB703', // Gold Coast SUNS
+  15: '#F15A22', // GWS GIANTS
+  9:  '#C8922A', // Hawthorn
+  17: '#CC0000', // Melbourne
+  6:  '#1E88E5', // North Melbourne
+  7:  '#00B2C8', // Port Adelaide
+  16: '#F4C430', // Richmond
+  11: '#D50000', // St Kilda
+  13: '#E53935', // Sydney Swans
+  18: '#EFAB00', // West Coast Eagles
+  8:  '#4469DE', // Western Bulldogs
+}
+
+// --- View toggle ---
+const activeView = ref<'table' | 'graph'>('table')
 
 // --- Tier labels ---
 const TIER_NAMES = ['S', 'A', 'B', 'C', 'D', 'E', 'F'] as const
@@ -233,7 +416,6 @@ const tierForIndex = computed<string[]>(() => {
   return buildTierForIndex(sizes)
 })
 
-// Maps teamId → tier letter for the previous round
 const previousTierByTeamId = computed<Map<number, string>>(() => {
   const map = new Map<number, string>()
   if (previousRound.value === null) return map
@@ -263,10 +445,8 @@ const capturing = ref(false)
 async function screenshot() {
   if (!captureEl.value) return
   capturing.value = true
-  await new Promise((r) => setTimeout(r, 50)) // let UI hide pills/button
+  await new Promise((r) => setTimeout(r, 50))
 
-  // html-to-image can't resolve external SVG <use> hrefs, so inline the sprite
-  // temporarily and switch to fragment-only references before capturing.
   let spriteEl: Element | null = null
   const useEls: { el: Element; original: string }[] = []
   try {
@@ -291,7 +471,6 @@ async function screenshot() {
     link.href = dataUrl
     link.click()
   } finally {
-    // Restore original hrefs and remove inlined sprite
     useEls.forEach(({ el, original }) => el.setAttribute('href', original))
     spriteEl?.remove()
     capturing.value = false
@@ -330,7 +509,6 @@ function save(key: 'year' | 'title' | 'roundLabel', raw: string | undefined) {
   localStorage.setItem(LABELS_KEY, JSON.stringify(labels))
 }
 
-// Seed DOM from refs (avoids Vue overwriting contenteditable content on re-render)
 onMounted(() => {
   if (yearEl.value) yearEl.value.innerText = year.value
   if (titleEl.value) titleEl.value.innerText = title.value
@@ -363,7 +541,6 @@ watch(
   { immediate: true },
 )
 
-// Hide position-separator borders during row reorder animation, then fade them back in
 const isAnimating = ref(false)
 let animTimer: ReturnType<typeof setTimeout> | null = null
 watch(selectedRound, () => {
@@ -374,7 +551,6 @@ watch(selectedRound, () => {
   }, 350)
 })
 
-// Keep the round label in sync with whichever round is selected
 watch(
   selectedRound,
   (r) => {
@@ -407,7 +583,6 @@ interface PowerRow {
 }
 
 const rows = computed<PowerRow[]>(() => {
-  // For the latest round, use the live ranking so it stays in sync with the ranking table
   const isLatest = selectedRound.value === currentSnapshotRound.value
   const snapshot = isLatest
     ? props.ranking
@@ -451,6 +626,58 @@ const rows = computed<PowerRow[]>(() => {
     }
   })
 })
+
+// --- Worm chart ---
+
+const CHART = { x0: 26, x1: 546, y0: 20, y1: 422 } as const
+
+function xScale(idx: number): number {
+  const n = sortedRounds.value.length
+  if (n <= 1) return (CHART.x0 + CHART.x1) / 2
+  return CHART.x0 + (idx * (CHART.x1 - CHART.x0)) / (n - 1)
+}
+
+function yScale(pos: number): number {
+  return CHART.y0 + ((pos - 1) * (CHART.y1 - CHART.y0)) / 17
+}
+
+const yRef4 = yScale(4.5)
+const yRef8 = yScale(8.5)
+
+interface WormPoint { x: number; y: number }
+interface WormTeam { team: AflTeam; color: string; points: WormPoint[] }
+
+const wormData = computed<WormTeam[]>(() => {
+  const rounds = sortedRounds.value
+  if (rounds.length === 0) return []
+
+  return TEAMS.map((team) => {
+    const points: WormPoint[] = []
+    rounds.forEach((r, idx) => {
+      const snapshot =
+        r === currentSnapshotRound.value
+          ? props.ranking
+          : props.rankingHistory[r]
+      const posIdx = snapshot?.indexOf(team.id)
+      if (posIdx === undefined || posIdx === -1) return
+      points.push({ x: xScale(idx), y: yScale(posIdx + 1) })
+    })
+    return { team, color: TEAM_COLORS[team.id] ?? '#888888', points }
+  }).filter((d) => d.points.length > 0)
+})
+
+function buildWormPath(pts: WormPoint[]): string {
+  if (pts.length === 0) return ''
+  if (pts.length === 1) return `M ${pts[0].x} ${pts[0].y}`
+  let d = `M ${pts[0].x} ${pts[0].y}`
+  for (let i = 1; i < pts.length; i++) {
+    const p0 = pts[i - 1]
+    const p1 = pts[i]
+    const dx = (p1.x - p0.x) / 3
+    d += ` C ${p0.x + dx},${p0.y} ${p1.x - dx},${p1.y} ${p1.x},${p1.y}`
+  }
+  return d
+}
 </script>
 
 <style scoped>
