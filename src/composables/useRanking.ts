@@ -197,6 +197,19 @@ export function useRanking() {
     tierSizesHistory.value = { ...tierSizesHistory.value, [previousRound]: [...savedState.value.tierSizes] }
   }
 
+  function saveHistoryRanking(roundNumber: number, newRanking: TeamRanking, newTierSizes: number[]) {
+    const encoded = encodeRanking(newRanking, newTierSizes)
+    let stored: Record<string, string> = {}
+    try {
+      const raw = localStorage.getItem(HISTORY_KEY)
+      if (raw) stored = JSON.parse(raw)
+    } catch { /* ignore */ }
+    stored[String(roundNumber)] = encoded
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(stored))
+    rankingHistory.value = { ...rankingHistory.value, [roundNumber]: [...newRanking] }
+    tierSizesHistory.value = { ...tierSizesHistory.value, [roundNumber]: [...newTierSizes] }
+  }
+
   // Always overwrite the snapshot for a given round with the current ranking.
   // Used to keep the current round's history entry in sync as the user edits.
   function updateRoundSnapshot(roundNumber: number) {
@@ -249,5 +262,6 @@ export function useRanking() {
     seedHistoryFromSavedRanking,
     snapshotRoundRanking,
     updateRoundSnapshot,
+    saveHistoryRanking,
   }
 }

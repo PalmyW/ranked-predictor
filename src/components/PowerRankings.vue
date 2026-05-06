@@ -47,7 +47,54 @@
               Changes will appear after the next round
             </div>
 
-            <!-- Team rows -->
+            <!-- EDIT MODE: draggable rows -->
+            <draggable
+              v-else-if="editMode"
+              v-model="editRows"
+              item-key="teamId"
+              handle=".power-edit-handle"
+              :animation="150"
+              tag="div"
+              class="space-y-0"
+            >
+              <template #item="{ element, index }">
+                <div
+                  class="flex items-center gap-2 border-b py-1.5 hover:bg-white/5"
+                  :class="
+                    index === 5
+                      ? 'border-b-2 border-b-red-500'
+                      : index === 9
+                        ? 'border-b-2 border-b-blue-500'
+                        : 'border-b border-b-white/10'
+                  "
+                >
+                  <!-- Drag handle -->
+                  <span class="power-edit-handle cursor-grab active:cursor-grabbing shrink-0 text-lg leading-none text-gray-500 touch-none">⠿</span>
+                  <!-- Tier badge (no change arrow in edit mode) -->
+                  <span class="flex shrink-0 items-center gap-0.5">
+                    <span
+                      class="w-5 rounded py-[3px] text-center text-[0.6rem] font-black uppercase leading-none tracking-wide"
+                      :class="editTierForIndex[index] ? TIER_BADGE_CLASS[editTierForIndex[index]] : 'bg-white/8 text-gray-500 ring-1 ring-white/15'"
+                    >{{ editTierForIndex[index] }}</span>
+                    <span class="w-2 shrink-0" />
+                  </span>
+                  <!-- Team name -->
+                  <span class="flex-1 truncate text-right text-xs font-bold uppercase tracking-wide sm:text-sm" style="letter-spacing: 0.06em">
+                    {{ element.teamName }}
+                  </span>
+                  <!-- Logo -->
+                  <svg class="size-7 shrink-0">
+                    <use :href="`/ranked-predictor/icons.svg#${element.iconId}`" />
+                  </svg>
+                  <!-- Rank -->
+                  <span class="w-5 shrink-0 text-right text-sm font-black tabular-nums text-white">{{ index + 1 }}</span>
+                  <!-- Delta spacer -->
+                  <span class="w-9 shrink-0" />
+                </div>
+              </template>
+            </draggable>
+
+            <!-- VIEW MODE: static rows -->
             <TransitionGroup v-else tag="div" name="power-row" class="space-y-0">
               <div
                 v-for="(row, i) in rows"
@@ -235,46 +282,69 @@
             v-if="!capturing && activeView === 'table'"
             class="mt-4 flex flex-wrap items-center gap-1.5"
           >
-            <template v-if="sortedRounds.length > 1">
-              <span class="self-center text-xs text-gray-500">History:</span>
+            <!-- Edit mode: save / cancel -->
+            <template v-if="editMode">
+              <span class="self-center text-xs text-gray-400">Editing {{ roundPill(selectedRound ?? 0) }}</span>
               <button
-                v-for="round in sortedRounds"
-                :key="round"
-                @click="selectedRound = round"
-                class="rounded px-2 py-0.5 text-xs font-semibold transition-colors"
-                :class="
-                  selectedRound === round
-                    ? 'bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/50'
-                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
-                "
+                @click="saveEdit"
+                class="rounded px-2 py-0.5 text-xs font-semibold bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/50 hover:bg-amber-500/30 transition-colors"
+              >Save</button>
+              <button
+                @click="cancelEdit"
+                class="rounded px-2 py-0.5 text-xs font-semibold bg-white/5 text-gray-400 hover:bg-white/10 transition-colors"
+              >Cancel</button>
+            </template>
+
+            <!-- View mode: history pills + edit button -->
+            <template v-else>
+              <template v-if="sortedRounds.length > 1">
+                <span class="self-center text-xs text-gray-500">History:</span>
+                <button
+                  v-for="round in sortedRounds"
+                  :key="round"
+                  @click="selectedRound = round"
+                  class="rounded px-2 py-0.5 text-xs font-semibold transition-colors"
+                  :class="
+                    selectedRound === round
+                      ? 'bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/50'
+                      : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                  "
+                >
+                  {{ roundPill(round) }}
+                </button>
+              </template>
+              <!-- Edit button: only for past (non-latest) rounds -->
+              <button
+                v-if="selectedRound !== null && selectedRound !== currentSnapshotRound && rows.length > 0"
+                @click="startEdit"
+                title="Edit this round"
+                class="rounded px-2 py-0.5 text-xs font-semibold bg-white/5 text-gray-400 hover:bg-white/10 transition-colors"
+              >✎</button>
+              <button
+                @click="screenshot"
+                title="Save as image"
+                class="ml-auto rounded p-1.5 text-gray-500 transition-colors hover:bg-white/10 hover:text-white"
               >
-                {{ roundPill(round) }}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="size-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
               </button>
             </template>
-            <button
-              @click="screenshot"
-              title="Save as image"
-              class="ml-auto rounded p-1.5 text-gray-500 transition-colors hover:bg-white/10 hover:text-white"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="size-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-            </button>
           </div>
 
           <!-- Segmented control (always visible) + screenshot in graph mode -->
-          <div v-if="!capturing" class="mt-3 flex items-center">
+          <div v-if="!capturing && !editMode" class="mt-3 flex items-center">
             <div class="flex-1" />
             <div class="flex overflow-hidden rounded ring-1 ring-white/15">
               <button
@@ -352,6 +422,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from 'vue'
 import { toPng } from 'html-to-image'
+import draggable from 'vuedraggable'
 import type { TeamRanking, AflTeam } from '../types/afl'
 import { TEAMS } from '../composables/useAFLData'
 import {
@@ -396,7 +467,7 @@ const activeView = ref<'table' | 'graph'>('table')
 
 // --- Tier labels ---
 const TIER_NAMES = ['S', 'A', 'B', 'C', 'D', 'E', 'F'] as const
-const { tierSizes, tierSizesHistory } = useRanking()
+const { tierSizes, tierSizesHistory, saveHistoryRanking } = useRanking()
 
 function buildTierForIndex(sizes: number[]): string[] {
   const map: string[] = []
@@ -570,6 +641,39 @@ const previousRound = computed(() => {
 
 function roundPill(r: number) {
   return r === 0 ? 'Opening' : `Rd ${r}`
+}
+
+// --- Edit mode ---
+const editMode = ref(false)
+const editRows = ref<PowerRow[]>([])
+
+const editTierSizes = computed<number[]>(() =>
+  selectedRound.value !== null
+    ? (tierSizesHistory.value[selectedRound.value] ?? [...tierSizes.value])
+    : [...tierSizes.value]
+)
+
+const editTierForIndex = computed<string[]>(() => buildTierForIndex(editTierSizes.value))
+
+watch(selectedRound, () => { editMode.value = false })
+
+function startEdit() {
+  editRows.value = rows.value.map((r) => ({ ...r }))
+  editMode.value = true
+}
+
+function cancelEdit() {
+  editMode.value = false
+}
+
+function saveEdit() {
+  if (selectedRound.value === null) return
+  saveHistoryRanking(
+    selectedRound.value,
+    editRows.value.map((r) => r.teamId),
+    editTierSizes.value,
+  )
+  editMode.value = false
 }
 
 // --- Power ranking rows ---
