@@ -56,6 +56,7 @@ function parseMatch(raw: Record<string, unknown>): AflMatch | null {
 
   return {
     id: raw.id as number,
+    providerId: raw.providerId as string,
     roundNumber: round.roundNumber as number,
     roundName: round.name as string,
     homeTeamId: homeId,

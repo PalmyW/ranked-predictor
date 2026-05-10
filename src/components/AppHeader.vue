@@ -23,6 +23,23 @@
         </div>
       </div>
 
+      <!-- Page navigation -->
+      <nav class="flex gap-1">
+        <button
+          v-for="tab in TABS"
+          :key="tab.id"
+          @click="$emit('navigate', tab.id)"
+          class="px-3 py-1.5 text-sm font-semibold rounded transition-colors"
+          :class="
+            currentView === tab.id
+              ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
+          "
+        >
+          {{ tab.label }}
+        </button>
+      </nav>
+
       <div class="ml-auto flex shrink-0 items-center gap-3">
         <div
           class="hidden text-right text-xs text-gray-400 dark:text-gray-500 sm:block"
@@ -48,10 +65,12 @@ defineProps<{
   isLoading: boolean
   syncedAt: Date | null
   isDark: boolean
+  currentView: 'predictor' | 'stats'
 }>()
 
 defineEmits<{
   (e: 'toggle-dark'): void
+  (e: 'navigate', view: 'predictor' | 'stats'): void
 }>()
 
 function timeAgo(date: Date): string {
@@ -67,5 +86,10 @@ function timeAgo(date: Date): string {
 const LOGO_ROWS: string[][] = [
   ['P', 'A', 'L', 'M', 'Y'],
   ['D', 'A', 'T', 'A', '/'],
+]
+
+const TABS = [
+  { id: 'predictor' as const, label: 'Predictor' },
+  { id: 'stats' as const, label: 'Stats' },
 ]
 </script>

@@ -5,12 +5,21 @@
         :isLoading="isLoading"
         :syncedAt="syncedAt"
         :isDark="isDark"
+        :currentView="currentView"
         @toggle-dark="toggleDark"
+        @navigate="currentView = $event"
       />
-      <RoundBanner v-if="!isLoading && matches.length > 0" :matches="matches" :ranking="ranking" :simulatedMatchWinners="simulatedMatchWinners" />
+      <RoundBanner v-if="currentView === 'predictor' && !isLoading && matches.length > 0" :matches="matches" :ranking="ranking" :simulatedMatchWinners="simulatedMatchWinners" />
     </div>
 
-    <main class="max-w-6xl mx-auto px-4 py-6">
+    <StatsBrowser
+      v-if="currentView === 'stats'"
+      :matches="matches"
+      :initialProviderId="statsMatchId"
+      @match-changed="statsMatchId = $event"
+    />
+
+    <main v-if="currentView === 'predictor'" class="max-w-6xl mx-auto px-4 py-6">
       <!-- Error banner -->
       <div v-if="error" class="mb-4 p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded text-red-700 dark:text-red-400 text-sm">
         Failed to load fixture data: {{ error }}. Rankings still work but ladder data may be incomplete.
@@ -102,7 +111,7 @@
 </template>
 
 <script setup lang="ts">
-import { watch, provide, computed } from 'vue'
+import { ref, watch, provide, computed } from 'vue'
 import { useAFLData } from './composables/useAFLData'
 import { useRanking } from './composables/useRanking'
 import { useSimulation } from './composables/useSimulation'
@@ -114,6 +123,13 @@ import LadderTabs from './components/LadderTabs.vue'
 import TeamRanker from './components/TeamRanker.vue'
 import ShareBar from './components/ShareBar.vue'
 import MatchList from './components/MatchList.vue'
+import StatsBrowser from './components/StatsBrowser.vue'
+
+const urlParams = new URLSearchParams(location.search)
+const currentView = ref<'predictor' | 'stats'>(
+  urlParams.get('view') === 'stats' ? 'stats' : 'predictor',
+)
+const statsMatchId = ref<string | null>(urlParams.get('match'))
 
 const { isDark, toggle: toggleDark } = useDarkMode()
 const { matches, teams, isLoading, error, syncedAt } = useAFLData()
@@ -165,8 +181,15 @@ watch(ranking, () => {
   if (round !== null) updateRoundSnapshot(round)
 }, { deep: true })
 
-watch(shareUrl, (url) => {
-  history.replaceState(null, '', url)
+watch([currentView, statsMatchId, shareUrl], () => {
+  if (currentView.value === 'predictor') {
+    history.replaceState(null, '', shareUrl.value)
+  } else {
+    const params = new URLSearchParams()
+    params.set('view', 'stats')
+    if (statsMatchId.value) params.set('match', statsMatchId.value)
+    history.replaceState(null, '', `?${params}`)
+  }
 }, { immediate: true })
 
 function handleReset() {

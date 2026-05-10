@@ -22,6 +22,7 @@ export type MatchStatus =
 
 export interface AflMatch {
   id: number
+  providerId: string
   roundNumber: number
   roundName: string
   homeTeamId: number
