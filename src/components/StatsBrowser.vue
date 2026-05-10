@@ -32,7 +32,7 @@
                 <div
                   v-for="stat in cat.stats"
                   :key="stat.key"
-                  class="flex items-center justify-between px-5 py-2 border-b border-gray-50 dark:border-gray-800/60 last:border-0"
+                  class="flex items-center justify-between px-5 py-2 border-b border-gray-100 dark:border-gray-800/60 last:border-0 odd:bg-gray-50/60 dark:odd:bg-gray-800/20"
                 >
                   <dt class="text-sm text-gray-600 dark:text-gray-400">{{ stat.fullName }}</dt>
                   <dd class="text-sm font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ stat.value }}</dd>
