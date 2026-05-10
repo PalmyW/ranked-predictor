@@ -1,5 +1,51 @@
 <template>
   <Teleport to="body">
+    <template v-if="playerOverlay">
+      <div class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" @click="playerOverlay = null" />
+      <div class="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+        <div class="pointer-events-auto w-full max-w-lg max-h-[85vh] flex flex-col bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-2xl">
+          <!-- Header -->
+          <div class="flex items-center gap-3 px-5 py-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
+            <svg class="size-8 shrink-0">
+              <use :href="`${BASE_URL}icons.svg#${playerOverlay.iconId}`" />
+            </svg>
+            <div class="min-w-0">
+              <div class="font-bold text-gray-900 dark:text-gray-100 text-base">{{ playerOverlay.name }}</div>
+              <div class="text-xs text-gray-400 dark:text-gray-500">{{ playerOverlay.team }}</div>
+            </div>
+            <button
+              class="ml-auto shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+              @click="playerOverlay = null"
+            >
+              <svg class="size-5" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+              </svg>
+            </button>
+          </div>
+          <!-- Stat list -->
+          <div class="overflow-y-auto flex-1">
+            <div v-for="cat in playerOverlayCats" :key="cat.label">
+              <div class="px-5 py-2 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800">
+                {{ cat.label }}
+              </div>
+              <dl>
+                <div
+                  v-for="stat in cat.stats"
+                  :key="stat.key"
+                  class="flex items-center justify-between px-5 py-2 border-b border-gray-50 dark:border-gray-800/60 last:border-0"
+                >
+                  <dt class="text-sm text-gray-600 dark:text-gray-400">{{ stat.fullName }}</dt>
+                  <dd class="text-sm font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ stat.value }}</dd>
+                </div>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+  </Teleport>
+
+  <Teleport to="body">
     <div
       v-if="tooltip.text"
       class="fixed z-50 pointer-events-none px-2 py-1 rounded bg-gray-900 dark:bg-gray-700 text-white text-xs whitespace-nowrap shadow-lg -translate-x-1/2"
@@ -190,12 +236,12 @@
                 >
                   <td class="sticky left-0 z-10 py-1.5 pl-4 pr-3 font-medium text-gray-800 dark:text-gray-100 whitespace-nowrap"
                     :class="row.teamSide === 'home' ? 'bg-white dark:bg-gray-900' : 'bg-gray-50/80 dark:bg-gray-800/40'">
-                    <span class="flex items-center gap-1.5">
+                    <button class="flex items-center gap-1.5 hover:text-blue-600 dark:hover:text-blue-400 transition-colors" @click="openPlayerOverlay(row)">
                       <svg class="size-5 shrink-0">
                         <use :href="`${BASE_URL}icons.svg#${row.iconId}`" />
                       </svg>
                       {{ row.name }}
-                    </span>
+                    </button>
                   </td>
                   <td
                     v-for="col in statColumns"
@@ -316,6 +362,23 @@ interface StatRow {
 const isLoadingStats = ref(false)
 const statsError = ref<string | null>(null)
 const rows = ref<StatRow[]>([])
+
+const playerOverlay = ref<StatRow | null>(null)
+
+const playerOverlayCats = computed(() => {
+  const row = playerOverlay.value
+  if (!row) return []
+  return COLUMN_CATEGORIES.map((cat) => ({
+    label: cat.label,
+    stats: cat.keys
+      .filter((k) => k in row && row[k] !== undefined)
+      .map((k) => ({ key: k, fullName: deCamelCase(k), value: row[k] })),
+  })).filter((cat) => cat.stats.length > 0)
+})
+
+function openPlayerOverlay(row: StatRow) {
+  playerOverlay.value = row
+}
 
 // Ordered stat column keys to display (subset of what the API returns)
 const STAT_COLUMN_KEYS = [
@@ -502,6 +565,7 @@ async function selectMatch(match: AflMatch) {
   isLoadingStats.value = true
   statsError.value = null
   rows.value = []
+  playerOverlay.value = null
   teamFilter.value = 'both'
   sortKey.value = 'disposals'
   sortDir.value = 'desc'
