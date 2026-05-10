@@ -6,13 +6,7 @@ import { fileURLToPath } from 'url'
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const FIXTURE = join(ROOT, 'public/data/fixture.json')
 const STATS_DIR = join(ROOT, 'public/data/stats')
-const TOKEN = process.env.AFL_STATS_TOKEN
-
-if (!TOKEN) {
-  console.error('Error: AFL_STATS_TOKEN env var is not set.')
-  console.error('Usage: AFL_STATS_TOKEN=<token> npm run fetch-stats')
-  process.exit(1)
-}
+const TOKEN = process.env.AFL_STATS_TOKEN ?? '590110d63dc630d893b4123630dbcc74'
 
 mkdirSync(STATS_DIR, { recursive: true })
 

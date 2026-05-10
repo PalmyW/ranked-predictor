@@ -127,7 +127,7 @@ import StatsBrowser from './components/StatsBrowser.vue'
 
 const urlParams = new URLSearchParams(location.search)
 const currentView = ref<'predictor' | 'stats'>(
-  urlParams.get('view') === 'stats' ? 'stats' : 'predictor',
+  urlParams.get('view') === 'stats' || !!urlParams.get('match') ? 'stats' : 'predictor',
 )
 const statsMatchId = ref<string | null>(urlParams.get('match'))
 
@@ -186,8 +186,11 @@ watch([currentView, statsMatchId, shareUrl], () => {
     history.replaceState(null, '', shareUrl.value)
   } else {
     const params = new URLSearchParams()
-    params.set('view', 'stats')
-    if (statsMatchId.value) params.set('match', statsMatchId.value)
+    if (statsMatchId.value) {
+      params.set('match', statsMatchId.value)
+    } else {
+      params.set('view', 'stats')
+    }
     history.replaceState(null, '', `?${params}`)
   }
 }, { immediate: true })

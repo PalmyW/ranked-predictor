@@ -2,8 +2,12 @@ name: Fetch Player Stats
 
 on:
   schedule:
-    # Daily at 14:00 UTC (midnight AEST) — after most games have concluded
-    - cron: '0 14 * * *'
+    # Every 5 min Thu–Sun during game hours (01:00–13:00 UTC = 11am–11pm AEST)
+    - cron: '*/5 1-13 * * 4,5,6,0'
+    # Hourly Mon–Wed
+    - cron: '0 * * * 1,2,3'
+    # Hourly Thu–Sun outside game hours
+    - cron: '0 0,14-23 * * 4,5,6,0'
   workflow_dispatch:
 
 env:

@@ -7,6 +7,42 @@
     >{{ tooltip.text }}</div>
   </Teleport>
 
+  <Teleport to="body">
+    <template v-if="columnsOpen">
+      <div class="fixed inset-0 z-30" @click="columnsOpen = false" />
+      <div
+        class="fixed z-40 w-72 max-h-[70vh] overflow-y-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl"
+        :style="columnsPanelStyle"
+      >
+        <div class="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-3 py-2 flex items-center justify-between">
+          <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">Columns</span>
+          <div class="flex gap-3">
+            <button class="text-xs text-blue-500 hover:text-blue-600 dark:hover:text-blue-400 font-medium" @click="showAllColumns">Show all</button>
+            <button class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 font-medium" @click="hideAllColumns">Hide all</button>
+          </div>
+        </div>
+        <div v-for="cat in categorizedColumns" :key="cat.label" class="px-3 py-2.5 border-b border-gray-100 dark:border-gray-800 last:border-0">
+          <div class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">{{ cat.label }}</div>
+          <div class="grid grid-cols-2 gap-x-3 gap-y-1.5">
+            <label
+              v-for="col in cat.columns"
+              :key="col.key"
+              class="flex items-center gap-1.5 cursor-pointer group min-w-0"
+            >
+              <input
+                type="checkbox"
+                :checked="col.visible"
+                class="shrink-0 rounded border-gray-300 dark:border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-0 bg-white dark:bg-gray-800"
+                @change="toggleColumn(col.key)"
+              />
+              <span class="text-xs text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white truncate">{{ col.fullName }}</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </template>
+  </Teleport>
+
   <div class="max-w-6xl mx-auto px-4 py-6">
     <div class="flex flex-col lg:flex-row gap-6">
       <!-- Left: Round/match browser -->
@@ -88,12 +124,40 @@
 
         <!-- Stats table -->
         <div v-else-if="sortedRows.length > 0" class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-          <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2 flex-wrap">
+          <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-3 flex-wrap">
             <h2 class="text-sm font-bold text-gray-800 dark:text-gray-100">
               {{ selectedMatch.homeTeamName }} v {{ selectedMatch.awayTeamName }}
               <span class="font-normal text-gray-400 dark:text-gray-500 ml-1">— {{ selectedMatch.roundName }}</span>
             </h2>
-            <span class="text-xs text-gray-400 dark:text-gray-500">{{ sortedRows.length }} players · click columns to sort</span>
+            <div class="flex items-center gap-3 flex-wrap">
+              <div class="flex gap-0.5 p-0.5 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                <button
+                  v-for="option in teamFilterOptions"
+                  :key="option.value"
+                  class="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-colors"
+                  :class="teamFilter === option.value
+                    ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+                  @click="teamFilter = option.value"
+                >
+                  <svg v-if="option.iconId" class="size-4 shrink-0">
+                    <use :href="`${BASE_URL}icons.svg#${option.iconId}`" />
+                  </svg>
+                  {{ option.label }}
+                </button>
+              </div>
+              <button
+                ref="columnsButtonEl"
+                class="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded border transition-colors"
+                :class="columnsOpen
+                  ? 'bg-blue-50 border-blue-300 text-blue-600 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-400'
+                  : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-700 dark:hover:text-gray-200'"
+                @click="toggleColumnsPanel"
+              >
+                Columns{{ hiddenColumns.size > 0 ? ` (${hiddenColumns.size} hidden)` : '' }}
+              </button>
+              <span class="text-xs text-gray-400 dark:text-gray-500">{{ sortedRows.length }} players · click columns to sort</span>
+            </div>
           </div>
 
           <div class="overflow-x-auto">
@@ -102,9 +166,6 @@
                 <tr class="bg-gray-50 dark:bg-gray-800">
                   <th class="sticky left-0 z-10 bg-gray-50 dark:bg-gray-800 py-2 pl-4 pr-3 text-left font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
                     Player
-                  </th>
-                  <th class="py-2 px-3 text-left font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                    Team
                   </th>
                   <th
                     v-for="col in statColumns"
@@ -129,9 +190,13 @@
                 >
                   <td class="sticky left-0 z-10 py-1.5 pl-4 pr-3 font-medium text-gray-800 dark:text-gray-100 whitespace-nowrap"
                     :class="row.teamSide === 'home' ? 'bg-white dark:bg-gray-900' : 'bg-gray-50/80 dark:bg-gray-800/40'">
-                    {{ row.name }}
+                    <span class="flex items-center gap-1.5">
+                      <svg class="size-5 shrink-0">
+                        <use :href="`${BASE_URL}icons.svg#${row.iconId}`" />
+                      </svg>
+                      {{ row.name }}
+                    </span>
                   </td>
-                  <td class="py-1.5 px-3 text-gray-500 dark:text-gray-400 whitespace-nowrap text-xs">{{ row.team }}</td>
                   <td
                     v-for="col in statColumns"
                     :key="col.key"
@@ -153,6 +218,11 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue'
 import type { AflMatch } from '../types/afl'
+import { TEAMS } from '../composables/useAFLData'
+
+const BASE_URL = import.meta.env.BASE_URL
+const teamIconMap = new Map(TEAMS.map((t) => [t.id, t.iconId]))
+const teamAbbrMap = new Map(TEAMS.map((t) => [t.id, t.abbreviation]))
 
 function deCamelCase(key: string): string {
   return key
@@ -239,6 +309,7 @@ interface StatRow {
   name: string
   team: string
   teamSide: 'home' | 'away'
+  iconId: string
   [key: string]: string | number
 }
 
@@ -255,6 +326,8 @@ const STAT_COLUMN_KEYS = [
   'inside50s', 'rebound50s', 'turnovers', 'intercepts', 'timeOnGroundPercentage',
   'metresGained', 'scoreInvolvements', 'onePercenters',
   'bounces', 'marksInside50', 'contestedMarks', 'shotsAtGoal',
+  'totalPossessions', 'tacklesInside50', 'goalAccuracy', 'goalEfficiency',
+  'shotEfficiency', 'interchangeCounts', 'dreamTeamPoints', 'ratingPoints',
   // Clearances (flattened from clearances sub-object)
   'totalClearances', 'centreClearances', 'stoppageClearances',
   // Extended stats (flattened from extendedStats sub-object)
@@ -269,14 +342,76 @@ const STAT_COLUMN_KEYS = [
   'kickins', 'kickinsPlayon',
 ]
 
-const statColumns = computed(() => {
+const EXCLUDED_KEYS = new Set(['name', 'team', 'teamSide', 'iconId'])
+
+const COLUMN_CATEGORIES = [
+  { label: 'Core', keys: ['disposals', 'kicks', 'handballs', 'marks', 'tackles', 'hitouts', 'goals', 'behinds', 'goalAssists', 'clangers', 'freesFor', 'freesAgainst', 'contestedPossessions', 'uncontestedPossessions', 'inside50s', 'rebound50s', 'turnovers', 'intercepts', 'timeOnGroundPercentage', 'metresGained', 'scoreInvolvements', 'onePercenters', 'bounces', 'marksInside50', 'contestedMarks', 'shotsAtGoal', 'totalPossessions', 'tacklesInside50', 'goalAccuracy', 'goalEfficiency', 'shotEfficiency', 'interchangeCounts', 'dreamTeamPoints', 'ratingPoints'] },
+  { label: 'Clearances', keys: ['totalClearances', 'centreClearances', 'stoppageClearances'] },
+  { label: 'Extended', keys: ['effectiveKicks', 'kickEfficiency', 'effectiveDisposals', 'disposalEfficiency', 'kickToHandballRatio', 'contestedPossessionRate', 'groundBallGets', 'f50GroundBallGets', 'pressureActs', 'defHalfPressureActs', 'scoreLaunches', 'spoils', 'interceptMarks', 'marksOnLead', 'hitoutsToAdvantage', 'hitoutToAdvantageRate', 'hitoutWinPercentage', 'ruckContests', 'centreBounceAttendances', 'contestDefOneOnOnes', 'contestDefLosses', 'contestDefLossPercentage', 'contestOffOneOnOnes', 'contestOffWins', 'contestOffWinsPercentage', 'kickins', 'kickinsPlayon'] },
+]
+
+const HIDDEN_COLS_KEY = 'stats-hidden-columns'
+const hiddenColumns = ref<Set<string>>(
+  new Set(JSON.parse(localStorage.getItem(HIDDEN_COLS_KEY) ?? '[]') as string[]),
+)
+
+const columnsOpen = ref(false)
+const columnsButtonEl = ref<HTMLElement | null>(null)
+const columnsPanelStyle = ref<Record<string, string>>({})
+
+function toggleColumnsPanel() {
+  columnsOpen.value = !columnsOpen.value
+  if (columnsOpen.value && columnsButtonEl.value) {
+    const rect = columnsButtonEl.value.getBoundingClientRect()
+    columnsPanelStyle.value = {
+      top: `${rect.bottom + window.scrollY + 4}px`,
+      right: `${window.innerWidth - rect.right}px`,
+    }
+  }
+}
+
+function toggleColumn(key: string) {
+  const next = new Set(hiddenColumns.value)
+  if (next.has(key)) next.delete(key)
+  else next.add(key)
+  hiddenColumns.value = next
+  localStorage.setItem(HIDDEN_COLS_KEY, JSON.stringify([...next]))
+}
+
+function showAllColumns() {
+  hiddenColumns.value = new Set()
+  localStorage.setItem(HIDDEN_COLS_KEY, '[]')
+}
+
+function hideAllColumns() {
+  const all = allColumns.value.map((c) => c.key)
+  hiddenColumns.value = new Set(all)
+  localStorage.setItem(HIDDEN_COLS_KEY, JSON.stringify(all))
+}
+
+// All columns present in the current match data (ignoring visibility)
+const allColumns = computed(() => {
   if (rows.value.length === 0) return []
-  const presentKeys = new Set(
-    Object.keys(rows.value[0]).filter((k) => k !== 'name' && k !== 'team' && k !== 'teamSide'),
-  )
+  const presentKeys = new Set(Object.keys(rows.value[0]).filter((k) => !EXCLUDED_KEYS.has(k)))
   return STAT_COLUMN_KEYS
     .filter((k) => presentKeys.has(k))
     .map((k) => ({ key: k, label: STAT_LABELS[k] ?? k, fullName: deCamelCase(k) }))
+})
+
+// Only columns the user hasn't hidden
+const statColumns = computed(() =>
+  allColumns.value.filter((col) => !hiddenColumns.value.has(col.key)),
+)
+
+// Grouped for the column editor panel
+const categorizedColumns = computed(() => {
+  const presentKeys = new Set(allColumns.value.map((c) => c.key))
+  return COLUMN_CATEGORIES.map((cat) => ({
+    label: cat.label,
+    columns: cat.keys
+      .filter((k) => presentKeys.has(k))
+      .map((k) => ({ key: k, fullName: deCamelCase(k), visible: !hiddenColumns.value.has(k) })),
+  })).filter((cat) => cat.columns.length > 0)
 })
 
 const STAT_LABELS: Record<string, string> = {
@@ -308,6 +443,14 @@ const STAT_LABELS: Record<string, string> = {
   marksInside50: 'MI50',
   contestedMarks: 'CM',
   shotsAtGoal: 'SAG',
+  totalPossessions: 'TPOS',
+  tacklesInside50: 'TI50',
+  goalAccuracy: 'GA%',
+  goalEfficiency: 'GE%',
+  shotEfficiency: 'SE%',
+  interchangeCounts: 'IC',
+  dreamTeamPoints: 'DT',
+  ratingPoints: 'RAT',
   // Clearances
   totalClearances: 'CLR',
   centreClearances: 'CC',
@@ -341,12 +484,25 @@ const STAT_LABELS: Record<string, string> = {
   kickinsPlayon: 'KIPO',
 }
 
+const teamFilter = ref<'both' | 'home' | 'away'>('both')
+
+const teamFilterOptions = computed(() => {
+  if (!selectedMatch.value) return []
+  const m = selectedMatch.value
+  return [
+    { value: 'both' as const, label: 'Both', iconId: null as string | null },
+    { value: 'home' as const, label: teamAbbrMap.get(m.homeTeamId) ?? m.homeTeamName, iconId: teamIconMap.get(m.homeTeamId) ?? null },
+    { value: 'away' as const, label: teamAbbrMap.get(m.awayTeamId) ?? m.awayTeamName, iconId: teamIconMap.get(m.awayTeamId) ?? null },
+  ]
+})
+
 async function selectMatch(match: AflMatch) {
   selectedMatch.value = match
   emit('matchChanged', match.providerId)
   isLoadingStats.value = true
   statsError.value = null
   rows.value = []
+  teamFilter.value = 'both'
   sortKey.value = 'disposals'
   sortDir.value = 'desc'
 
@@ -360,9 +516,11 @@ async function selectMatch(match: AflMatch) {
     const homePlayers = (d.homeTeamPlayerStats ?? []) as Record<string, unknown>[]
     const awayPlayers = (d.awayTeamPlayerStats ?? []) as Record<string, unknown>[]
 
+    const homeIconId = teamIconMap.get(match.homeTeamId) ?? ''
+    const awayIconId = teamIconMap.get(match.awayTeamId) ?? ''
     rows.value = [
-      ...parsePlayerRows(homePlayers, match.homeTeamName, 'home'),
-      ...parsePlayerRows(awayPlayers, match.awayTeamName, 'away'),
+      ...parsePlayerRows(homePlayers, match.homeTeamName, 'home', homeIconId),
+      ...parsePlayerRows(awayPlayers, match.awayTeamName, 'away', awayIconId),
     ]
   } catch {
     statsError.value = 'not-found'
@@ -375,6 +533,7 @@ function parsePlayerRows(
   players: Record<string, unknown>[],
   teamName: string,
   teamSide: 'home' | 'away',
+  iconId: string,
 ): StatRow[] {
   return players.map((p) => {
     // Path: p.player.player.player.playerName.{givenName, surname}
@@ -394,7 +553,7 @@ function parsePlayerRows(
     const clearances = stats?.clearances as Record<string, number> | undefined
     const extended = stats?.extendedStats as Record<string, number> | undefined
 
-    const row: StatRow = { name, team: teamName, teamSide }
+    const row: StatRow = { name, team: teamName, teamSide, iconId }
     for (const key of STAT_COLUMN_KEYS) {
       if (key === 'timeOnGroundPercentage') {
         row[key] = tog != null ? Math.round(tog) : 0
@@ -427,7 +586,10 @@ function setSort(key: string) {
 const sortedRows = computed(() => {
   const key = sortKey.value
   const dir = sortDir.value
-  return [...rows.value].sort((a, b) => {
+  const source = teamFilter.value === 'both'
+    ? rows.value
+    : rows.value.filter((r) => r.teamSide === teamFilter.value)
+  return [...source].sort((a, b) => {
     const av = (a[key] as number) ?? 0
     const bv = (b[key] as number) ?? 0
     return dir === 'desc' ? bv - av : av - bv
