@@ -207,7 +207,7 @@
           </div>
 
           <div class="overflow-x-auto">
-            <table class="w-full text-sm border-collapse">
+            <table class="text-sm border-collapse">
               <thead>
                 <tr class="bg-gray-50 dark:bg-gray-800">
                   <th class="sticky left-0 z-10 bg-gray-50 dark:bg-gray-800 py-2 pl-4 pr-3 text-left font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
