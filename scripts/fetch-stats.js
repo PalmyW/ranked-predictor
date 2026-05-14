@@ -6,7 +6,21 @@ import { fileURLToPath } from 'url'
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const FIXTURE = join(ROOT, 'public/data/fixture.json')
 const STATS_DIR = join(ROOT, 'public/data/stats')
-const TOKEN = process.env.AFL_STATS_TOKEN ?? '590110d63dc630d893b4123630dbcc74'
+let TOKEN = process.env.AFL_STATS_TOKEN
+if (!TOKEN) {
+  const tokRes = execSync(
+    `curl -fsSL -X POST` +
+      ` -H 'accept: */*'` +
+      ` -H 'content-length: 0'` +
+      ` -H 'origin: https://www.afl.com.au'` +
+      ` -H 'referer: https://www.afl.com.au/'` +
+      ` -H 'user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36'` +
+      ` 'https://api.afl.com.au/cfs/afl/WMCTok'`,
+    { stdio: ['ignore', 'pipe', 'pipe'] },
+  )
+  TOKEN = JSON.parse(tokRes).token
+  console.log('Fetched fresh token.')
+}
 
 mkdirSync(STATS_DIR, { recursive: true })
 

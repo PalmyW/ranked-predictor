@@ -24,56 +24,15 @@ jobs:
           ref: main
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Fetch player stats for concluded matches
-        env:
-          AFL_STATS_TOKEN: ${{ secrets.AFL_STATS_TOKEN }}
-        run: |
-          mkdir -p public/data/stats
-          node -e "
-            const { execSync } = require('child_process');
-            const fs = require('fs');
-
-            const data = JSON.parse(fs.readFileSync('public/data/fixture.json', 'utf8'));
-            const matches = data.matches || [];
-            const concluded = matches.filter(m =>
-              m.status === 'CONCLUDED' || m.status === 'POSTGAME'
-            );
-
-            let fetched = 0;
-            for (const match of concluded) {
-              const id = match.providerId;
-              if (!id) continue;
-              const outFile = 'public/data/stats/' + id + '.json';
-              if (fs.existsSync(outFile)) continue;
-
-              console.log('Fetching stats for', id);
-              try {
-                execSync(
-                  'curl -fsSL' +
-                  ' -H \"accept: */*\"' +
-                  ' -H \"origin: https://www.afl.com.au\"' +
-                  ' -H \"referer: https://www.afl.com.au/\"' +
-                  ' -H \"user-agent: Mozilla/5.0 (compatible; ranked-predictor-ci/1.0)\"' +
-                  ' -H \"x-media-mis-token: ' + process.env.AFL_STATS_TOKEN + '\"' +
-                  ' \"https://api.afl.com.au/cfs/afl/playerStats/match/' + id + '\"' +
-                  ' -o ' + outFile,
-                  { stdio: 'inherit' }
-                );
-                fetched++;
-              } catch (e) {
-                console.error('Failed to fetch stats for', id, e.message);
-                if (fs.existsSync(outFile)) fs.unlinkSync(outFile);
-              }
-            }
-            console.log('Fetched', fetched, 'new stats files.');
-          "
-
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: 'npm'
 
       - run: npm ci
+
+      - name: Fetch player stats for concluded matches
+        run: npm run fetch-stats
 
       - name: Format stats with prettier
         run: |
