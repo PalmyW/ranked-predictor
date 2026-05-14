@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      // Redirect to the SPA, encoding the intended path as a query param so
+      // index.html can restore it before Vue Router initialises.
+      var l = window.location
+      var base = l.pathname.split('/').slice(0, 2).join('/')
+      l.replace(
+        l.protocol + '//' + l.host + base +
+        '/?p=' + l.pathname.slice(base.length + 1).replace(/&/g, '~and~') +
+        (l.search ? '&q=' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+        l.hash
+      )
+    </script>
+  </head>
+  <body></body>
+</html>

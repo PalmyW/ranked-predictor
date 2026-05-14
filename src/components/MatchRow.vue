@@ -4,7 +4,9 @@
     :class="[
       index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800/50',
       match.status === 'LIVE' ? 'border-l-2 border-blue-400' : '',
+      match.status === 'CONCLUDED' ? 'cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950/20' : '',
     ]"
+    @click="match.status === 'CONCLUDED' && router.push('/stats/' + match.providerId)"
   >
     <!-- Status dot -->
     <span class="shrink-0 mr-2">
@@ -100,6 +102,7 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import type { AflMatch } from '../types/afl'
 import { TEAMS } from '../composables/useAFLData'
 import TeamFixtureSummaryPopup from './TeamFixtureSummaryPopup.vue'
@@ -110,6 +113,8 @@ const props = defineProps<{
   rankMap: Record<number, number>
   simulatedMatchWinners: Record<number, number> | null
 }>()
+
+const router = useRouter()
 
 const homeIconId = computed(() => TEAMS.find(t => t.id === props.match.homeTeamId)?.iconId ?? null)
 const awayIconId = computed(() => TEAMS.find(t => t.id === props.match.awayTeamId)?.iconId ?? null)

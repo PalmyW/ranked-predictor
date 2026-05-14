@@ -56,12 +56,14 @@
         v-for="match in displayedRound.matches"
         :key="match.id"
         data-match-card
-        class="flex min-w-[136px] cursor-default flex-col justify-between px-3 pb-2 pt-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/60"
-        :class="
+        class="flex min-w-[136px] flex-col justify-between px-3 pb-2 pt-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/60"
+        :class="[
           match.status === 'LIVE'
             ? 'border-l-2 border-blue-400 bg-blue-50/30 hover:bg-blue-50/50 dark:bg-blue-950/20 dark:hover:bg-blue-950/30'
-            : ''
-        "
+            : '',
+          match.status === 'CONCLUDED' ? 'cursor-pointer' : 'cursor-default',
+        ]"
+        @click="match.status === 'CONCLUDED' && router.push('/stats/' + match.providerId)"
       >
         <!-- Status (LIVE / FT only) -->
         <div class="flex">
@@ -250,6 +252,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import type { AflMatch, TeamRanking } from '../types/afl'
 import { TEAMS } from '../composables/useAFLData'
 import TeamFixtureSummaryPopup from './TeamFixtureSummaryPopup.vue'
@@ -259,6 +262,8 @@ const props = defineProps<{
   ranking: TeamRanking
   simulatedMatchWinners: Record<number, number> | null
 }>()
+
+const router = useRouter()
 
 // --- Now ticker (for countdown) ---
 const now = ref(Date.now())

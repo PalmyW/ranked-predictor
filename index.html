@@ -56,6 +56,19 @@
     />
   </head>
   <body>
+    <script>
+      // Restore path encoded by 404.html for GitHub Pages SPA routing.
+      ;(function () {
+        var p = new URLSearchParams(location.search).get('p')
+        if (p !== null) {
+          var q = new URLSearchParams(location.search).get('q')
+          history.replaceState(
+            null, null,
+            location.pathname + p + (q ? '?' + q.replace(/~and~/g, '&') : '') + location.hash
+          )
+        }
+      })()
+    </script>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

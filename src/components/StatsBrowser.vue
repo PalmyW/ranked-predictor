@@ -262,7 +262,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import type { AflMatch } from '../types/afl'
 import { TEAMS } from '../composables/useAFLData'
 
@@ -287,11 +287,11 @@ function showTooltip(e: MouseEvent, text: string) {
 
 const props = defineProps<{
   matches: readonly AflMatch[]
-  initialProviderId?: string | null
+  providerId?: string | null
 }>()
 
 const emit = defineEmits<{
-  (e: 'matchChanged', providerId: string | null): void
+  (e: 'select', providerId: string | null): void
 }>()
 
 // --- Round/match browser state ---
@@ -318,26 +318,13 @@ const groupedRounds = computed(() => {
 watch(
   groupedRounds,
   (groups) => {
-    if (groups.length > 0 && expandedRounds.value.size === 0 && !props.initialProviderId) {
+    if (groups.length > 0 && expandedRounds.value.size === 0 && !props.providerId) {
       expandedRounds.value = new Set([groups[0].roundNumber])
     }
   },
   { immediate: true },
 )
 
-// Auto-select match from URL on load
-watch(
-  () => props.matches,
-  (matches) => {
-    if (!props.initialProviderId || selectedMatch.value || matches.length === 0) return
-    const match = matches.find((m) => m.providerId === props.initialProviderId)
-    if (match) {
-      expandedRounds.value = new Set([match.roundNumber])
-      selectMatch(match)
-    }
-  },
-  { immediate: true },
-)
 
 function toggleRound(roundNumber: number) {
   const next = new Set(expandedRounds.value)
@@ -561,7 +548,7 @@ const teamFilterOptions = computed(() => {
 
 async function selectMatch(match: AflMatch) {
   selectedMatch.value = match
-  emit('matchChanged', match.providerId)
+  emit('select', match.providerId)
   isLoadingStats.value = true
   statsError.value = null
   rows.value = []
@@ -646,6 +633,23 @@ function setSort(key: string) {
     sortDir.value = 'desc'
   }
 }
+
+// --- Match auto-selection (from URL param or click navigation) ---
+
+function trySelectFromProviderId() {
+  const id = props.providerId
+  if (!id || selectedMatch.value?.providerId === id || props.matches.length === 0) return
+  const match = props.matches.find((m) => m.providerId === id)
+  if (match) {
+    expandedRounds.value = new Set([match.roundNumber])
+    selectMatch(match)
+  }
+}
+
+// Fires when matches load (URL reload) or when providerId prop changes
+watch([() => props.matches, () => props.providerId], trySelectFromProviderId, { immediate: true })
+// Fires after mount, catching click-navigation where immediate fires before refs are ready
+onMounted(trySelectFromProviderId)
 
 const sortedRows = computed(() => {
   const key = sortKey.value

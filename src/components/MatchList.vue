@@ -57,6 +57,7 @@ const props = defineProps<{
   simulatedMatchWinners: Record<number, number> | null
 }>()
 
+
 const rankMap = computed<Record<number, number>>(() => {
   const map: Record<number, number> = {}
   props.ranking.forEach((id, i) => { map[id] = i + 1 })

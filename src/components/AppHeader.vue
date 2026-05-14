@@ -27,11 +27,11 @@
       <nav class="flex gap-1">
         <button
           v-for="tab in TABS"
-          :key="tab.id"
-          @click="$emit('navigate', tab.id)"
+          :key="tab.path"
+          @click="router.push(tab.path)"
           class="px-3 py-1.5 text-sm font-semibold rounded transition-colors"
           :class="
-            currentView === tab.id
+            isActive(tab.path)
               ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
               : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
           "
@@ -61,17 +61,24 @@
 </template>
 
 <script setup lang="ts">
+import { useRoute, useRouter } from 'vue-router'
+
 defineProps<{
   isLoading: boolean
   syncedAt: Date | null
   isDark: boolean
-  currentView: 'predictor' | 'stats'
 }>()
 
 defineEmits<{
   (e: 'toggle-dark'): void
-  (e: 'navigate', view: 'predictor' | 'stats'): void
 }>()
+
+const route = useRoute()
+const router = useRouter()
+
+function isActive(path: string) {
+  return path === '/' ? route.path === '/' : route.path.startsWith(path)
+}
 
 function timeAgo(date: Date): string {
   const secs = Math.floor((Date.now() - date.getTime()) / 1000)
@@ -89,7 +96,7 @@ const LOGO_ROWS: string[][] = [
 ]
 
 const TABS = [
-  { id: 'predictor' as const, label: 'Predictor' },
-  { id: 'stats' as const, label: 'Stats' },
+  { path: '/', label: 'Predictor' },
+  { path: '/stats', label: 'Stats' },
 ]
 </script>

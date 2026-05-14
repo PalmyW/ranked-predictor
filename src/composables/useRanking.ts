@@ -123,10 +123,7 @@ export function useRanking() {
   const encodedRanking = computed(() => encodeRanking(ranking.value, tierSizes.value))
 
   const shareUrl = computed(() => {
-    const url = new URL(window.location.href)
-    url.search = ''
-    url.searchParams.set('r', encodedRanking.value)
-    return url.toString()
+    return window.location.origin + import.meta.env.BASE_URL + '?r=' + encodedRanking.value
   })
 
   // Persist to localStorage on every change (except when viewing a shared ladder before any interaction)
