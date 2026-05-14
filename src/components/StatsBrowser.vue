@@ -118,18 +118,23 @@
                 <button
                   v-for="match in group.matches"
                   :key="match.id"
-                  class="w-full text-left px-4 py-2.5 border-b border-gray-100 dark:border-gray-800 transition-colors text-sm"
+                  class="w-full text-left py-2.5 border-b border-gray-100 dark:border-gray-800 transition-colors text-sm border-l-2"
                   :class="
                     selectedMatch?.id === match.id
-                      ? 'bg-blue-50 dark:bg-blue-900/20'
-                      : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                      ? 'bg-blue-50 dark:bg-blue-900/20 border-l-blue-500 pl-3.5 pr-4'
+                      : 'hover:bg-gray-50 dark:hover:bg-gray-800/50 border-l-transparent px-4'
                   "
                   @click="selectMatch(match)"
                 >
-                  <div class="font-medium text-gray-800 dark:text-gray-100 truncate">
+                  <div
+                    class="font-medium truncate"
+                    :class="selectedMatch?.id === match.id ? 'text-blue-700 dark:text-blue-300' : 'text-gray-800 dark:text-gray-100'"
+                  >
                     {{ match.homeTeamName }} v {{ match.awayTeamName }}
                   </div>
-                  <div v-if="match.homeScore && match.awayScore" class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                  <div v-if="match.homeScore && match.awayScore" class="text-xs mt-0.5"
+                    :class="selectedMatch?.id === match.id ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'"
+                  >
                     {{ match.homeScore.totalScore }} – {{ match.awayScore.totalScore }}
                   </div>
                 </button>
