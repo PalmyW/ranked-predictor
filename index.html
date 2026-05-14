@@ -54,10 +54,23 @@
       href="https://fonts.googleapis.com/css2?family=Big+Shoulders:opsz,wght@10..72,100..900&display=swap"
       rel="stylesheet"
     />
-    <script type="module" crossorigin src="/ranked-predictor/assets/index-D_9DuegL.js"></script>
-    <link rel="stylesheet" crossorigin href="/ranked-predictor/assets/index-C-Uq-B-e.css">
+    <script type="module" crossorigin src="/ranked-predictor/assets/index-CrGvh2Og.js"></script>
+    <link rel="stylesheet" crossorigin href="/ranked-predictor/assets/index-AdxhAqkO.css">
   </head>
   <body>
+    <script>
+      // Restore path encoded by 404.html for GitHub Pages SPA routing.
+      ;(function () {
+        var p = new URLSearchParams(location.search).get('p')
+        if (p !== null) {
+          var q = new URLSearchParams(location.search).get('q')
+          history.replaceState(
+            null, null,
+            location.pathname + p + (q ? '?' + q.replace(/~and~/g, '&') : '') + location.hash
+          )
+        }
+      })()
+    </script>
     <div id="app"></div>
   </body>
 </html>
