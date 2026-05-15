@@ -2,23 +2,23 @@ import { ref, readonly } from 'vue'
 import type { AflTeam, AflMatch, MatchStatus } from '../types/afl'
 
 export const TEAMS: AflTeam[] = [
-  { id: 1,  name: 'Adelaide Crows',    abbreviation: 'ADEL', letter: 'A', iconId: 'icn-aflc-adel' },
+  { id: 1,  name: 'Kuwarna',            abbreviation: 'ADEL', letter: 'A', iconId: 'icn-aflc-adel' },
   { id: 2,  name: 'Brisbane Lions',    abbreviation: 'BL',   letter: 'B', iconId: 'icn-aflc-bl'   },
   { id: 5,  name: 'Carlton',           abbreviation: 'CARL', letter: 'C', iconId: 'icn-aflc-carl' },
   { id: 3,  name: 'Collingwood',       abbreviation: 'COLL', letter: 'D', iconId: 'icn-aflc-coll' },
   { id: 12, name: 'Essendon',          abbreviation: 'ESS',  letter: 'E', iconId: 'icn-aflc-ess'  },
-  { id: 14, name: 'Fremantle',         abbreviation: 'FRE',  letter: 'F', iconId: 'icn-aflc-fre'  },
+  { id: 14, name: 'Walyalup',           abbreviation: 'FRE',  letter: 'F', iconId: 'icn-aflc-fre'  },
   { id: 10, name: 'Geelong Cats',      abbreviation: 'GEEL', letter: 'G', iconId: 'icn-aflc-geel' },
   { id: 4,  name: 'Gold Coast SUNS',   abbreviation: 'GCS',  letter: 'H', iconId: 'icn-aflc-gcs'  },
   { id: 15, name: 'GWS GIANTS',        abbreviation: 'GWS',  letter: 'I', iconId: 'icn-aflc-gws'  },
   { id: 9,  name: 'Hawthorn',          abbreviation: 'HAW',  letter: 'J', iconId: 'icn-aflc-haw'  },
-  { id: 17, name: 'Melbourne',         abbreviation: 'MELB', letter: 'K', iconId: 'icn-aflc-melb' },
+  { id: 17, name: 'Narrm',             abbreviation: 'MELB', letter: 'K', iconId: 'icn-aflc-melb' },
   { id: 6,  name: 'North Melbourne',   abbreviation: 'NMFC', letter: 'L', iconId: 'icn-aflc-nmfc' },
-  { id: 7,  name: 'Port Adelaide',     abbreviation: 'PORT', letter: 'M', iconId: 'icn-aflc-port' },
+  { id: 7,  name: 'Yartapuulti',        abbreviation: 'PORT', letter: 'M', iconId: 'icn-aflc-port' },
   { id: 16, name: 'Richmond',          abbreviation: 'RICH', letter: 'N', iconId: 'icn-aflc-rich' },
-  { id: 11, name: 'St Kilda',          abbreviation: 'STK',  letter: 'O', iconId: 'icn-aflc-stk'  },
+  { id: 11, name: 'Euro-Yroke',         abbreviation: 'STK',  letter: 'O', iconId: 'icn-aflc-stk'  },
   { id: 13, name: 'Sydney Swans',      abbreviation: 'SYD',  letter: 'P', iconId: 'icn-aflc-syd'  },
-  { id: 18, name: 'West Coast Eagles', abbreviation: 'WCE',  letter: 'Q', iconId: 'icn-aflc-wce'  },
+  { id: 18, name: 'Waalitj Marawar',   abbreviation: 'WCE',  letter: 'Q', iconId: 'icn-aflc-wce'  },
   { id: 8,  name: 'Western Bulldogs',  abbreviation: 'WB',   letter: 'R', iconId: 'icn-aflc-wb'   },
 ]
 
