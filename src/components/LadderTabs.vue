@@ -10,6 +10,7 @@
         :class="activeTab === tab.id
           ? 'text-blue-500 border-b-2 border-blue-500 -mb-px'
           : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+        :data-tour="TAB_TOUR_IDS[tab.id] || undefined"
       >
 <span v-if="tab.badge" :class="tab.badgeClass">{{ tab.badge }}</span>{{ tab.label }}
       </button>
@@ -140,6 +141,13 @@ const TABS = computed(() => [
 ])
 
 const analytics = useAnalytics()
+
+const TAB_TOUR_IDS: Record<string, string> = {
+  predicted: 'predicted-tab',
+  simulated: 'simulated-tab',
+  power: 'power-rankings-tab',
+  parity: 'parity-tab',
+}
 
 const VALID_TAB_IDS = new Set(['predicted', 'simulated', 'current', 'power', 'parity'])
 

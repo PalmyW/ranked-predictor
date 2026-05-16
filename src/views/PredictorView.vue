@@ -13,7 +13,7 @@
         <section class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-4">
 
           <!-- Ladder source controls -->
-          <div class="mb-3 p-2.5 bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-lg space-y-2">
+          <div data-tour="ladder-source" class="mb-3 p-2.5 bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-lg space-y-2">
             <span class="flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-gray-400">
               Viewing:
               <span
@@ -25,7 +25,7 @@
                 }"
               >{{ ladderSource === 'live' ? 'Live ladder' : ladderSource === 'shared' ? 'Shared ladder' : 'My ladder' }}</span>
             </span>
-            <div class="flex gap-1.5">
+            <div data-tour="ranking-actions" class="flex gap-1.5">
               <button
                 v-if="savedState && ladderSource !== 'mine'"
                 @click="handleLoadSaved"
@@ -74,7 +74,7 @@
           />
 
           <!-- Share -->
-          <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-4">
+          <div data-tour="share-bar" class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-4">
             <h2 class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Share Your Prediction</h2>
             <ShareBar :shareUrl="shareUrl" />
           </div>

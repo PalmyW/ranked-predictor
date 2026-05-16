@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div data-tour="team-ranker">
     <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">Drag teams between tiers or within a tier</p>
 
     <div class="space-y-1.5">
@@ -41,6 +41,7 @@
                   </span>
                 </span>
                 <button
+                  data-tour="team-fixture-icon"
                   @click.stop="toggleFixture(element.id)"
                   class="shrink-0 text-xs text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 px-1 transition-colors"
                   title="View remaining fixture"

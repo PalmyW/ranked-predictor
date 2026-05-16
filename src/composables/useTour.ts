@@ -1,0 +1,182 @@
+import { ref, computed } from 'vue'
+
+const STORAGE_KEY = 'afl-tour-v1'
+
+export interface TourStep {
+  id: string
+  title: string
+  description: string
+  target: string | null
+  route?: string
+}
+
+const STEPS: TourStep[] = [
+  {
+    id: 'welcome',
+    title: 'Welcome to PalmyData!',
+    description: 'Predict how the 2026 AFL season will finish. Rank teams your way and see where each side lands. This quick tour shows you around.',
+    target: null,
+  },
+  {
+    id: 'team-ranker',
+    title: 'Your Team Ranking',
+    description: 'Drag teams between tiers to set your power ranking. Higher-ranked teams always beat lower-ranked teams in predictions.',
+    target: '[data-tour="team-ranker"]',
+    route: '/',
+  },
+  {
+    id: 'fixture-icon',
+    title: 'Team Fixture',
+    description: 'Tap the calendar icon on any team to see their remaining schedule with your predicted and simulated results for each game.',
+    target: '[data-tour="team-fixture-icon"]',
+    route: '/',
+  },
+  {
+    id: 'ladder-source',
+    title: 'Ladder Source',
+    description: 'Switch between the live AFL ladder, your saved My Ladder, or a shared ranking loaded from a URL.',
+    target: '[data-tour="ladder-source"]',
+    route: '/',
+  },
+  {
+    id: 'ranking-actions',
+    title: 'Save & Reset',
+    description: 'Save your current ranking as "My Ladder" or reset back to the live AFL standings at any time.',
+    target: '[data-tour="ranking-actions"]',
+    route: '/',
+  },
+  {
+    id: 'predicted-tab',
+    title: 'Predicted Ladder',
+    description: 'See where every team finishes if your higher-ranked team wins every remaining game — no randomness, pure ranking.',
+    target: '[data-tour="predicted-tab"]',
+    route: '/',
+  },
+  {
+    id: 'simulated-tab',
+    title: 'Simulated Season',
+    description: 'Run a randomised season where upsets can happen. Win probability scales by rank gap, with a home-ground boost.',
+    target: '[data-tour="simulated-tab"]',
+    route: '/',
+  },
+  {
+    id: 'power-tab',
+    title: 'Power Rankings',
+    description: 'Track how your ranking of each team has changed week by week throughout the season. Export as an image to share.',
+    target: '[data-tour="power-rankings-tab"]',
+    route: '/',
+  },
+  {
+    id: 'parity-tab',
+    title: 'Circle of Parity',
+    description: 'Visualise the win/loss loops between teams — who beats who in a circular chain of season results.',
+    target: '[data-tour="parity-tab"]',
+    route: '/',
+  },
+  {
+    id: 'round-banner',
+    title: 'Round Match Cards',
+    description: 'Browse match cards round by round. See predicted winners, live scores, and simulated results at a glance.',
+    target: '[data-tour="round-banner"]',
+    route: '/',
+  },
+  {
+    id: 'share-bar',
+    title: 'Share Your Prediction',
+    description: "Copy this link to share your exact team ranking with anyone. They'll load your ladder automatically.",
+    target: '[data-tour="share-bar"]',
+    route: '/',
+  },
+  {
+    id: 'stats-nav',
+    title: 'Stats Page',
+    description: "Next up is the Stats page — detailed player statistics for every concluded match. Let's take a look.",
+    target: '[data-tour="stats-nav"]',
+    route: '/',
+  },
+  {
+    id: 'stats-match-browser',
+    title: 'Concluded Matches',
+    description: 'Browse concluded matches by round in this sidebar. Expand a round and click any match to load its player statistics.',
+    target: '[data-tour="stats-match-browser"]',
+    route: '/stats',
+  },
+  {
+    id: 'stats-panel',
+    title: 'Player Stats Table',
+    description: 'Select a match and a full player stats table loads here with disposals, kicks, marks, tackles, and 40+ more stats. Click any player name to see their complete breakdown.',
+    target: '[data-tour="stats-panel"]',
+    route: '/stats',
+  },
+  {
+    id: 'stats-toolbar',
+    title: 'Filter & Sort',
+    description: 'Filter stats by home or away team using the team switcher, and click any column header to sort by that stat.',
+    target: '[data-tour="stats-toolbar"]',
+    route: '/stats',
+  },
+  {
+    id: 'stats-columns',
+    title: 'Toggle Columns',
+    description: 'Use the checkboxes to show or hide any stat column. Simplify the table to focus on the basics, or expand to see every advanced metric.',
+    target: '[data-tour="stats-columns-panel"]',
+    route: '/stats',
+  },
+  {
+    id: 'dark-mode',
+    title: 'Dark Mode',
+    description: 'Toggle between light and dark themes. Your preference is saved automatically.',
+    target: '[data-tour="dark-mode-toggle"]',
+  },
+  {
+    id: 'done',
+    title: "You're all set!",
+    description: 'Start dragging teams around and see where your ranking takes the ladder. Hit the ? button any time to replay this tour.',
+    target: null,
+  },
+]
+
+const isActive = ref(false)
+const currentStep = ref(0)
+
+export function useTour() {
+  const step = computed(() => STEPS[currentStep.value])
+  const stepNumber = computed(() => currentStep.value + 1)
+  const totalSteps = computed(() => STEPS.length)
+  const isFirst = computed(() => currentStep.value === 0)
+  const isLast = computed(() => currentStep.value === STEPS.length - 1)
+
+  function startTour() {
+    currentStep.value = 0
+    isActive.value = true
+  }
+
+  function closeTour() {
+    isActive.value = false
+    localStorage.setItem(STORAGE_KEY, 'seen')
+  }
+
+  function nextStep() {
+    if (isLast.value) {
+      closeTour()
+    } else {
+      currentStep.value++
+    }
+  }
+
+  function prevStep() {
+    if (!isFirst.value) currentStep.value--
+  }
+
+  function skipTour() {
+    closeTour()
+  }
+
+  function initTour() {
+    if (localStorage.getItem(STORAGE_KEY) !== 'seen') {
+      startTour()
+    }
+  }
+
+  return { isActive, currentStep, step, stepNumber, totalSteps, isFirst, isLast, startTour, nextStep, prevStep, skipTour, initTour }
+}

@@ -57,6 +57,7 @@
     <template v-if="columnsOpen">
       <div class="fixed inset-0 z-30" @click="columnsOpen = false" />
       <div
+        data-tour="stats-columns-panel"
         class="fixed z-40 w-72 max-h-[70vh] overflow-y-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl"
         :style="columnsPanelStyle"
       >
@@ -92,7 +93,7 @@
   <div class="max-w-6xl mx-auto px-4 py-6">
     <div class="flex flex-col lg:flex-row gap-6">
       <!-- Left: Round/match browser -->
-      <aside class="lg:w-72 shrink-0">
+      <aside data-tour="stats-match-browser" class="lg:w-72 shrink-0">
         <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
           <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
             <h2 class="text-sm font-bold text-gray-800 dark:text-gray-100">Concluded Matches</h2>
@@ -145,7 +146,7 @@
       </aside>
 
       <!-- Right: Stats table -->
-      <section class="flex-1 min-w-0">
+      <section data-tour="stats-panel" class="flex-1 min-w-0">
         <!-- No match selected -->
         <div
           v-if="!selectedMatch"
@@ -175,7 +176,7 @@
 
         <!-- Stats table -->
         <div v-else-if="sortedRows.length > 0" class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-          <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-3 flex-wrap">
+          <div data-tour="stats-toolbar" class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-3 flex-wrap">
             <h2 class="text-sm font-bold text-gray-800 dark:text-gray-100">
               {{ selectedMatch.homeTeamName }} v {{ selectedMatch.awayTeamName }}
               <span class="font-normal text-gray-400 dark:text-gray-500 ml-1">— {{ selectedMatch.roundName }}</span>
@@ -199,6 +200,7 @@
               </div>
               <button
                 ref="columnsButtonEl"
+                data-tour="stats-columns-btn"
                 class="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded border transition-colors"
                 :class="columnsOpen
                   ? 'bg-blue-50 border-blue-300 text-blue-600 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-400'
