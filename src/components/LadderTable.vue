@@ -32,7 +32,7 @@
                 <template #content>
                   <div class="p-3 max-w-[220px]">
                     <p class="font-semibold mb-1 text-gray-800 dark:text-gray-100">Schedule Difficulty</p>
-                    <p class="text-gray-600 dark:text-gray-300 leading-relaxed">Score 1–18. The average ladder position of each team's remaining opponents, normalised so <span class="font-semibold text-green-600">1 = easiest</span> and <span class="font-semibold text-red-600">18 = hardest</span> draw.</p>
+                    <p class="text-gray-600 dark:text-gray-300 leading-relaxed">Score 1–18. The average power ranking of each team's remaining opponents, normalised so <span class="font-semibold text-red-600">1 = hardest</span> and <span class="font-semibold text-green-600">18 = easiest</span> draw.</p>
                   </div>
                 </template>
               </HtmlTooltip>
@@ -53,6 +53,7 @@
           :simulated-match-winners="simulatedMatchWinners"
           :normalized-diff-value="normalizedDiff(row.teamId)"
           :normalized-diff-class="normalizedDiffClass(row.teamId)"
+          :diff-stats="diffStats"
           :simple="true"
         />
       </TransitionGroup>
@@ -70,6 +71,7 @@
           :simulated-match-winners="simulatedMatchWinners"
           :normalized-diff-value="normalizedDiff(row.teamId)"
           :normalized-diff-class="normalizedDiffClass(row.teamId)"
+          :diff-stats="diffStats"
         />
       </tbody>
     </table>
@@ -106,35 +108,39 @@ const props = defineProps<{
   animated?: boolean
 }>()
 
+const diffStats = computed<{ minRaw: number; maxRaw: number } | undefined>(() => {
+  const withDiff = props.ladder.filter((r) => r.difficulty !== null)
+  if (withDiff.length < 2) return undefined
+  const raws = withDiff.map((r) => r.difficulty as number)
+  return { minRaw: Math.min(...raws), maxRaw: Math.max(...raws) }
+})
+
 const normalizedMap = computed<Map<number, number>>(() => {
   const withDiff = props.ladder.filter((r) => r.difficulty !== null)
-  if (withDiff.length < 2) return new Map()
-
-  const raws = withDiff.map((r) => r.difficulty as number)
-  const minRaw = Math.min(...raws)
-  const maxRaw = Math.max(...raws)
-  const range = maxRaw - minRaw
-
+  if (withDiff.length === 0) return new Map()
+  const sorted = [...withDiff].sort((a, b) => (a.difficulty as number) - (b.difficulty as number))
   const map = new Map<number, number>()
-  for (const row of withDiff) {
-    const raw = row.difficulty as number
-    const normalised = range === 0 ? 9.5 : 1 + ((maxRaw - raw) / range) * 17
-    map.set(row.teamId, normalised)
-  }
+  sorted.forEach((row, i) => map.set(row.teamId, i + 1))
   return map
 })
 
+function ordinal(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd']
+  const v = n % 100
+  return n + (s[(v - 20) % 10] ?? s[v] ?? s[0])
+}
+
 function normalizedDiff(teamId: number): string {
   const v = normalizedMap.value.get(teamId)
-  return v !== undefined ? v.toFixed(1) : '—'
+  return v !== undefined ? ordinal(v) : '—'
 }
 
 function normalizedDiffClass(teamId: number): string {
   const v = normalizedMap.value.get(teamId)
   if (v === undefined) return 'text-gray-300'
-  if (v >= 14) return 'text-red-600'
-  if (v >= 10) return 'text-orange-500'
-  if (v >= 6)  return 'text-gray-500'
+  if (v <= 5)  return 'text-red-600'
+  if (v <= 9)  return 'text-orange-500'
+  if (v <= 13) return 'text-gray-500'
   return 'text-green-600'
 }
 </script>

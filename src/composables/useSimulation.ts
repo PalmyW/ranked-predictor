@@ -64,7 +64,7 @@ function buildStats(matches: readonly AflMatch[]): Record<number, TeamStats> {
 
 interface DifficultyInfo {
   avg: number | null
-  opponents: Array<{ matchId: number; name: string; rank: number; isHome: boolean; predictedWin: boolean; winPct: number }>
+  opponents: Array<{ matchId: number; name: string; rank: number; isHome: boolean; predictedWin: boolean; winPct: number; roundNumber: number }>
 }
 
 // Average rank of remaining opponents for each team, plus ordered opponent list
@@ -73,15 +73,15 @@ function computeDifficulty(
   rankMap: Record<number, number>,
 ): Record<number, DifficultyInfo> {
   const teamMap = Object.fromEntries(TEAMS.map((t) => [t.id, t]))
-  const oppMap: Record<number, Array<{ matchId: number; id: number; isHome: boolean; teamRank: number }>> = {}
+  const oppMap: Record<number, Array<{ matchId: number; id: number; isHome: boolean; teamRank: number; roundNumber: number }>> = {}
   for (const team of TEAMS) oppMap[team.id] = []
 
   for (const match of matches) {
     if (match.status === 'CONCLUDED') continue
     const hId = match.homeTeamId
     const aId = match.awayTeamId
-    if (oppMap[hId]) oppMap[hId].push({ matchId: match.id, id: aId, isHome: true, teamRank: rankMap[hId] ?? 999 })
-    if (oppMap[aId]) oppMap[aId].push({ matchId: match.id, id: hId, isHome: false, teamRank: rankMap[aId] ?? 999 })
+    if (oppMap[hId]) oppMap[hId].push({ matchId: match.id, id: aId, isHome: true, teamRank: rankMap[hId] ?? 999, roundNumber: match.roundNumber })
+    if (oppMap[aId]) oppMap[aId].push({ matchId: match.id, id: hId, isHome: false, teamRank: rankMap[aId] ?? 999, roundNumber: match.roundNumber })
   }
 
   const result: Record<number, DifficultyInfo> = {}
@@ -90,6 +90,7 @@ function computeDifficulty(
     if (!opps || opps.length === 0) {
       result[team.id] = { avg: null, opponents: [] }
     } else {
+      const tGlobalRank = rankMap[team.id] ?? 999
       const oppDetails = opps
         .map((o) => {
           const oppRank = rankMap[o.id] ?? 999
@@ -103,10 +104,16 @@ function computeDifficulty(
             isHome: o.isHome,
             predictedWin: o.teamRank < oppRank,
             winPct,
+            roundNumber: o.roundNumber,
           }
         })
         .sort((a, b) => b.winPct - a.winPct)
-      const sum = opps.reduce((acc, o) => acc + (rankMap[o.id] ?? 0), 0)
+      // Rank opponents in a 17-team system (current team excluded): opponents
+      // ranked below the current team shift down by one.
+      const sum = opps.reduce((acc, o) => {
+        const oGlobal = rankMap[o.id] ?? 0
+        return acc + (oGlobal > tGlobalRank ? oGlobal - 1 : oGlobal)
+      }, 0)
       result[team.id] = { avg: sum / opps.length, opponents: oppDetails }
     }
   }
