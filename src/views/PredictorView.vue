@@ -71,6 +71,10 @@
             :simulate="simulate"
             :getSimulationFrames="getSimulationFrames"
             :simulatedMatchWinners="simulatedMatchWinners"
+            :runMany="runMany"
+            :rangeResults="rangeResults"
+            :rangeTotal="rangeTotal"
+            :isRunningRange="isRunningRange"
           />
 
           <!-- Share -->
@@ -107,7 +111,7 @@ import MatchList from '../components/MatchList.vue'
 
 const { matches, teams, isLoading, error } = useAFLData()
 const { ranking, tierSizes, shareUrl, rankedFromUrl, rankedFromStorage, ladderSource, savedState, rankingHistory, setRanking, setTierSizes, resetToLadder, loadSavedRanking, saveToMyLadder, seedHistoryFromSavedRanking, snapshotRoundRanking, updateRoundSnapshot } = useRanking()
-const { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate, getSimulationFrames } = useSimulation(ranking, matches)
+const { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate, getSimulationFrames, rangeResults, rangeTotal, isRunningRange, runMany } = useSimulation(ranking, matches)
 const analytics = useAnalytics()
 
 provide('matches', matches)

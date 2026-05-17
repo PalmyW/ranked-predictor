@@ -81,6 +81,41 @@
           :simulatedMatchWinners="simulating ? undefined : simulatedMatchWinners"
           :animated="simulating"
         />
+
+        <!-- Simulation Range -->
+        <div class="mt-5 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <h3 class="text-sm font-bold text-gray-700 dark:text-gray-300">Simulation Range</h3>
+              <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Run many simulations to see position distributions</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                <button
+                  v-for="n in RANGE_COUNTS"
+                  :key="n"
+                  @click="rangeCount = n"
+                  class="px-2 py-1 text-xs font-semibold transition-colors"
+                  :class="rangeCount === n
+                    ? 'bg-purple-600 text-white'
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'"
+                >{{ n >= 1000 ? `${n / 1000}k` : n }}</button>
+              </div>
+              <button
+                @click="handleRunMany"
+                :disabled="isRunningRange || isLoading || !hasMatches"
+                class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-purple-600 text-white hover:bg-purple-700 active:bg-purple-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >{{ isRunningRange ? 'Running…' : 'Run' }}</button>
+            </div>
+          </div>
+          <SimulationRange v-if="rangeResults && !isRunningRange" :results="rangeResults" :total="rangeTotal" />
+          <div v-else-if="isRunningRange" class="text-center py-6 text-sm text-gray-400 dark:text-gray-500">
+            Running {{ rangeCount.toLocaleString() }} simulations…
+          </div>
+          <div v-else class="text-center py-4 text-xs text-gray-400 dark:text-gray-500">
+            Select a count and press Run to see finishing position distributions
+          </div>
+        </div>
       </div>
 
       <!-- Current -->
@@ -110,10 +145,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import type { LadderRow, TeamRanking } from '../types/afl'
+import type { RangeEntry } from '../composables/useSimulation'
 import LadderTable from './LadderTable.vue'
 import HtmlTooltip from './HtmlTooltip.vue'
 import PowerRankings from './PowerRankings.vue'
 import CircleOfParity from './CircleOfParity.vue'
+import SimulationRange from './SimulationRange.vue'
 import { useAnalytics } from '../composables/useAnalytics'
 import { powerRankingsTitle, firstMeaningfulWord } from '../composables/usePowerRankingsTitle'
 
@@ -128,7 +165,19 @@ const props = defineProps<{
   simulate: () => void
   getSimulationFrames: () => Array<{ roundNumber: number; roundName: string; ladder: LadderRow[] }>
   simulatedMatchWinners: Record<number, number> | null
+  runMany: (n: number) => Promise<void>
+  rangeResults: RangeEntry[] | null
+  rangeTotal: number
+  isRunningRange: boolean
 }>()
+
+const RANGE_COUNTS = [100, 500, 1000, 5000]
+const rangeCount = ref(1000)
+
+async function handleRunMany() {
+  if (props.isRunningRange || props.isLoading || !props.hasMatches) return
+  await props.runMany(rangeCount.value)
+}
 
 const powerLabel = computed(() => ' ' + firstMeaningfulWord(powerRankingsTitle.value))
 

@@ -2,6 +2,14 @@ import { computed, ref } from 'vue'
 import type { AflMatch, LadderRow, TeamRanking } from '../types/afl'
 import { TEAMS } from './useAFLData'
 
+export interface RangeEntry {
+  teamId: number
+  teamName: string
+  abbreviation: string
+  iconId: string
+  counts: number[]  // counts[i] = times finished in position i+1
+}
+
 type MatchesRef = { readonly value: readonly AflMatch[] }
 type RankingRef = { readonly value: TeamRanking }
 
@@ -160,6 +168,66 @@ function statsToLadder(
   return rows
 }
 
+function runOneSim(
+  baseStats: Record<number, TeamStats>,
+  matches: readonly AflMatch[],
+  rankMap: Record<number, number>,
+): number[] {
+  const simStats: Record<number, TeamStats> = {}
+  for (const [id, s] of Object.entries(baseStats)) simStats[Number(id)] = { ...s }
+
+  for (const match of matches) {
+    if (match.status === 'CONCLUDED') continue
+    const hId = match.homeTeamId
+    const aId = match.awayTeamId
+    if (!hId || !aId || !simStats[hId] || !simStats[aId]) continue
+    const hRank = rankMap[hId] ?? 999
+    const aRank = rankMap[aId] ?? 999
+    const homeWins = Math.random() < homeWinProb(hRank, aRank)
+    const winnerId = homeWins ? hId : aId
+    const loserId = homeWins ? aId : hId
+    simStats[winnerId].wins++; simStats[winnerId].pts += 4; simStats[winnerId].played++
+    simStats[winnerId].for += SIM_WIN_SCORE; simStats[winnerId].against += SIM_LOSS_SCORE
+    simStats[loserId].losses++; simStats[loserId].played++
+    simStats[loserId].for += SIM_LOSS_SCORE; simStats[loserId].against += SIM_WIN_SCORE
+  }
+
+  return Object.values(simStats)
+    .sort((a, b) => {
+      if (b.pts !== a.pts) return b.pts - a.pts
+      const aPct = a.against > 0 ? a.for / a.against : (a.for > 0 ? 999 : 1)
+      const bPct = b.against > 0 ? b.for / b.against : (b.for > 0 ? 999 : 1)
+      return bPct - aPct
+    })
+    .map((s) => s.teamId)
+}
+
+function runManySimulations(
+  rankMap: Record<number, number>,
+  matches: readonly AflMatch[],
+  n: number,
+): RangeEntry[] {
+  const teamMap = Object.fromEntries(TEAMS.map((t) => [t.id, t]))
+  const counts: Record<number, number[]> = {}
+  for (const team of TEAMS) counts[team.id] = new Array(18).fill(0)
+
+  const baseStats = buildStats(matches)
+  for (let i = 0; i < n; i++) {
+    const order = runOneSim(baseStats, matches, rankMap)
+    for (let pos = 0; pos < order.length; pos++) {
+      if (counts[order[pos]]) counts[order[pos]][pos]++
+    }
+  }
+
+  return TEAMS.map((team) => ({
+    teamId: team.id,
+    teamName: teamMap[team.id]?.name ?? String(team.id),
+    abbreviation: teamMap[team.id]?.abbreviation ?? '???',
+    iconId: teamMap[team.id]?.iconId ?? '',
+    counts: counts[team.id],
+  }))
+}
+
 function simulateMatches(
   matches: readonly AflMatch[],
   rankMap: Record<number, number>,
@@ -217,6 +285,9 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef) {
   const simulatedLadder = ref<LadderRow[] | null>(null)
   // matchId → winning teamId from last random simulation
   const simulatedMatchWinners = ref<Record<number, number> | null>(null)
+  const rangeResults = ref<RangeEntry[] | null>(null)
+  const rangeTotal = ref(0)
+  const isRunningRange = ref(false)
 
   function simulate() {
     if (!ranking.value.length) return
@@ -297,5 +368,20 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef) {
     return frames
   }
 
-  return { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate, getSimulationFrames }
+  async function runMany(n: number) {
+    if (!ranking.value.length) return
+    isRunningRange.value = true
+    const rankMap: Record<number, number> = {}
+    ranking.value.forEach((id, i) => { rankMap[id] = i + 1 })
+    await new Promise<void>((resolve) => {
+      setTimeout(() => {
+        rangeResults.value = runManySimulations(rankMap, matches.value, n)
+        rangeTotal.value = n
+        resolve()
+      }, 0)
+    })
+    isRunningRange.value = false
+  }
+
+  return { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate, getSimulationFrames, rangeResults, rangeTotal, isRunningRange, runMany }
 }
