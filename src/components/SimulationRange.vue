@@ -15,7 +15,7 @@
 
     <!-- Rows -->
     <div class="space-y-1">
-      <div v-for="entry in sortedResults" :key="entry.teamId" class="flex items-center gap-2">
+      <div v-for="(entry, i) in sortedResults" :key="entry.teamId" class="flex items-center gap-2">
         <!-- Team abbreviation -->
         <div class="w-8 text-xs text-right font-bold text-gray-600 dark:text-gray-300 shrink-0 tabular-nums">
           {{ entry.abbreviation }}
@@ -39,9 +39,9 @@
           </template>
         </div>
 
-        <!-- Median position -->
+        <!-- Rank -->
         <div class="w-5 text-[10px] text-gray-400 dark:text-gray-500 shrink-0 tabular-nums text-right">
-          {{ medianPosition(entry) }}
+          {{ i + 1 }}
         </div>
       </div>
     </div>
@@ -69,17 +69,17 @@ const props = defineProps<{
 }>()
 
 const POS_COLORS = [
-  '#16a34a', // 1  — deep green
+  '#16a34a', // 1  — green (1–4)
   '#22c55e', // 2
   '#4ade80', // 3
   '#86efac', // 4
-  '#bef264', // 5
-  '#fde047', // 6
-  '#facc15', // 7
-  '#fb923c', // 8
-  '#f97316', // 9
-  '#ef4444', // 10
-  '#dc2626', // 11
+  '#ca8a04', // 5  — yellow (5–6) ← break
+  '#eab308', // 6
+  '#ea580c', // 7  — orange (7–10) ← break
+  '#f97316', // 8
+  '#fb923c', // 9
+  '#fdba74', // 10
+  '#dc2626', // 11 — red (11–18) ← break
   '#b91c1c', // 12
   '#991b1b', // 13
   '#7f1d1d', // 14
