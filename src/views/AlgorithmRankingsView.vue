@@ -499,19 +499,35 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAFLData, TEAMS } from '../composables/useAFLData'
 import { useAlgorithmRankings, ALGORITHMS, computeAlgorithmRanking } from '../composables/useAlgorithmRankings'
 import type { AlgorithmId, AlgorithmRankRow } from '../composables/useAlgorithmRankings'
 
 const BASE_URL = import.meta.env.BASE_URL
 
+const route = useRoute()
+const router = useRouter()
+
 const { matches, isLoading } = useAFLData()
 const { winPctRanking, srsRanking, colleyRanking, masseyRanking, winFlowRanking, palmyRanking, palmyOpponentLadders } = useAlgorithmRankings(matches)
 
-const selectedId = ref<AlgorithmId>('srs')
-const activeView = ref<'table' | 'graph'>('table')
+const validAlgoIds = ALGORITHMS.map((a) => a.id) as AlgorithmId[]
+
+const selectedId = ref<AlgorithmId>(
+  validAlgoIds.includes(route.query.algo as AlgorithmId)
+    ? (route.query.algo as AlgorithmId)
+    : 'srs',
+)
+const activeView = ref<'table' | 'graph'>(
+  route.query.view === 'graph' ? 'graph' : 'table',
+)
 const showNerdStuff = ref(false)
+
+watch([selectedId, activeView], ([algo, view]) => {
+  router.replace({ query: { algo, view } })
+})
 const selectedAlgo = computed(() => ALGORITHMS.find((a) => a.id === selectedId.value)!)
 
 const currentRanking = computed<AlgorithmRankRow[]>(() => {
