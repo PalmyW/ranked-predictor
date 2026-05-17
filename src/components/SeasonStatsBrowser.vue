@@ -407,7 +407,7 @@ const COLUMN_CATEGORIES = [
 ]
 
 const STAT_LABELS: Record<string, string> = {
-  gamesPlayed: 'GP',
+  gamesPlayed: 'Games',
   disposals: 'DIS', kicks: 'K', handballs: 'HB', marks: 'MK', tackles: 'T',
   hitouts: 'HO', goals: 'G', behinds: 'B', goalAssists: 'GA', clangers: 'CL',
   freesFor: 'FF', freesAgainst: 'FA', contestedPossessions: 'CP', uncontestedPossessions: 'UP',
@@ -423,8 +423,8 @@ const STAT_LABELS: Record<string, string> = {
   defHalfPressureActs: 'DPA', spoils: 'SPL', interceptMarks: 'IM', marksOnLead: 'MOL',
   hitoutsToAdvantage: 'HOA', hitoutToAdvantageRate: 'HOAR%', hitoutWinPercentage: 'HOW%',
   ruckContests: 'RC', centreBounceAttendances: 'CBA',
-  contestDefOneOnOnes: 'CD1', contestDefLosses: 'CDL', contestDefLossPercentage: 'CDL%',
-  contestOffOneOnOnes: 'CO1', contestOffWins: 'COW', contestOffWinsPercentage: 'COW%',
+  contestDefOneOnOnes: 'CD1O1', contestDefLosses: 'CDL', contestDefLossPercentage: 'CDL%',
+  contestOffOneOnOnes: 'CO1O1', contestOffWins: 'COW', contestOffWinsPercentage: 'COW%',
   kickins: 'KI', kickinsPlayon: 'KIPO',
 }
 
@@ -470,7 +470,7 @@ function hideAllColumns() {
 const allColumns = computed(() => {
   if (rows.value.length === 0) return []
   const presentKeys = new Set(
-    Object.keys(rows.value[0]).filter((k) => !['name', 'position', 'gamesPlayed', 'iconId'].includes(k)),
+    Object.keys(rows.value[0]).filter((k) => !['name', 'position', 'iconId'].includes(k)),
   )
   return STAT_COLUMN_KEYS
     .filter((k) => presentKeys.has(k))
