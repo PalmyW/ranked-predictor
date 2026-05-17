@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import PredictorView from '../views/PredictorView.vue'
 import StatsView from '../views/StatsView.vue'
+import SeasonStatsView from '../views/SeasonStatsView.vue'
 
 export const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -8,5 +9,6 @@ export const router = createRouter({
     { path: '/', component: PredictorView },
     { path: '/stats', component: StatsView },
     { path: '/stats/:providerId', component: StatsView },
+    { path: '/season-stats', component: SeasonStatsView },
   ],
 })

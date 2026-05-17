@@ -171,9 +171,25 @@ async function updatePosition(): Promise<void> {
         waitMs = 800  // give the stats JSON time to fetch and render
       }
 
+      if (stepRoute === '/season-stats') {
+        waitMs = 100
+      }
+
       await router.push(targetPath)
       await nextTick()
       await new Promise<void>((r) => setTimeout(r, waitMs))
+    }
+  }
+
+  // For season stats steps that need data: click the first team if none is loaded yet.
+  if (step.value.id === 'season-stats-table' || step.value.id === 'season-mode-toggle') {
+    const tableVisible = !!document.querySelector('[data-tour="season-stats-table"]')
+    if (!tableVisible) {
+      const firstTeamBtn = document.querySelector('[data-tour="season-team-browser"] button') as HTMLElement | null
+      if (firstTeamBtn) {
+        firstTeamBtn.click()
+        await new Promise<void>((r) => setTimeout(r, 800))
+      }
     }
   }
 

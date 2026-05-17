@@ -4,6 +4,7 @@ export interface AflTeam {
   abbreviation: string
   letter: string
   iconId: string  // SVG sprite symbol id e.g. "icn-aflc-adel"
+  teamProviderId: string  // ChampionData team ID e.g. "CD_T10"
 }
 
 export interface AflScore {

@@ -49,6 +49,18 @@ Fixture data is fetched from the AFL API and stored as `public/data/fixture.json
 
 ---
 
+## Data attribution & legal
+
+All AFL fixture and player statistics data is sourced from the AFL API (api.afl.com.au) and is subject to the following notice as required by the API terms:
+
+> All data and statistical content sourced from the AFL API is protected by copyright owned by or licensed to Telstra. Unauthorised reproduction, publishing, transmission, distribution, copying or other use of this data is prohibited.
+
+The AFL and related marks are trademarks of the Australian Football League. Player statistics, fixture data, and related content are the intellectual property of the AFL and/or their respective licensors. This project is unofficial and is not affiliated with, endorsed by, or associated with the Australian Football League or Telstra.
+
+Data is used solely for non-commercial, personal, and informational purposes. No warranties are made as to the accuracy or completeness of the data. If you are the rights holder and believe this use is not permitted, please open an issue.
+
+---
+
 ## CI/CD
 
 | Workflow | Trigger | What it does |
