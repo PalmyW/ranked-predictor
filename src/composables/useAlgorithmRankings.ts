@@ -92,7 +92,7 @@ interface BasicStats {
   against: number
 }
 
-function buildBasicStats(matches: readonly AflMatch[]): Record<number, BasicStats> {
+export function buildBasicStats(matches: readonly AflMatch[]): Record<number, BasicStats> {
   const stats: Record<number, BasicStats> = {}
   for (const t of TEAMS) stats[t.id] = { wins: 0, losses: 0, draws: 0, played: 0, for: 0, against: 0 }
   for (const m of matches) {
@@ -111,7 +111,7 @@ function buildBasicStats(matches: readonly AflMatch[]): Record<number, BasicStat
   return stats
 }
 
-function buildOfficialRankMap(stats: Record<number, BasicStats>): Map<number, number> {
+export function buildOfficialRankMap(stats: Record<number, BasicStats>): Map<number, number> {
   const sorted = TEAMS.map((t) => ({
     id: t.id,
     pts: (stats[t.id]?.wins ?? 0) * 4 + (stats[t.id]?.draws ?? 0) * 2,
@@ -328,7 +328,7 @@ function runWinFlow(
   return toRows(ratings, stats, officialRankMap)
 }
 
-function runPalmy(
+export function runPalmy(
   concluded: readonly AflMatch[],
   stats: Record<number, BasicStats>,
   officialRankMap: Map<number, number>,

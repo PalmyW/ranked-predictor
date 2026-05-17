@@ -148,6 +148,29 @@
       </div>
     </div>
 
+    <!-- Palmy round filter -->
+    <div v-if="selectedId === 'palmy' && palmyMaxRounds > 0" class="flex items-center gap-3 mb-5">
+      <span class="text-xs font-medium text-gray-500 dark:text-gray-400 shrink-0">Last rounds</span>
+      <div class="relative flex-1 flex items-center h-5">
+        <div class="absolute inset-x-0 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700">
+          <div
+            class="absolute right-0 top-0 h-full rounded-full bg-blue-500 transition-none"
+            :style="{ width: palmySliderFillPct + '%' }"
+          />
+        </div>
+        <input
+          type="range"
+          :min="0"
+          :max="Math.max(0, palmyMaxRounds - 1)"
+          v-model.number="palmyRoundsSlider"
+          class="relative w-full cursor-pointer appearance-none bg-transparent [&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-600 [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:size-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-blue-600 [&::-moz-range-thumb]:cursor-pointer"
+        />
+      </div>
+      <span class="text-xs font-semibold tabular-nums text-gray-700 dark:text-gray-200 w-20 text-right shrink-0">
+        {{ palmyRoundsSlider === 0 ? 'All rounds' : `Last ${palmyLastRounds}` }}
+      </span>
+    </div>
+
     <!-- Nerd stuff (collapsible) -->
     <div class="mb-5">
       <button
@@ -502,7 +525,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAFLData, TEAMS } from '../composables/useAFLData'
-import { useAlgorithmRankings, ALGORITHMS, computeAlgorithmRanking } from '../composables/useAlgorithmRankings'
+import { useAlgorithmRankings, ALGORITHMS, computeAlgorithmRanking, runPalmy, buildBasicStats, buildOfficialRankMap } from '../composables/useAlgorithmRankings'
 import type { AlgorithmId, AlgorithmRankRow } from '../composables/useAlgorithmRankings'
 
 const BASE_URL = import.meta.env.BASE_URL
@@ -511,7 +534,35 @@ const route = useRoute()
 const router = useRouter()
 
 const { matches, isLoading } = useAFLData()
-const { winPctRanking, srsRanking, colleyRanking, masseyRanking, winFlowRanking, palmyRanking, palmyOpponentLadders } = useAlgorithmRankings(matches)
+const { winPctRanking, srsRanking, colleyRanking, masseyRanking, winFlowRanking } = useAlgorithmRankings(matches)
+
+// --- Palmy with round filter ---
+
+const palmyRoundsSlider = ref(0) // 0 = all rounds (far left); increases = fewer rounds
+
+const palmyLastRounds = computed(() =>
+  Math.max(1, palmyMaxRounds.value - palmyRoundsSlider.value),
+)
+
+const palmyFilteredData = computed(() => {
+  const rounds = concludedRounds.value
+  const n = Math.min(palmyLastRounds.value, rounds.length)
+  const includedRounds = new Set(rounds.slice(-n))
+  const filtered = matches.value.filter(
+    (m) => m.status === 'CONCLUDED' && m.homeScore && m.awayScore && includedRounds.has(m.roundNumber),
+  )
+  const stats = buildBasicStats(matches.value)
+  const officialRankMap = buildOfficialRankMap(stats)
+  return runPalmy(filtered, stats, officialRankMap)
+})
+
+const palmyRanking = computed(() => palmyFilteredData.value.ranking)
+const palmyOpponentLadders = computed(() => palmyFilteredData.value.opponentLadders)
+const palmyMaxRounds = computed(() => concludedRounds.value.length)
+const palmySliderFillPct = computed(() => {
+  const max = Math.max(1, palmyMaxRounds.value - 1)
+  return palmyMaxRounds.value > 1 ? (1 - palmyRoundsSlider.value / max) * 100 : 100
+})
 
 const validAlgoIds = ALGORITHMS.map((a) => a.id) as AlgorithmId[]
 
