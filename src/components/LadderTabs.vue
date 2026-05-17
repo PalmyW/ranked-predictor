@@ -102,6 +102,7 @@
                 >{{ n >= 1000 ? `${n / 1000}k` : n }}</button>
               </div>
               <button
+                ref="runBtnEl"
                 @click="handleRunMany"
                 :disabled="isRunningRange || isLoading || !hasMatches"
                 class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-purple-600 text-white hover:bg-purple-700 active:bg-purple-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
@@ -140,6 +141,24 @@
       </div>
     </div>
   </div>
+
+  <!-- Smoke puff particles (5k simulation) -->
+  <Teleport to="body">
+    <div
+      v-for="(p, i) in smokeParticles"
+      :key="i"
+      class="smoke-puff"
+      :style="{
+        left: p.x + 'px',
+        top: p.y + 'px',
+        width: p.size + 'px',
+        height: p.size + 'px',
+        '--dx': p.dx + 'px',
+        '--dy': p.dy + 'px',
+        animationDelay: p.delay + 'ms',
+      }"
+    />
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -173,10 +192,35 @@ const props = defineProps<{
 
 const RANGE_COUNTS = [100, 500, 1000, 5000]
 const rangeCount = ref(1000)
+const runBtnEl = ref<HTMLElement | null>(null)
+
+interface SmokeParticle { x: number; y: number; dx: number; dy: number; size: number; delay: number }
+const smokeParticles = ref<SmokeParticle[]>([])
+
+const SMOKE_PUFFS: Array<{ dx: number; dy: number; size: number; delay: number }> = [
+  { dx:  -5, dy: -55, size: 28, delay:   0 },
+  { dx:  30, dy: -48, size: 22, delay:  40 },
+  { dx: -38, dy: -40, size: 20, delay:  70 },
+  { dx:  52, dy: -30, size: 18, delay:  20 },
+  { dx: -18, dy: -60, size: 24, delay: 100 },
+  { dx:  60, dy: -18, size: 16, delay:  55 },
+  { dx:  12, dy: -52, size: 20, delay:  15 },
+  { dx: -55, dy: -22, size: 14, delay:  85 },
+]
+
+function triggerSmoke() {
+  if (!runBtnEl.value) return
+  const rect = runBtnEl.value.getBoundingClientRect()
+  const cx = rect.left + rect.width / 2
+  const cy = rect.top + rect.height / 2
+  smokeParticles.value = SMOKE_PUFFS.map((p) => ({ x: cx, y: cy, ...p }))
+  setTimeout(() => { smokeParticles.value = [] }, 1400)
+}
 
 async function handleRunMany() {
   if (props.isRunningRange || props.isLoading || !props.hasMatches) return
   await props.runMany(rangeCount.value)
+  if (rangeCount.value === 5000) triggerSmoke()
 }
 
 const powerLabel = computed(() => ' ' + firstMeaningfulWord(powerRankingsTitle.value))
@@ -257,3 +301,29 @@ async function handleSimulate() {
   simStage.value = ''
 }
 </script>
+
+<style scoped>
+.smoke-puff {
+  position: fixed;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(160, 160, 160, 0.8) 0%, rgba(200, 200, 200, 0) 70%);
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+  animation: smoke-puff 1s ease-out forwards;
+}
+
+@keyframes smoke-puff {
+  0% {
+    transform: translate(-50%, -50%) scale(0.2);
+    opacity: 1;
+  }
+  40% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(3);
+    opacity: 0;
+  }
+}
+</style>
