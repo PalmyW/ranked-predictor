@@ -97,7 +97,7 @@
           <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
             <h2 class="text-sm font-bold text-gray-800 dark:text-gray-100">Teams</h2>
           </div>
-          <div class="overflow-y-auto max-h-[calc(100vh-220px)]">
+          <div>
             <button
               v-for="team in sortedTeams"
               :key="team.id"

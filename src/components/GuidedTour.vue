@@ -175,6 +175,10 @@ async function updatePosition(): Promise<void> {
         waitMs = 100
       }
 
+      if (stepRoute === '/rankings') {
+        waitMs = 100
+      }
+
       await router.push(targetPath)
       await nextTick()
       await new Promise<void>((r) => setTimeout(r, waitMs))

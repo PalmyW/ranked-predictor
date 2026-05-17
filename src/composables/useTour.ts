@@ -151,6 +151,27 @@ const STEPS: TourStep[] = [
     route: '/season-stats',
   },
   {
+    id: 'rankings-nav',
+    title: 'Algorithm Rankings',
+    description: 'The Rankings page ranks all 18 teams using statistical methods that account for uneven schedules — something a simple ladder can\'t do.',
+    target: '[data-tour="rankings-nav"]',
+    route: '/season-stats',
+  },
+  {
+    id: 'rankings-algo-selector',
+    title: 'Switch Algorithms',
+    description: 'Pick from five different ranking methods: Win %, SRS, Colley Matrix, Massey, and Win Flow. Each uses a different mathematical approach to weigh results.',
+    target: '[data-tour="rankings-algo-selector"]',
+    route: '/rankings',
+  },
+  {
+    id: 'rankings-table',
+    title: 'Ranking Table',
+    description: 'Teams are ordered by the algorithm\'s rating. The "vs AFL" column shows where this algorithm agrees or disagrees with the official points-based ladder.',
+    target: '[data-tour="rankings-table"]',
+    route: '/rankings',
+  },
+  {
     id: 'dark-mode',
     title: 'Dark Mode',
     description: 'Toggle between light and dark themes. Your preference is saved automatically.',
