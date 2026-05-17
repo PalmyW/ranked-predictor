@@ -1,16 +1,22 @@
 <template>
-  <!-- Palmy hover popup -->
+  <!-- Palmy popup -->
   <Teleport to="body">
     <div
       v-if="hoveredTeamId !== null && selectedId === 'palmy'"
       class="fixed z-50 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl text-xs overflow-hidden"
       :style="popupStyle"
-      @mouseenter="cancelHoverClear"
-      @mouseleave="scheduleHoverClear"
+      @click.stop
     >
       <!-- Header -->
       <div class="px-3 py-2.5 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60">
-        <div class="font-bold text-gray-800 dark:text-gray-100 text-sm mb-2">{{ hoveredTeamName }}</div>
+        <div class="flex items-center justify-between mb-2">
+          <span class="font-bold text-gray-800 dark:text-gray-100 text-sm">{{ hoveredTeamName }}</span>
+          <button
+            @click="closePopup"
+            class="ml-2 flex size-5 items-center justify-center rounded text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+            aria-label="Close"
+          >✕</button>
+        </div>
         <!-- Tabs -->
         <div class="flex gap-1">
           <button
@@ -313,7 +319,7 @@
     </div>
 
     <!-- Ranking table -->
-    <div v-if="activeView === 'table'" data-tour="rankings-table" class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+    <div ref="tableEl" v-if="activeView === 'table'" data-tour="rankings-table" class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
       <div v-if="isLoading" class="space-y-px p-1">
         <div v-for="n in 18" :key="n" class="h-9 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
       </div>
@@ -339,8 +345,7 @@
               'border-b-2 border-blue-400': i === 7,
               'border-b border-gray-100 dark:border-gray-800': i !== 7,
             }"
-            @mouseenter="selectedId === 'palmy' ? onRowEnter(row.teamId, $event) : undefined"
-            @mouseleave="selectedId === 'palmy' ? scheduleHoverClear() : undefined"
+            @click="selectedId === 'palmy' ? onRowClick(row.teamId, $event) : undefined"
           >
             <td class="py-2 text-center text-gray-500 dark:text-gray-500 text-xs">{{ row.rank }}</td>
             <td class="py-2 pl-3 font-medium text-gray-800 dark:text-gray-200">
@@ -489,7 +494,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAFLData, TEAMS } from '../composables/useAFLData'
 import { useAlgorithmRankings, ALGORITHMS, computeAlgorithmRanking } from '../composables/useAlgorithmRankings'
 import type { AlgorithmId, AlgorithmRankRow } from '../composables/useAlgorithmRankings'
@@ -617,17 +622,22 @@ function buildWormPath(pts: WormPoint[]): string {
   return d
 }
 
-// --- Palmy hover popup ---
+// --- Palmy click popup ---
 
 const POPUP_TABS = [
   { id: 'own' as const, label: 'Opponent Ladder' },
   { id: 'positions' as const, label: 'League Positions' },
 ]
 
+const tableEl = ref<HTMLElement | null>(null)
 const hoveredTeamId = ref<number | null>(null)
 const popupTab = ref<'own' | 'positions'>('own')
 const popupStyle = ref<Record<string, string>>({})
-let hoverClearTimer: ReturnType<typeof setTimeout> | null = null
+
+function closePopup() { hoveredTeamId.value = null }
+
+onMounted(() => document.addEventListener('click', closePopup))
+onUnmounted(() => document.removeEventListener('click', closePopup))
 
 const teamInfoMap = computed(() => {
   const map = new Map<number, { teamName: string; iconId: string }>()
@@ -691,35 +701,31 @@ function positionClass(rank: number, size: number): string {
   return 'text-red-500 dark:text-red-400'
 }
 
-function onRowEnter(teamId: number, event: MouseEvent) {
-  if (hoverClearTimer) { clearTimeout(hoverClearTimer); hoverClearTimer = null }
+function onRowClick(teamId: number, event: MouseEvent) {
+  event.stopPropagation()
   if (hoveredTeamId.value !== teamId) popupTab.value = 'own'
   hoveredTeamId.value = teamId
   positionPopup(event.currentTarget as HTMLElement)
 }
 
-function scheduleHoverClear() {
-  hoverClearTimer = setTimeout(() => { hoveredTeamId.value = null }, 150)
-}
-
-function cancelHoverClear() {
-  if (hoverClearTimer) { clearTimeout(hoverClearTimer); hoverClearTimer = null }
-}
-
 function positionPopup(row: HTMLElement) {
-  const rect = row.getBoundingClientRect()
+  const rowRect = row.getBoundingClientRect()
   const vw = window.innerWidth
   const vh = window.innerHeight
   const POPUP_W = 310
   const POPUP_H = 500
 
-  let left = rect.right + 8
-  if (left + POPUP_W > vw - 8) left = rect.left - POPUP_W - 8
+  // Center horizontally on the table
+  const tableRect = tableEl.value?.getBoundingClientRect()
+  let left = tableRect
+    ? tableRect.left + tableRect.width / 2 - POPUP_W / 2
+    : rowRect.left + rowRect.width / 2 - POPUP_W / 2
   left = Math.max(8, Math.min(left, vw - POPUP_W - 8))
 
-  let top = rect.top
-  if (top + POPUP_H > vh - 8) top = vh - POPUP_H - 8
-  top = Math.max(8, top)
+  // Show below the hovered row; flip above if not enough room
+  let top = rowRect.bottom + 8
+  if (top + POPUP_H > vh - 8) top = rowRect.top - POPUP_H - 8
+  top = Math.max(8, Math.min(top, vh - POPUP_H - 8))
 
   popupStyle.value = { left: `${left}px`, top: `${top}px`, width: `${POPUP_W}px` }
 }
