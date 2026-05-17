@@ -342,8 +342,9 @@
             :key="row.teamId"
             class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
             :class="{
-              'border-b-2 border-blue-400': i === 7,
-              'border-b border-gray-100 dark:border-gray-800': i !== 7,
+              'border-b-2 border-orange-400': i === 5,
+              'border-b-2 border-blue-400': i === 9,
+              'border-b border-gray-100 dark:border-gray-800': i !== 5 && i !== 9,
             }"
             @click="selectedId === 'palmy' ? onRowClick(row.teamId, $event) : undefined"
           >
@@ -395,20 +396,20 @@
         style="overflow: visible"
         aria-label="Algorithm rankings worm chart"
       >
-        <!-- Top 4 reference line -->
+        <!-- Top 6 reference line (finals qualified) -->
         <line
-          :x1="CHART.x0" :y1="yRef4" :x2="CHART.x1" :y2="yRef4"
-          stroke="rgba(239,68,68,0.3)" stroke-width="1" stroke-dasharray="4,3"
+          :x1="CHART.x0" :y1="yRef6" :x2="CHART.x1" :y2="yRef6"
+          stroke="rgba(251,146,60,0.3)" stroke-width="1" stroke-dasharray="4,3"
         />
-        <!-- Top 8 reference line -->
+        <!-- Top 10 reference line (wildcard cut-off) -->
         <line
-          :x1="CHART.x0" :y1="yRef8" :x2="CHART.x1" :y2="yRef8"
+          :x1="CHART.x0" :y1="yRef10" :x2="CHART.x1" :y2="yRef10"
           stroke="rgba(59,130,246,0.3)" stroke-width="1" stroke-dasharray="4,3"
         />
 
         <!-- Y-axis position labels -->
         <text
-          v-for="pos in [1, 4, 5, 8, 9, 14, 18]"
+          v-for="pos in [1, 6, 7, 10, 11, 14, 18]"
           :key="pos"
           :x="CHART.x0 - 4"
           :y="yScale(pos) + 3.5"
@@ -484,8 +485,12 @@
     <!-- Legend -->
     <div class="mt-3 flex items-center gap-4 text-xs text-gray-400 dark:text-gray-500 flex-wrap">
       <span class="flex items-center gap-1.5">
+        <span class="inline-block w-4 border-b-2 border-orange-400"></span>
+        Top 6 (finals qualified)
+      </span>
+      <span class="flex items-center gap-1.5">
         <span class="inline-block w-4 border-b-2 border-blue-400"></span>
-        Finals cut-off (top 8)
+        Top 10 (wildcard)
       </span>
       <span v-if="activeView === 'table'">vs AFL = difference from the official points-based ladder position</span>
       <span v-if="selectedId === 'palmy' && activeView === 'table'">Hover a team to see their Palmy data</span>
@@ -564,8 +569,8 @@ function yScale(pos: number): number {
   return CHART.y0 + ((pos - 1) * (CHART.y1 - CHART.y0)) / 17
 }
 
-const yRef4 = yScale(4.5)
-const yRef8 = yScale(8.5)
+const yRef6  = yScale(6.5)
+const yRef10 = yScale(10.5)
 
 function xScale(idx: number): number {
   const n = concludedRounds.value.length
