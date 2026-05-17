@@ -346,7 +346,8 @@ const rows = computed<SeasonRow[]>(() => {
       iconId,
     }
     for (const key of STAT_COLUMN_KEYS) {
-      row[key] = stats[key] ?? 0
+      const isPercentage = (STAT_LABELS[key] ?? '').includes('%')
+      row[key] = (isPercentage ? player.averages : stats)[key] ?? 0
     }
     row['gamesPlayed'] = player.gamesPlayed
     return row
