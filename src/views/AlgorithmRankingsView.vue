@@ -142,6 +142,176 @@
       </div>
     </div>
 
+    <!-- Nerd stuff (collapsible) -->
+    <div class="mb-5">
+      <button
+        @click="showNerdStuff = !showNerdStuff"
+        class="flex items-center gap-1.5 text-xs font-semibold text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 transition-colors select-none"
+      >
+        <svg class="size-2.5 transition-transform duration-150" :class="showNerdStuff ? 'rotate-90' : ''" viewBox="0 0 10 10" fill="currentColor">
+          <path d="M2 1.5l6 3.5-6 3.5V1.5z"/>
+        </svg>
+        Nerd stuff
+      </button>
+
+      <div
+        v-if="showNerdStuff"
+        class="mt-2 rounded-lg border border-gray-800 overflow-hidden text-xs"
+        style="background:#0d1117; color:#c9d1d9; font-family:ui-monospace,'Cascadia Code','Source Code Pro',monospace"
+      >
+        <!-- Win% -->
+        <div v-if="selectedId === 'winpct'" class="p-5 space-y-4">
+          <div class="text-center">
+            <svg viewBox="0 0 290 76" class="w-56 mx-auto">
+              <text x="30" y="44" fill="#8b949e" font-size="12" font-family="inherit">Win% =</text>
+              <text x="162" y="28" text-anchor="middle" fill="#79c0ff" font-size="13" font-family="inherit">W + 0.5 × D</text>
+              <line x1="106" y1="36" x2="218" y2="36" stroke="#30363d" stroke-width="1.5"/>
+              <text x="162" y="56" text-anchor="middle" fill="#79c0ff" font-size="13" font-family="inherit">GP</text>
+              <text x="230" y="44" fill="#8b949e" font-size="11" font-family="inherit">× 100</text>
+            </svg>
+          </div>
+          <div class="rounded-md px-4 py-3 space-y-1.5" style="background:#161b22">
+            <div><span style="color:#79c0ff">W</span> = wins &nbsp;·&nbsp; <span style="color:#79c0ff">D</span> = draws &nbsp;·&nbsp; <span style="color:#79c0ff">GP</span> = games played</div>
+            <div class="pt-1"><span style="color:#8b949e">e.g.</span> <span style="color:#56d364">10W 4L 2D</span> (16 games) → <span style="color:#79c0ff">(10 + 1) / 16 = 68.75</span></div>
+            <div style="color:#8b949e">Ignores who you beat or by how much — only count matters.</div>
+          </div>
+        </div>
+
+        <!-- SRS -->
+        <div v-else-if="selectedId === 'srs'" class="p-5 space-y-4">
+          <div class="rounded-md px-4 py-3 space-y-2" style="background:#161b22">
+            <div><span style="color:#ff7b72">init:</span>   r[t] = <span style="color:#79c0ff">avgMargin[t]</span></div>
+            <div><span style="color:#ff7b72">loop:</span>   r[t] = <span style="color:#79c0ff">avgMargin[t]</span> + mean( r[opp] )</div>
+            <div class="pt-1" style="color:#8b949e">↺  repeat until max|Δr| &lt; 0.0001  (~1000 iterations max)</div>
+          </div>
+          <div class="rounded-md px-4 py-3 space-y-1.5" style="background:#161b22">
+            <div style="color:#8b949e">Convergence example (3 teams, simplified):</div>
+            <div class="pt-1 grid gap-y-1" style="grid-template-columns:5ch 1fr">
+              <span style="color:#8b949e">step 0</span><span>A=+15 &nbsp; B=−5 &nbsp; C=+0</span>
+              <span style="color:#8b949e">step 1</span><span>A=+20 &nbsp; B=−8 &nbsp; C=+3 &nbsp;<span style="color:#8b949e">(opps updated)</span></span>
+              <span style="color:#8b949e">step n</span><span style="color:#56d364">converged ✓</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Colley Matrix -->
+        <div v-else-if="selectedId === 'colley'" class="p-5 space-y-4">
+          <div style="color:#8b949e">Builds 18 equations (one per team) and solves them simultaneously:</div>
+          <div class="rounded-md px-4 py-3 space-y-1.5" style="background:#161b22">
+            <div class="text-center text-base py-1" style="color:#c9d1d9;letter-spacing:0.1em">C · r = b</div>
+          </div>
+          <div class="rounded-md px-4 py-3 space-y-1.5" style="background:#161b22">
+            <div>C<span style="color:#8b949e">_ii</span>  =  2 + <span style="color:#79c0ff">games_played(i)</span>  &nbsp;<span style="color:#8b949e">(diagonal)</span></div>
+            <div>C<span style="color:#8b949e">_ij</span>  =  −<span style="color:#f97583">matchups(i, j)</span>  &nbsp;<span style="color:#8b949e">(off-diagonal)</span></div>
+            <div>b<span style="color:#8b949e">_i</span>&nbsp;&nbsp;  =  1 + ( <span style="color:#56d364">W_i</span> − <span style="color:#f97583">L_i</span> ) / 2</div>
+          </div>
+          <div class="rounded-md px-4 py-3" style="background:#161b22;color:#8b949e">
+            Solved with Gaussian elimination. Uses only wins/losses — margins don't matter. Every result cascades through all 18 equations.
+          </div>
+        </div>
+
+        <!-- Massey -->
+        <div v-else-if="selectedId === 'massey'" class="p-5 space-y-4">
+          <div style="color:#8b949e">For each game, the rating difference should equal the score margin:</div>
+          <div class="rounded-md px-4 py-3 space-y-2" style="background:#161b22">
+            <div>r[<span style="color:#79c0ff">home</span>] − r[<span style="color:#f97583">away</span>] ≈ score[<span style="color:#79c0ff">home</span>] − score[<span style="color:#f97583">away</span>]</div>
+            <div class="pt-1" style="color:#8b949e">More games than unknowns → overdetermined → least squares:</div>
+            <div class="pt-1">min&nbsp; Σ <span style="color:#e6c07b">( r_i − r_j − margin_ij )²</span></div>
+          </div>
+          <div class="rounded-md px-4 py-3 space-y-1.5" style="background:#161b22">
+            <div style="color:#8b949e">Normal equations:&nbsp;<span style="color:#c9d1d9">MᵀM · r = Mᵀ · p</span></div>
+            <div class="pt-1">A win by 80 carries far more weight than a win by 1.</div>
+          </div>
+        </div>
+
+        <!-- Win Flow -->
+        <div v-else-if="selectedId === 'winflow'" class="p-5 space-y-4">
+          <div class="flex gap-5 items-start flex-wrap">
+            <!-- Directed graph -->
+            <svg viewBox="0 0 160 140" class="w-40 shrink-0 rounded-md" style="background:#161b22">
+              <defs>
+                <marker id="nerd-arr" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                  <path d="M0,0.5 L0,5.5 L5.5,3 z" fill="#56d364"/>
+                </marker>
+              </defs>
+              <!-- Nodes -->
+              <circle cx="80" cy="22" r="14" fill="#0d1117" stroke="#79c0ff" stroke-width="1.5"/>
+              <text x="80" y="27" text-anchor="middle" font-size="11" fill="#79c0ff" font-family="inherit" font-weight="bold">A</text>
+              <text x="80" y="12" text-anchor="middle" font-size="7.5" fill="#56d364" font-family="inherit">0.38</text>
+
+              <circle cx="138" cy="80" r="14" fill="#0d1117" stroke="#c9d1d9" stroke-width="1"/>
+              <text x="138" y="85" text-anchor="middle" font-size="11" fill="#c9d1d9" font-family="inherit">B</text>
+              <text x="153" y="73" font-size="7.5" fill="#c9d1d9" font-family="inherit">0.27</text>
+
+              <circle cx="80" cy="124" r="14" fill="#0d1117" stroke="#c9d1d9" stroke-width="1"/>
+              <text x="80" y="129" text-anchor="middle" font-size="11" fill="#c9d1d9" font-family="inherit">C</text>
+              <text x="80" y="115" text-anchor="middle" font-size="7.5" fill="#f97583" font-family="inherit">0.11</text>
+
+              <circle cx="22" cy="80" r="14" fill="#0d1117" stroke="#c9d1d9" stroke-width="1"/>
+              <text x="22" y="85" text-anchor="middle" font-size="11" fill="#c9d1d9" font-family="inherit">D</text>
+              <text x="4" y="73" font-size="7.5" fill="#c9d1d9" font-family="inherit">0.24</text>
+
+              <!-- Arrows: A beats B, B beats C, D beats B, C beats D, A beats C -->
+              <line x1="92" y1="31" x2="127" y2="68" stroke="#56d364" stroke-width="1.5" marker-end="url(#nerd-arr)"/>
+              <line x1="127" y1="91" x2="92" y2="113" stroke="#56d364" stroke-width="1.5" marker-end="url(#nerd-arr)"/>
+              <line x1="35"  y1="70" x2="125" y2="69" stroke="#56d364" stroke-width="1"   marker-end="url(#nerd-arr)"/>
+              <line x1="69"  y1="114" x2="34" y2="92" stroke="#56d364" stroke-width="1.5" marker-end="url(#nerd-arr)"/>
+              <line x1="80"  y1="36" x2="80" y2="110" stroke="#56d364" stroke-width="1" stroke-dasharray="3,2" marker-end="url(#nerd-arr)"/>
+            </svg>
+
+            <div class="flex-1 min-w-0 space-y-3">
+              <div class="rounded-md px-3 py-2.5 space-y-2" style="background:#161b22">
+                <div style="color:#8b949e">Each loss donates rating to the winner:</div>
+                <div class="pt-1 leading-5">r(T) = <span style="color:#e6c07b">(1−d)/N</span> + d × Σ <span style="color:#79c0ff">w(T,X)/GP(X)</span> × r(X)</div>
+              </div>
+              <div class="rounded-md px-3 py-2.5 space-y-1" style="background:#161b22">
+                <div><span style="color:#e6c07b">d</span> = 0.85 &nbsp;(damping factor)</div>
+                <div><span style="color:#e6c07b">N</span> = 18 teams</div>
+                <div class="pt-1" style="color:#8b949e">Beating a team everyone else also beats is worth less than beating someone who wins elsewhere.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Palmy -->
+        <div v-else class="p-5 space-y-4">
+          <div style="color:#8b949e">Build a ranked opponent ladder for each team, then average Team Y's fractional position across every ladder they appear in:</div>
+          <div class="flex gap-3 flex-wrap">
+            <!-- Ladder X -->
+            <div class="flex-1 min-w-[140px] rounded-md px-3 py-2.5" style="background:#161b22">
+              <div style="color:#8b949e" class="mb-2">Team X's ladder</div>
+              <div class="space-y-1">
+                <div class="flex gap-2"><span style="color:#8b949e">1.</span><span>Carlton</span><span style="color:#f97583" class="ml-auto">+45</span></div>
+                <div class="flex gap-2" style="color:#79c0ff"><span style="color:#8b949e">2.</span><span>Team Y ●</span><span style="color:#f97583" class="ml-auto">+12</span></div>
+                <div class="flex gap-2"><span style="color:#8b949e">3.</span><span>Geelong</span><span style="color:#56d364" class="ml-auto">−8</span></div>
+                <div class="flex gap-2"><span style="color:#8b949e">4.</span><span>Hawks</span><span style="color:#56d364" class="ml-auto">−22</span></div>
+              </div>
+              <div class="mt-2 pt-2 border-t text-right" style="border-color:#30363d;color:#8b949e">
+                Y = <span style="color:#79c0ff">2</span>/4 = <span style="color:#79c0ff">0.500</span>
+              </div>
+            </div>
+            <!-- Ladder Z -->
+            <div class="flex-1 min-w-[140px] rounded-md px-3 py-2.5" style="background:#161b22">
+              <div style="color:#8b949e" class="mb-2">Team Z's ladder</div>
+              <div class="space-y-1">
+                <div class="flex gap-2" style="color:#79c0ff"><span style="color:#8b949e">1.</span><span>Team Y ●</span><span style="color:#f97583" class="ml-auto">+30</span></div>
+                <div class="flex gap-2"><span style="color:#8b949e">2.</span><span>Port</span><span style="color:#56d364" class="ml-auto">−15</span></div>
+                <div class="flex gap-2"><span style="color:#8b949e">3.</span><span>Sydney</span><span style="color:#56d364" class="ml-auto">−22</span></div>
+              </div>
+              <div class="mt-2 pt-2 border-t text-right" style="border-color:#30363d;color:#8b949e">
+                Y = <span style="color:#79c0ff">1</span>/3 = <span style="color:#79c0ff">0.333</span>
+              </div>
+            </div>
+          </div>
+          <div class="rounded-md px-4 py-3 space-y-1.5" style="background:#161b22">
+            <div>avg fraction = (0.500 + 0.333) / 2 = <span style="color:#e6c07b">0.417</span></div>
+            <div>Score(Y) = (1 − <span style="color:#e6c07b">0.417</span>) × 100 = <span style="color:#56d364">58.3</span></div>
+            <div class="pt-1" style="color:#8b949e">Lower avg fraction → opponents rated you highly → higher score. Fractional rank (not raw) keeps smaller ladders fair.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Ranking table -->
     <div v-if="activeView === 'table'" data-tour="rankings-table" class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
       <div v-if="isLoading" class="space-y-px p-1">
@@ -331,6 +501,7 @@ const { winPctRanking, srsRanking, colleyRanking, masseyRanking, winFlowRanking,
 
 const selectedId = ref<AlgorithmId>('srs')
 const activeView = ref<'table' | 'graph'>('table')
+const showNerdStuff = ref(false)
 const selectedAlgo = computed(() => ALGORITHMS.find((a) => a.id === selectedId.value)!)
 
 const currentRanking = computed<AlgorithmRankRow[]>(() => {
