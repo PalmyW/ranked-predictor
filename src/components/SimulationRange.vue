@@ -15,7 +15,12 @@
 
     <!-- Rows -->
     <div class="space-y-1">
-      <div v-for="(entry, i) in sortedResults" :key="entry.teamId" class="flex items-center gap-2">
+      <div
+        v-for="(entry, i) in sortedResults"
+        :key="entry.teamId"
+        class="flex items-center gap-2 cursor-pointer rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        @click="selectedEntry = entry"
+      >
         <!-- Team abbreviation -->
         <div class="w-8 text-xs text-right font-bold text-gray-600 dark:text-gray-300 shrink-0 tabular-nums">
           {{ entry.abbreviation }}
@@ -57,10 +62,59 @@
       <div class="w-5 shrink-0"></div>
     </div>
   </div>
+
+  <!-- Popup overlay -->
+  <Teleport to="body">
+    <div
+      v-if="selectedEntry"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      @click.self="selectedEntry = null"
+    >
+      <div class="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-5 w-72 max-w-[90vw]">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <svg class="size-7 shrink-0"><use :href="`/ranked-predictor/icons.svg#${selectedEntry.iconId}`" /></svg>
+            <h4 class="font-bold text-gray-800 dark:text-gray-100 text-base">{{ selectedEntry.teamName }}</h4>
+          </div>
+          <button
+            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xl leading-none"
+            @click="selectedEntry = null"
+          >&times;</button>
+        </div>
+
+        <!-- Milestone rows -->
+        <div class="space-y-2">
+          <div
+            v-for="m in milestones(selectedEntry)"
+            :key="m.label"
+            class="flex items-center justify-between"
+          >
+            <span class="text-sm text-gray-600 dark:text-gray-400">{{ m.label }}</span>
+            <div class="flex items-center gap-2">
+              <div class="w-24 h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                <div
+                  class="h-2 rounded-full"
+                  :style="{ width: `${m.pct}%`, background: m.color }"
+                ></div>
+              </div>
+              <span class="text-sm font-bold tabular-nums w-12 text-right" :style="{ color: m.color }">
+                {{ m.pct.toFixed(1) }}%
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <p class="text-[10px] text-gray-400 dark:text-gray-500 mt-4 text-center">
+          Based on {{ total.toLocaleString() }} simulations
+        </p>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { RangeEntry } from '../composables/useSimulation'
 
 const props = defineProps<{
@@ -88,6 +142,30 @@ const POS_COLORS = [
   '#57534e', // 17
   '#292524', // 18 — near-black
 ]
+
+const selectedEntry = ref<RangeEntry | null>(null)
+
+function sumCounts(counts: number[], from: number, to: number): number {
+  return counts.slice(from, to).reduce((a, b) => a + b, 0)
+}
+
+function pct(counts: number[], from: number, to: number): number {
+  return (sumCounts(counts, from, to) / props.total) * 100
+}
+
+function milestones(entry: RangeEntry) {
+  const c = entry.counts
+  return [
+    { label: 'Minor Premier', pct: pct(c, 0, 1),   color: '#16a34a' },
+    { label: 'Top 2',    pct: pct(c, 0, 2),   color: '#22c55e' },
+    { label: 'Top 4',    pct: pct(c, 0, 4),   color: '#86efac' },
+    { label: 'Top 6',    pct: pct(c, 0, 6),   color: '#ca8a04' },
+    { label: 'Top 8',    pct: pct(c, 0, 8),   color: '#ea580c' },
+    { label: 'Top 10',   pct: pct(c, 0, 10),  color: '#fdba74' },
+    { label: 'Bottom 4', pct: pct(c, 14, 18), color: '#991b1b' },
+    { label: 'Last',     pct: pct(c, 17, 18), color: '#292524' },
+  ]
+}
 
 function medianPosition(entry: RangeEntry): number {
   const half = props.total / 2
