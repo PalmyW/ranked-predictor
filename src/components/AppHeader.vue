@@ -107,6 +107,6 @@ const TABS = [
   { path: '/', label: 'Predictor' },
   { path: '/stats', label: 'Match Stats' },
   { path: '/season-stats', label: 'Season Stats' },
-  { path: '/rankings', label: 'Rankings' },
+  { path: '/rankings', label: 'Over complicated Ladders' },
 ]
 </script>

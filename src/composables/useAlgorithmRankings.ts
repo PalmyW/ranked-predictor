@@ -2,51 +2,75 @@ import { computed } from 'vue'
 import type { AflMatch } from '../types/afl'
 import { TEAMS } from './useAFLData'
 
-export type AlgorithmId = 'winpct' | 'srs' | 'colley' | 'massey' | 'winflow' | 'palmy'
+export type AlgorithmId =
+  | 'winpct'
+  | 'srs'
+  | 'colley'
+  | 'massey'
+  | 'winflow'
+  | 'palmy'
 
 export interface AlgorithmInfo {
   id: AlgorithmId
   name: string
   description: string
   ratingLabel: string
+  creditName?: string
+  creditUrl?: string
 }
 
 export const ALGORITHMS: AlgorithmInfo[] = [
   {
     id: 'winpct',
     name: 'Win %',
-    description: 'Basic win percentage — wins divided by games played, with draws counting as half a win. Ignores who you beat or by how much.',
+    description:
+      'Basic win percentage — wins divided by games played, with draws counting as half a win. Ignores who you beat or by how much.',
     ratingLabel: 'Win%',
   },
   {
     id: 'srs',
     name: 'SRS',
-    description: 'Simple Rating System: your rating equals your average score margin plus your average opponent\'s rating. Iterated until convergence — beating good teams lifts you higher.',
+    description:
+      "Simple Rating System: your rating equals your average score margin plus your average opponent's rating. Iterated until convergence — beating good teams lifts you higher.",
     ratingLabel: 'Rating',
+    creditName: 'Pro Football Reference',
+    creditUrl: 'https://www.pro-football-reference.com/about/win_prob.htm',
   },
   {
     id: 'colley',
     name: 'Colley Matrix',
-    description: 'Solves 18 simultaneous equations encoding every head-to-head record. Uses only wins and losses (no margins), and every result cascades through the whole schedule.',
+    description:
+      'Solves 18 simultaneous equations encoding every head-to-head record. Uses only wins and losses (no margins), and every result cascades through the whole schedule.',
     ratingLabel: 'Rating',
+    creditName: 'Wesley Colley',
+    creditUrl: 'https://www.colleyrankings.com/',
   },
   {
     id: 'massey',
     name: 'Massey',
-    description: 'Least-squares system that finds ratings which best explain every score margin. A win by 80 counts more than a win by 1.',
+    description:
+      'Least-squares system that finds ratings which best explain every score margin. A win by 80 counts more than a win by 1.',
     ratingLabel: 'Rating',
+    creditName: 'Kenneth Massey',
+    creditUrl: 'https://www.masseyratings.com/',
   },
   {
     id: 'winflow',
     name: 'Win Flow',
-    description: 'PageRank-style: each loss distributes a team\'s rating to whoever beat them. Beating a team that everyone else also beats is worth less than beating a team that beats others.',
+    description:
+      "PageRank-style: each loss distributes a team's rating to whoever beat them. Beating a team that everyone else also beats is worth less than beating a team that beats others.",
     ratingLabel: 'Flow',
+    creditName: 'Brin & Page (PageRank)',
+    creditUrl:
+      'https://research.google/pubs/the-anatomy-of-a-large-scale-hypertextual-web-search-engine/',
   },
   {
     id: 'palmy',
     name: 'Palmy',
-    description: 'For each team, every opponent they\'ve faced is ranked by their margin in that specific match — biggest win at #1, biggest loss at last. Your Palmy rating is your average rank position across all opponent ladders you appear in. Hover a team to see their full opponent ladder.',
+    description:
+      'For each team, every opponent they’ve faced is ranked by the margin in that specific match—biggest win at #1, biggest loss at the bottom. Your Palmy rating is your average rank across all the opponent ladders you appear on. It doesn’t care whether you won or lost; it only measures how you performed compared with each opponent’s other games.',
     ratingLabel: 'Rank',
+    creditName: 'Original (PalmyW)',
   },
 ]
 
@@ -92,9 +116,19 @@ interface BasicStats {
   against: number
 }
 
-export function buildBasicStats(matches: readonly AflMatch[]): Record<number, BasicStats> {
+export function buildBasicStats(
+  matches: readonly AflMatch[],
+): Record<number, BasicStats> {
   const stats: Record<number, BasicStats> = {}
-  for (const t of TEAMS) stats[t.id] = { wins: 0, losses: 0, draws: 0, played: 0, for: 0, against: 0 }
+  for (const t of TEAMS)
+    stats[t.id] = {
+      wins: 0,
+      losses: 0,
+      draws: 0,
+      played: 0,
+      for: 0,
+      against: 0,
+    }
   for (const m of matches) {
     if (m.status !== 'CONCLUDED' || !m.homeScore || !m.awayScore) continue
     const hs = m.homeScore.totalScore
@@ -102,22 +136,38 @@ export function buildBasicStats(matches: readonly AflMatch[]): Record<number, Ba
     const hId = m.homeTeamId
     const aId = m.awayTeamId
     if (!stats[hId] || !stats[aId]) continue
-    stats[hId].for += hs; stats[hId].against += as_; stats[hId].played++
-    stats[aId].for += as_; stats[aId].against += hs; stats[aId].played++
-    if (hs > as_) { stats[hId].wins++; stats[aId].losses++ }
-    else if (as_ > hs) { stats[aId].wins++; stats[hId].losses++ }
-    else { stats[hId].draws++; stats[aId].draws++ }
+    stats[hId].for += hs
+    stats[hId].against += as_
+    stats[hId].played++
+    stats[aId].for += as_
+    stats[aId].against += hs
+    stats[aId].played++
+    if (hs > as_) {
+      stats[hId].wins++
+      stats[aId].losses++
+    } else if (as_ > hs) {
+      stats[aId].wins++
+      stats[hId].losses++
+    } else {
+      stats[hId].draws++
+      stats[aId].draws++
+    }
   }
   return stats
 }
 
-export function buildOfficialRankMap(stats: Record<number, BasicStats>): Map<number, number> {
+export function buildOfficialRankMap(
+  stats: Record<number, BasicStats>,
+): Map<number, number> {
   const sorted = TEAMS.map((t) => ({
     id: t.id,
     pts: (stats[t.id]?.wins ?? 0) * 4 + (stats[t.id]?.draws ?? 0) * 2,
-    pct: stats[t.id] && stats[t.id].against > 0
-      ? stats[t.id].for / stats[t.id].against
-      : (stats[t.id]?.for ?? 0) > 0 ? 999 : 1,
+    pct:
+      stats[t.id] && stats[t.id].against > 0
+        ? stats[t.id].for / stats[t.id].against
+        : (stats[t.id]?.for ?? 0) > 0
+          ? 999
+          : 1,
   })).sort((a, b) => b.pts - a.pts || b.pct - a.pct)
   const map = new Map<number, number>()
   sorted.forEach((t, i) => map.set(t.id, i + 1))
@@ -143,7 +193,9 @@ function toRows(
     officialRank: officialRankMap.get(t.id) ?? 0,
   }))
   rows.sort((a, b) => b.rating - a.rating)
-  rows.forEach((r, i) => { r.rank = i + 1 })
+  rows.forEach((r, i) => {
+    r.rank = i + 1
+  })
   return rows
 }
 
@@ -192,7 +244,10 @@ function runSRS(
 ): AlgorithmRankRow[] {
   const marginSum: Record<number, number> = {}
   const oppList: Record<number, number[]> = {}
-  for (const t of TEAMS) { marginSum[t.id] = 0; oppList[t.id] = [] }
+  for (const t of TEAMS) {
+    marginSum[t.id] = 0
+    oppList[t.id] = []
+  }
   for (const m of concluded) {
     if (!m.homeScore || !m.awayScore) continue
     const diff = m.homeScore.totalScore - m.awayScore.totalScore
@@ -211,8 +266,12 @@ function runSRS(
     let maxDiff = 0
     for (const t of TEAMS) {
       const gp = stats[t.id]?.played ?? 0
-      if (gp === 0) { next[t.id] = 0; continue }
-      const avgOpp = oppList[t.id].reduce((sum, oid) => sum + (ratings[oid] ?? 0), 0) / gp
+      if (gp === 0) {
+        next[t.id] = 0
+        continue
+      }
+      const avgOpp =
+        oppList[t.id].reduce((sum, oid) => sum + (ratings[oid] ?? 0), 0) / gp
       next[t.id] = marginSum[t.id] / gp + avgOpp
       maxDiff = Math.max(maxDiff, Math.abs(next[t.id] - ratings[t.id]))
     }
@@ -235,8 +294,10 @@ function runColley(
     const i = teamIndex[m.homeTeamId]
     const j = teamIndex[m.awayTeamId]
     if (i === undefined || j === undefined) continue
-    C[i][i]++; C[j][j]++
-    C[i][j]--; C[j][i]--
+    C[i][i]++
+    C[j][j]++
+    C[i][j]--
+    C[j][i]--
   }
   for (let i = 0; i < N; i++) {
     const ts = stats[teamIds[i]]
@@ -265,9 +326,12 @@ function runMassey(
     const j = teamIndex[m.awayTeamId]
     if (i === undefined || j === undefined) continue
     const margin = m.homeScore.totalScore - m.awayScore.totalScore
-    M[i][i]++; M[j][j]++
-    M[i][j]--; M[j][i]--
-    p[i] += margin; p[j] -= margin
+    M[i][i]++
+    M[j][j]++
+    M[i][j]--
+    M[j][i]--
+    p[i] += margin
+    p[j] -= margin
   }
   for (let j = 0; j < N; j++) M[N - 1][j] = 1
   p[N - 1] = 0
@@ -332,7 +396,10 @@ export function runPalmy(
   concluded: readonly AflMatch[],
   stats: Record<number, BasicStats>,
   officialRankMap: Map<number, number>,
-): { ranking: AlgorithmRankRow[]; opponentLadders: Record<number, PalmyLadderEntry[]> } {
+): {
+  ranking: AlgorithmRankRow[]
+  opponentLadders: Record<number, PalmyLadderEntry[]>
+} {
   const teamMap = Object.fromEntries(TEAMS.map((t) => [t.id, t]))
   const opponentLadders: Record<number, PalmyLadderEntry[]> = {}
   for (const t of TEAMS) opponentLadders[t.id] = []
@@ -347,20 +414,32 @@ export function runPalmy(
     const aTeam = teamMap[aId]
     if (!hTeam || !aTeam) continue
     opponentLadders[hId].push({
-      teamId: aId, teamName: aTeam.name, abbreviation: aTeam.abbreviation,
-      iconId: aTeam.iconId, differential: aScore - hScore, rank: 0,
-      roundNumber: m.roundNumber, roundName: m.roundName,
+      teamId: aId,
+      teamName: aTeam.name,
+      abbreviation: aTeam.abbreviation,
+      iconId: aTeam.iconId,
+      differential: aScore - hScore,
+      rank: 0,
+      roundNumber: m.roundNumber,
+      roundName: m.roundName,
     })
     opponentLadders[aId].push({
-      teamId: hId, teamName: hTeam.name, abbreviation: hTeam.abbreviation,
-      iconId: hTeam.iconId, differential: hScore - aScore, rank: 0,
-      roundNumber: m.roundNumber, roundName: m.roundName,
+      teamId: hId,
+      teamName: hTeam.name,
+      abbreviation: hTeam.abbreviation,
+      iconId: hTeam.iconId,
+      differential: hScore - aScore,
+      rank: 0,
+      roundNumber: m.roundNumber,
+      roundName: m.roundName,
     })
   }
 
   for (const t of TEAMS) {
     opponentLadders[t.id].sort((a, b) => b.differential - a.differential)
-    opponentLadders[t.id].forEach((entry, i) => { entry.rank = i + 1 })
+    opponentLadders[t.id].forEach((entry, i) => {
+      entry.rank = i + 1
+    })
   }
 
   const ratings: Record<number, number> = {}
@@ -370,12 +449,14 @@ export function runPalmy(
       if (teamX.id === teamY.id) continue
       const ladder = opponentLadders[teamX.id]
       for (const entry of ladder) {
-        if (entry.teamId === teamY.id) fractions.push(entry.rank / ladder.length)
+        if (entry.teamId === teamY.id)
+          fractions.push(entry.rank / ladder.length)
       }
     }
-    ratings[teamY.id] = fractions.length === 0
-      ? -999
-      : -(fractions.reduce((a, b) => a + b, 0) / fractions.length)
+    ratings[teamY.id] =
+      fractions.length === 0
+        ? -999
+        : -(fractions.reduce((a, b) => a + b, 0) / fractions.length)
   }
 
   return { ranking: toRows(ratings, stats, officialRankMap), opponentLadders }
@@ -388,16 +469,24 @@ export function computeAlgorithmRanking(
   id: AlgorithmId,
   matches: readonly AflMatch[],
 ): AlgorithmRankRow[] {
-  const concluded = matches.filter((m) => m.status === 'CONCLUDED' && m.homeScore && m.awayScore)
+  const concluded = matches.filter(
+    (m) => m.status === 'CONCLUDED' && m.homeScore && m.awayScore,
+  )
   const stats = buildBasicStats(matches)
   const officialRankMap = buildOfficialRankMap(stats)
   switch (id) {
-    case 'winpct':  return runWinPct(stats, officialRankMap)
-    case 'srs':     return runSRS(concluded, stats, officialRankMap)
-    case 'colley':  return runColley(concluded, stats, officialRankMap)
-    case 'massey':  return runMassey(concluded, stats, officialRankMap)
-    case 'winflow': return runWinFlow(concluded, stats, officialRankMap)
-    case 'palmy':   return runPalmy(concluded, stats, officialRankMap).ranking
+    case 'winpct':
+      return runWinPct(stats, officialRankMap)
+    case 'srs':
+      return runSRS(concluded, stats, officialRankMap)
+    case 'colley':
+      return runColley(concluded, stats, officialRankMap)
+    case 'massey':
+      return runMassey(concluded, stats, officialRankMap)
+    case 'winflow':
+      return runWinFlow(concluded, stats, officialRankMap)
+    case 'palmy':
+      return runPalmy(concluded, stats, officialRankMap).ranking
   }
 }
 
@@ -406,17 +495,31 @@ type MatchesRef = { readonly value: readonly AflMatch[] }
 export function useAlgorithmRankings(matchesRef: MatchesRef) {
   const basicStats = computed(() => buildBasicStats(matchesRef.value))
   const concluded = computed(() =>
-    matchesRef.value.filter((m) => m.status === 'CONCLUDED' && m.homeScore && m.awayScore),
+    matchesRef.value.filter(
+      (m) => m.status === 'CONCLUDED' && m.homeScore && m.awayScore,
+    ),
   )
   const officialRankMap = computed(() => buildOfficialRankMap(basicStats.value))
 
-  const winPctRanking = computed(() => runWinPct(basicStats.value, officialRankMap.value))
-  const srsRanking    = computed(() => runSRS(concluded.value, basicStats.value, officialRankMap.value))
-  const colleyRanking = computed(() => runColley(concluded.value, basicStats.value, officialRankMap.value))
-  const masseyRanking = computed(() => runMassey(concluded.value, basicStats.value, officialRankMap.value))
-  const winFlowRanking = computed(() => runWinFlow(concluded.value, basicStats.value, officialRankMap.value))
+  const winPctRanking = computed(() =>
+    runWinPct(basicStats.value, officialRankMap.value),
+  )
+  const srsRanking = computed(() =>
+    runSRS(concluded.value, basicStats.value, officialRankMap.value),
+  )
+  const colleyRanking = computed(() =>
+    runColley(concluded.value, basicStats.value, officialRankMap.value),
+  )
+  const masseyRanking = computed(() =>
+    runMassey(concluded.value, basicStats.value, officialRankMap.value),
+  )
+  const winFlowRanking = computed(() =>
+    runWinFlow(concluded.value, basicStats.value, officialRankMap.value),
+  )
 
-  const palmyData = computed(() => runPalmy(concluded.value, basicStats.value, officialRankMap.value))
+  const palmyData = computed(() =>
+    runPalmy(concluded.value, basicStats.value, officialRankMap.value),
+  )
   const palmyRanking = computed(() => palmyData.value.ranking)
   const palmyOpponentLadders = computed(() => palmyData.value.opponentLadders)
 
