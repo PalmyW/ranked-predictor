@@ -27,7 +27,7 @@
             :class="popupTab === tab.id
               ? 'bg-blue-600 text-white'
               : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'"
-          >{{ tab.label }}</button>
+          >{{ tab.id === 'own' ? `${hoveredTeamName}'s Ladder` : `Ladders ${hoveredTeamName} are in` }}</button>
         </div>
       </div>
 
