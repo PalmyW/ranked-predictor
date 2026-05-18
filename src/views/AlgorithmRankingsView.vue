@@ -512,7 +512,6 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAFLData, TEAMS } from '../composables/useAFLData'
-import type { AflMatch } from '../types/afl'
 import { useAlgorithmRankings, ALGORITHMS, computeAlgorithmRanking } from '../composables/useAlgorithmRankings'
 import type { AlgorithmId, AlgorithmRankRow } from '../composables/useAlgorithmRankings'
 
