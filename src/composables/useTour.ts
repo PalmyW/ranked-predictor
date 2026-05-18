@@ -152,15 +152,15 @@ const STEPS: TourStep[] = [
   },
   {
     id: 'rankings-nav',
-    title: 'Algorithm Rankings',
-    description: 'The Rankings page ranks all 18 teams using statistical methods that account for uneven schedules — something a simple ladder can\'t do.',
+    title: 'Over complicated Ladders',
+    description: 'The Over complicated Ladders page ranks all 18 teams using statistical methods that account for uneven schedules — something a simple ladder can\'t do.',
     target: '[data-tour="rankings-nav"]',
     route: '/season-stats',
   },
   {
     id: 'rankings-algo-selector',
     title: 'Switch Algorithms',
-    description: 'Pick from five different ranking methods: Win %, SRS, Colley Matrix, Massey, and Win Flow. Each uses a different mathematical approach to weigh results.',
+    description: 'Pick from six different ranking methods: Win %, SRS, Colley Matrix, Massey, Win Flow, and Palmy. Each uses a different mathematical approach to weigh results.',
     target: '[data-tour="rankings-algo-selector"]',
     route: '/rankings',
   },
