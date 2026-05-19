@@ -1,5 +1,165 @@
 <template>
   <!-- Palmy popup -->
+  <!-- XPalmy popup -->
+  <Teleport to="body">
+    <div
+      v-if="xpalmyHoveredId !== null && selectedId === 'xpalmy'"
+      class="fixed z-50 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl text-xs overflow-hidden"
+      :style="xpalmyPopupStyle"
+      @click.stop
+    >
+      <!-- Header -->
+      <div class="px-3 py-2.5 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60">
+        <div class="flex items-center justify-between mb-2">
+          <span class="font-bold text-gray-800 dark:text-gray-100 text-sm">{{ xpalmyHoveredName }}</span>
+          <button
+            @click="xpalmyHoveredId = null"
+            class="ml-2 flex size-5 items-center justify-center rounded text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+            aria-label="Close"
+          >✕</button>
+        </div>
+        <!-- Two rows of tabs: X row then Y row -->
+        <div class="flex gap-1 mb-1">
+          <button
+            @click="xpalmyPopupTab = 'x-own'"
+            class="px-2 py-1 rounded-md font-semibold transition-colors text-orange-600 dark:text-orange-400"
+            :class="xpalmyPopupTab === 'x-own' ? 'bg-orange-500 !text-white' : 'hover:bg-gray-200 dark:hover:bg-gray-700'"
+          >X — My Ladder</button>
+          <button
+            @click="xpalmyPopupTab = 'x-pos'"
+            class="px-2 py-1 rounded-md font-semibold transition-colors text-orange-600 dark:text-orange-400"
+            :class="xpalmyPopupTab === 'x-pos' ? 'bg-orange-500 !text-white' : 'hover:bg-gray-200 dark:hover:bg-gray-700'"
+          >X — In others</button>
+        </div>
+        <div class="flex gap-1">
+          <button
+            @click="xpalmyPopupTab = 'y-own'"
+            class="px-2 py-1 rounded-md font-semibold transition-colors text-blue-600 dark:text-blue-400"
+            :class="xpalmyPopupTab === 'y-own' ? 'bg-blue-600 !text-white' : 'hover:bg-gray-200 dark:hover:bg-gray-700'"
+          >Y — My Ladder</button>
+          <button
+            @click="xpalmyPopupTab = 'y-pos'"
+            class="px-2 py-1 rounded-md font-semibold transition-colors text-blue-600 dark:text-blue-400"
+            :class="xpalmyPopupTab === 'y-pos' ? 'bg-blue-600 !text-white' : 'hover:bg-gray-200 dark:hover:bg-gray-700'"
+          >Y — In others</button>
+        </div>
+      </div>
+
+      <!-- X — My Ladder: opponents sorted by what they scored against this team (most → least) -->
+      <template v-if="xpalmyPopupTab === 'x-own'">
+        <div class="px-3 py-1.5 text-gray-400 dark:text-gray-500 border-b border-gray-50 dark:border-gray-800">
+          Opponents ranked by their score vs {{ xpalmyHoveredName }} — most first
+        </div>
+        <div class="overflow-y-auto" style="max-height: 340px">
+          <div v-if="xpalmyHoveredXLadder.length === 0" class="px-3 py-4 text-gray-400 text-center">No concluded matches</div>
+          <div
+            v-for="entry in xpalmyHoveredXLadder"
+            :key="`x-${entry.teamId}-${entry.roundNumber}`"
+            class="flex items-center gap-2 px-3 py-1.5 border-b border-gray-50 dark:border-gray-800/60 last:border-0"
+          >
+            <span class="w-5 text-right text-gray-400 dark:text-gray-500 shrink-0 tabular-nums">{{ entry.rank }}</span>
+            <svg class="size-5 shrink-0"><use :href="`${BASE_URL}icons.svg#${entry.iconId}`" /></svg>
+            <span class="flex-1 text-gray-800 dark:text-gray-100 font-medium truncate">{{ entry.teamName }}</span>
+            <span class="shrink-0 tabular-nums font-semibold w-10 text-right text-orange-500 dark:text-orange-400">{{ entry.oppScore }}</span>
+            <span class="shrink-0 text-gray-400 dark:text-gray-500 w-7 text-right">R{{ entry.roundNumber }}</span>
+          </div>
+        </div>
+        <div class="px-3 py-1.5 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/40 text-gray-400 dark:text-gray-500">
+          Score = what that opponent scored against {{ xpalmyHoveredName }}
+        </div>
+      </template>
+
+      <!-- X — In others: where this team appears in every other team's X-ladder -->
+      <template v-else-if="xpalmyPopupTab === 'x-pos'">
+        <div class="px-3 py-1.5 border-b border-gray-50 dark:border-gray-800 text-gray-400 dark:text-gray-500">
+          <span v-if="xpalmyHoveredXPositions.length > 0">
+            Attack avg:
+            <span class="font-bold text-gray-700 dark:text-gray-200">{{ xpalmyHoveredXAvg }}</span>
+            across {{ xpalmyHoveredXPositions.length }} ladder{{ xpalmyHoveredXPositions.length === 1 ? '' : 's' }}
+          </span>
+          <span v-else>No appearances yet</span>
+        </div>
+        <div class="overflow-y-auto" style="max-height: 340px">
+          <div v-if="xpalmyHoveredXPositions.length === 0" class="px-3 py-4 text-gray-400 text-center">No concluded matches</div>
+          <div
+            v-for="(pos, i) in xpalmyHoveredXPositions"
+            :key="i"
+            class="flex items-center gap-2 px-3 py-1.5 border-b border-gray-50 dark:border-gray-800/60 last:border-0"
+          >
+            <span
+              class="w-12 text-right tabular-nums font-bold shrink-0"
+              :class="positionClass(pos.rank, pos.ladderSize)"
+            >#{{ pos.rank }}<span class="font-normal text-gray-300 dark:text-gray-600">/{{ pos.ladderSize }}</span></span>
+            <svg class="size-5 shrink-0"><use :href="`${BASE_URL}icons.svg#${pos.ownerIconId}`" /></svg>
+            <span class="flex-1 text-gray-800 dark:text-gray-100 font-medium truncate">{{ pos.ownerName }}</span>
+            <span class="shrink-0 tabular-nums font-semibold w-10 text-right text-orange-500 dark:text-orange-400">{{ pos.score }}</span>
+            <span class="shrink-0 text-gray-400 dark:text-gray-500 w-7 text-right">R{{ pos.roundNumber }}</span>
+          </div>
+        </div>
+        <div class="px-3 py-1.5 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/40 text-gray-400 dark:text-gray-500">
+          #rank/size in that team's X-ladder &nbsp;·&nbsp; score = what {{ xpalmyHoveredName }} scored against them
+        </div>
+      </template>
+
+      <!-- Y — My Ladder: opponents sorted by what this team scored against them (least → most) -->
+      <template v-else-if="xpalmyPopupTab === 'y-own'">
+        <div class="px-3 py-1.5 text-gray-400 dark:text-gray-500 border-b border-gray-50 dark:border-gray-800">
+          Opponents ranked by {{ xpalmyHoveredName }}'s score against them — least first
+        </div>
+        <div class="overflow-y-auto" style="max-height: 340px">
+          <div v-if="xpalmyHoveredYLadder.length === 0" class="px-3 py-4 text-gray-400 text-center">No concluded matches</div>
+          <div
+            v-for="entry in xpalmyHoveredYLadder"
+            :key="`y-${entry.teamId}-${entry.roundNumber}`"
+            class="flex items-center gap-2 px-3 py-1.5 border-b border-gray-50 dark:border-gray-800/60 last:border-0"
+          >
+            <span class="w-5 text-right text-gray-400 dark:text-gray-500 shrink-0 tabular-nums">{{ entry.rank }}</span>
+            <svg class="size-5 shrink-0"><use :href="`${BASE_URL}icons.svg#${entry.iconId}`" /></svg>
+            <span class="flex-1 text-gray-800 dark:text-gray-100 font-medium truncate">{{ entry.teamName }}</span>
+            <span class="shrink-0 tabular-nums font-semibold w-10 text-right text-blue-500 dark:text-blue-400">{{ entry.ownScore }}</span>
+            <span class="shrink-0 text-gray-400 dark:text-gray-500 w-7 text-right">R{{ entry.roundNumber }}</span>
+          </div>
+        </div>
+        <div class="px-3 py-1.5 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/40 text-gray-400 dark:text-gray-500">
+          Score = what {{ xpalmyHoveredName }} scored against that opponent
+        </div>
+      </template>
+
+      <!-- Y — In others: where this team appears in every other team's Y-ladder -->
+      <template v-else>
+        <div class="px-3 py-1.5 border-b border-gray-50 dark:border-gray-800 text-gray-400 dark:text-gray-500">
+          <span v-if="xpalmyHoveredYPositions.length > 0">
+            Defense avg:
+            <span class="font-bold text-gray-700 dark:text-gray-200">{{ xpalmyHoveredYAvg }}</span>
+            across {{ xpalmyHoveredYPositions.length }} ladder{{ xpalmyHoveredYPositions.length === 1 ? '' : 's' }}
+          </span>
+          <span v-else>No appearances yet</span>
+        </div>
+        <div class="overflow-y-auto" style="max-height: 340px">
+          <div v-if="xpalmyHoveredYPositions.length === 0" class="px-3 py-4 text-gray-400 text-center">No concluded matches</div>
+          <div
+            v-for="(pos, i) in xpalmyHoveredYPositions"
+            :key="i"
+            class="flex items-center gap-2 px-3 py-1.5 border-b border-gray-50 dark:border-gray-800/60 last:border-0"
+          >
+            <span
+              class="w-12 text-right tabular-nums font-bold shrink-0"
+              :class="positionClass(pos.rank, pos.ladderSize)"
+            >#{{ pos.rank }}<span class="font-normal text-gray-300 dark:text-gray-600">/{{ pos.ladderSize }}</span></span>
+            <svg class="size-5 shrink-0"><use :href="`${BASE_URL}icons.svg#${pos.ownerIconId}`" /></svg>
+            <span class="flex-1 text-gray-800 dark:text-gray-100 font-medium truncate">{{ pos.ownerName }}</span>
+            <span class="shrink-0 tabular-nums font-semibold w-10 text-right text-blue-500 dark:text-blue-400">{{ pos.score }}</span>
+            <span class="shrink-0 text-gray-400 dark:text-gray-500 w-7 text-right">R{{ pos.roundNumber }}</span>
+          </div>
+        </div>
+        <div class="px-3 py-1.5 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/40 text-gray-400 dark:text-gray-500">
+          #rank/size in that team's Y-ladder &nbsp;·&nbsp; score = what they scored against {{ xpalmyHoveredName }}
+        </div>
+      </template>
+    </div>
+  </Teleport>
+
+  <!-- Palmy popup -->
   <Teleport to="body">
     <div
       v-if="hoveredTeamId !== null && selectedId === 'palmy'"
@@ -139,22 +299,36 @@
           <span v-else>{{ selectedAlgo.creditName }}</span>
         </span>
       </div>
-      <!-- Table / Graph toggle -->
-      <div class="shrink-0 flex overflow-hidden rounded border border-gray-300 dark:border-gray-600 self-center">
+      <!-- Table / Graph toggle + download -->
+      <div class="shrink-0 flex items-center gap-2 self-center">
         <button
-          @click="activeView = 'table'"
-          class="px-3 py-1.5 text-xs font-semibold transition-colors"
-          :class="activeView === 'table'
-            ? 'bg-gray-800 dark:bg-gray-100 text-white dark:text-gray-900'
-            : 'bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'"
-        >Table</button>
-        <button
-          @click="activeView = 'graph'"
-          class="border-l border-gray-300 dark:border-gray-600 px-3 py-1.5 text-xs font-semibold transition-colors"
-          :class="activeView === 'graph'
-            ? 'bg-gray-800 dark:bg-gray-100 text-white dark:text-gray-900'
-            : 'bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'"
-        >Graph</button>
+          v-if="activeView === 'graph' && !graphCapturing"
+          @click="screenshotGraph"
+          title="Save as image"
+          class="rounded p-1.5 text-gray-500 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+        </button>
+        <div class="flex overflow-hidden rounded border border-gray-300 dark:border-gray-600">
+          <button
+            @click="activeView = 'table'"
+            class="px-3 py-1.5 text-xs font-semibold transition-colors"
+            :class="activeView === 'table'
+              ? 'bg-gray-800 dark:bg-gray-100 text-white dark:text-gray-900'
+              : 'bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'"
+          >Table</button>
+          <button
+            @click="activeView = 'graph'"
+            class="border-l border-gray-300 dark:border-gray-600 px-3 py-1.5 text-xs font-semibold transition-colors"
+            :class="activeView === 'graph'
+              ? 'bg-gray-800 dark:bg-gray-100 text-white dark:text-gray-900'
+              : 'bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'"
+          >Graph</button>
+        </div>
       </div>
     </div>
 
@@ -342,7 +516,11 @@
             <th class="w-8 py-2 text-center font-semibold hidden sm:table-cell">W</th>
             <th class="w-8 py-2 text-center font-semibold hidden sm:table-cell">L</th>
             <th class="w-8 py-2 text-center font-semibold hidden sm:table-cell">D</th>
-            <th class="w-20 py-2 text-center font-semibold">{{ selectedAlgo.ratingLabel }}</th>
+            <template v-if="selectedId === 'xpalmy'">
+              <th class="w-16 py-2 text-center font-semibold text-orange-500 dark:text-orange-400">Attack</th>
+              <th class="w-16 py-2 text-center font-semibold text-blue-500 dark:text-blue-400">Defense</th>
+            </template>
+            <th v-else class="w-20 py-2 text-center font-semibold">{{ selectedAlgo.ratingLabel }}</th>
             <th class="w-14 py-2 text-center font-semibold text-gray-400 dark:text-gray-500" title="vs official AFL ladder">vs AFL</th>
           </tr>
         </thead>
@@ -356,7 +534,8 @@
               'border-b-2 border-blue-400': i === 9,
               'border-b border-gray-100 dark:border-gray-800': i !== 5 && i !== 9,
             }"
-            @click="selectedId === 'palmy' ? onRowClick(row.teamId, $event) : undefined"
+            @click="selectedId === 'palmy' ? onRowClick(row.teamId, $event) : selectedId === 'xpalmy' ? onXpalmyRowClick(row.teamId, $event) : undefined"
+            :style="selectedId === 'xpalmy' ? 'cursor: pointer' : ''"
           >
             <td class="py-2 text-center text-gray-500 dark:text-gray-500 text-xs">{{ row.rank }}</td>
             <td class="py-2 pl-3 font-medium text-gray-800 dark:text-gray-200">
@@ -371,7 +550,11 @@
             <td class="py-2 text-center text-gray-600 dark:text-gray-400 hidden sm:table-cell">{{ row.wins }}</td>
             <td class="py-2 text-center text-gray-600 dark:text-gray-400 hidden sm:table-cell">{{ row.losses }}</td>
             <td class="py-2 text-center text-gray-600 dark:text-gray-400 hidden sm:table-cell">{{ row.draws }}</td>
-            <td class="py-2 text-center font-semibold tabular-nums text-gray-800 dark:text-gray-200 text-xs">
+            <template v-if="selectedId === 'xpalmy'">
+              <td class="py-2 text-center font-semibold tabular-nums text-orange-500 dark:text-orange-400 text-xs">{{ xpalmyAttack(row.teamId) }}</td>
+              <td class="py-2 text-center font-semibold tabular-nums text-blue-500 dark:text-blue-400 text-xs">{{ xpalmyDefense(row.teamId) }}</td>
+            </template>
+            <td v-else class="py-2 text-center font-semibold tabular-nums text-gray-800 dark:text-gray-200 text-xs">
               {{ formatRating(row.rating) }}
             </td>
             <td class="py-2 text-center text-xs font-bold tabular-nums">
@@ -391,105 +574,127 @@
     <!-- Graph view -->
     <div
       v-else
+      ref="graphCaptureEl"
       data-tour="rankings-table"
       class="rounded-lg overflow-hidden select-none"
-      style="background: #0a0d14"
+      :style="selectedId === 'xpalmy' ? 'background: #f8fafc' : 'background: #0a0d14'"
     >
-      <div v-if="concludedRounds.length < 2" class="py-12 text-center text-sm text-gray-500">
-        Need at least 2 rounds of concluded matches to show the graph
-      </div>
+      <!-- XPalmy scatter plot -->
+      <template v-if="selectedId === 'xpalmy'">
+        <svg viewBox="0 0 560 510" class="w-full" style="overflow: visible" aria-label="XPalmy scatter chart">
+          <!-- Title (visible in screenshot) -->
+          <text x="280" y="18" text-anchor="middle" font-size="11" font-family="system-ui,sans-serif" fill="rgba(0,0,0,0.5)" font-weight="700" letter-spacing="2">XPALMY RATINGS · 2026</text>
+          <!-- Quadrant backgrounds -->
+          <rect :x="scatterMidX" :y="SC.y0" :width="SC.x1 - scatterMidX" :height="scatterMidY - SC.y0" fill="rgba(34,197,94,0.08)" />
+          <rect :x="SC.x0" :y="SC.y0" :width="scatterMidX - SC.x0" :height="scatterMidY - SC.y0" fill="rgba(59,130,246,0.08)" />
+          <rect :x="scatterMidX" :y="scatterMidY" :width="SC.x1 - scatterMidX" :height="SC.y1 - scatterMidY" fill="rgba(251,146,60,0.08)" />
+          <rect :x="SC.x0" :y="scatterMidY" :width="scatterMidX - SC.x0" :height="SC.y1 - scatterMidY" fill="rgba(239,68,68,0.08)" />
 
-      <svg
-        v-else
-        viewBox="0 0 600 450"
-        class="w-full"
-        style="overflow: visible"
-        aria-label="Algorithm rankings worm chart"
-      >
-        <!-- Top 6 reference line (finals qualified) -->
-        <line
-          :x1="CHART.x0" :y1="yRef6" :x2="CHART.x1" :y2="yRef6"
-          stroke="rgba(251,146,60,0.3)" stroke-width="1" stroke-dasharray="4,3"
-        />
-        <!-- Top 10 reference line (wildcard cut-off) -->
-        <line
-          :x1="CHART.x0" :y1="yRef10" :x2="CHART.x1" :y2="yRef10"
-          stroke="rgba(59,130,246,0.3)" stroke-width="1" stroke-dasharray="4,3"
-        />
+          <!-- Chart border -->
+          <rect :x="SC.x0" :y="SC.y0" :width="SC_W" :height="SC_H" fill="none" stroke="rgba(0,0,0,0.1)" stroke-width="1" />
 
-        <!-- Y-axis position labels -->
-        <text
-          v-for="pos in [1, 6, 7, 10, 11, 14, 18]"
-          :key="pos"
-          :x="CHART.x0 - 4"
-          :y="yScale(pos) + 3.5"
-          text-anchor="end"
-          font-size="8"
-          font-family="system-ui,sans-serif"
-          fill="rgba(255,255,255,0.3)"
-        >{{ pos }}</text>
+          <!-- Quadrant dividers -->
+          <line :x1="scatterMidX" :y1="SC.y0" :x2="scatterMidX" :y2="SC.y1" stroke="rgba(0,0,0,0.12)" stroke-width="1" stroke-dasharray="4,3" />
+          <line :x1="SC.x0" :y1="scatterMidY" :x2="SC.x1" :y2="scatterMidY" stroke="rgba(0,0,0,0.12)" stroke-width="1" stroke-dasharray="4,3" />
 
-        <!-- X-axis gridlines + round labels -->
-        <g v-for="(r, idx) in concludedRounds" :key="`xcol-${r}`">
-          <line
-            :x1="xScale(idx)" :y1="CHART.y0"
-            :x2="xScale(idx)" :y2="CHART.y1"
-            stroke="rgba(255,255,255,0.05)" stroke-width="1"
-          />
+          <!-- Quadrant labels -->
+          <text :x="SC.x1 - 6" :y="SC.y0 + 14" text-anchor="end" font-size="9" font-family="system-ui,sans-serif" fill="rgba(22,163,74,0.7)" font-weight="600">ELITE</text>
+          <text :x="SC.x0 + 6" :y="SC.y0 + 14" text-anchor="start" font-size="9" font-family="system-ui,sans-serif" fill="rgba(37,99,235,0.7)" font-weight="600">DEFENSIVE</text>
+          <text :x="SC.x1 - 6" :y="SC.y1 - 6" text-anchor="end" font-size="9" font-family="system-ui,sans-serif" fill="rgba(234,88,12,0.7)" font-weight="600">OFFENSIVE</text>
+          <text :x="SC.x0 + 6" :y="SC.y1 - 6" text-anchor="start" font-size="9" font-family="system-ui,sans-serif" fill="rgba(220,38,38,0.7)" font-weight="600">BUMS</text>
+
+          <!-- X axis label -->
+          <text x="270" y="497" text-anchor="middle" font-size="9" font-family="system-ui,sans-serif" fill="rgba(0,0,0,0.35)">← Poor Attack · Good Attack →</text>
+
+          <!-- Y axis label (rotated) -->
+          <text x="11" y="240" text-anchor="middle" font-size="9" font-family="system-ui,sans-serif" fill="rgba(0,0,0,0.35)" transform="rotate(-90,11,240)">← Poor Defense · Good Defense →</text>
+
+          <!-- Team dots + logos (hovered team sorted last = on top in SVG) -->
+          <g
+            v-for="p in xpalmyScatterSorted"
+            :key="p.teamId"
+            :style="{
+              cursor: 'pointer',
+              opacity: xpalmyHoverTeamId !== null && xpalmyHoverTeamId !== p.teamId ? 0.12 : 1,
+              transition: 'opacity 0.15s',
+            }"
+            @mouseenter="xpalmyHoverTeamId = p.teamId"
+            @mouseleave="xpalmyHoverTeamId = null"
+            @click.stop="onScatterDotClick(p.teamId, $event)"
+          >
+            <circle :cx="p.plotX" :cy="p.plotY" r="11" fill="white" />
+            <svg :x="p.plotX - 9" :y="p.plotY - 9" width="18" height="18">
+              <use :href="`${BASE_URL}icons.svg#${p.iconId}`" />
+            </svg>
+            <circle
+              :cx="p.plotX" :cy="p.plotY" r="11" fill="none"
+              :stroke="xpalmyHoverTeamId === p.teamId || xpalmyHoveredId === p.teamId ? '#1f2937' : 'rgba(0,0,0,0.18)'"
+              :stroke-width="xpalmyHoverTeamId === p.teamId || xpalmyHoveredId === p.teamId ? 1.5 : 1"
+            />
+          </g>
+        </svg>
+      </template>
+
+      <!-- Standard worm chart for all other algorithms -->
+      <template v-else>
+        <div v-if="concludedRounds.length < 2" class="py-12 text-center text-sm text-gray-500">
+          Need at least 2 rounds of concluded matches to show the graph
+        </div>
+
+        <svg
+          v-else
+          viewBox="0 0 600 450"
+          class="w-full"
+          style="overflow: visible"
+          aria-label="Algorithm rankings worm chart"
+        >
+          <text x="300" y="14" text-anchor="middle" font-size="11" font-family="system-ui,sans-serif" fill="rgba(255,255,255,0.5)" font-weight="700" letter-spacing="2">{{ selectedAlgo.name.toUpperCase() }} RANKINGS · 2026</text>
+          <line :x1="CHART.x0" :y1="yRef6" :x2="CHART.x1" :y2="yRef6" stroke="rgba(251,146,60,0.3)" stroke-width="1" stroke-dasharray="4,3" />
+          <line :x1="CHART.x0" :y1="yRef10" :x2="CHART.x1" :y2="yRef10" stroke="rgba(59,130,246,0.3)" stroke-width="1" stroke-dasharray="4,3" />
           <text
-            :x="xScale(idx)"
-            :y="CHART.y1 + 5"
+            v-for="pos in [1, 6, 7, 10, 11, 14, 18]"
+            :key="pos"
+            :x="CHART.x0 - 4"
+            :y="yScale(pos) + 3.5"
             text-anchor="end"
             font-size="8"
             font-family="system-ui,sans-serif"
             fill="rgba(255,255,255,0.3)"
-            :transform="`rotate(-45, ${xScale(idx)}, ${CHART.y1 + 5})`"
-          >Rd {{ r }}</text>
-        </g>
-
-        <!-- Team worm lines -->
-        <path
-          v-for="d in wormData"
-          :key="`line-${d.team.id}`"
-          :d="buildWormPath(d.points)"
-          fill="none"
-          :stroke="d.color"
-          stroke-width="2"
-          stroke-opacity="0.85"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-
-        <!-- Team logos at final position -->
-        <g v-for="d in wormData" :key="`logo-${d.team.id}`">
-          <template v-if="d.points.length">
-            <circle
-              :cx="CHART.x1 + 16"
-              :cy="d.points[d.points.length - 1].y"
-              r="13"
-              fill="#0a0d14"
-            />
-            <circle
-              :cx="CHART.x1 + 16"
-              :cy="d.points[d.points.length - 1].y"
-              r="12"
-              fill="none"
-              :stroke="d.color"
-              stroke-width="1"
-              stroke-opacity="0.5"
-            />
-            <svg
-              :x="CHART.x1 + 4"
-              :y="d.points[d.points.length - 1].y - 12"
-              width="24"
-              height="24"
-              overflow="visible"
-            >
-              <use :href="`${BASE_URL}icons.svg#${d.team.iconId}`" />
-            </svg>
-          </template>
-        </g>
-      </svg>
+          >{{ pos }}</text>
+          <g v-for="(r, idx) in concludedRounds" :key="`xcol-${r}`">
+            <line :x1="xScale(idx)" :y1="CHART.y0" :x2="xScale(idx)" :y2="CHART.y1" stroke="rgba(255,255,255,0.05)" stroke-width="1" />
+            <text
+              :x="xScale(idx)"
+              :y="CHART.y1 + 5"
+              text-anchor="end"
+              font-size="8"
+              font-family="system-ui,sans-serif"
+              fill="rgba(255,255,255,0.3)"
+              :transform="`rotate(-45, ${xScale(idx)}, ${CHART.y1 + 5})`"
+            >Rd {{ r }}</text>
+          </g>
+          <path
+            v-for="d in wormData"
+            :key="`line-${d.team.id}`"
+            :d="buildWormPath(d.points)"
+            fill="none"
+            :stroke="d.color"
+            stroke-width="2"
+            stroke-opacity="0.85"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          <g v-for="d in wormData" :key="`logo-${d.team.id}`">
+            <template v-if="d.points.length">
+              <circle :cx="CHART.x1 + 16" :cy="d.points[d.points.length - 1].y" r="13" fill="#0a0d14" />
+              <circle :cx="CHART.x1 + 16" :cy="d.points[d.points.length - 1].y" r="12" fill="none" :stroke="d.color" stroke-width="1" stroke-opacity="0.5" />
+              <svg :x="CHART.x1 + 4" :y="d.points[d.points.length - 1].y - 12" width="24" height="24" overflow="visible">
+                <use :href="`${BASE_URL}icons.svg#${d.team.iconId}`" />
+              </svg>
+            </template>
+          </g>
+        </svg>
+      </template>
     </div>
 
     <!-- Legend -->
@@ -504,6 +709,7 @@
       </span>
       <span v-if="activeView === 'table'">vs AFL = difference from the official points-based ladder position</span>
       <span v-if="selectedId === 'palmy' && activeView === 'table'">Hover a team to see their Palmy data</span>
+      <span v-if="selectedId === 'xpalmy'">Click a team to see their X and Y ladders</span>
     </div>
   </main>
 </template>
@@ -511,9 +717,11 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { toPng } from 'html-to-image'
 import { useAFLData, TEAMS } from '../composables/useAFLData'
 import { useAlgorithmRankings, ALGORITHMS, computeAlgorithmRanking } from '../composables/useAlgorithmRankings'
-import type { AlgorithmId, AlgorithmRankRow } from '../composables/useAlgorithmRankings'
+import type { AlgorithmId, AlgorithmRankRow, XPalmyLadderEntry } from '../composables/useAlgorithmRankings'
+import { titleToFilename } from '../composables/usePowerRankingsTitle'
 
 const BASE_URL = import.meta.env.BASE_URL
 
@@ -521,7 +729,7 @@ const route = useRoute()
 const router = useRouter()
 
 const { matches, isLoading } = useAFLData()
-const { winPctRanking, srsRanking, colleyRanking, masseyRanking, winFlowRanking, palmyRanking, palmyOpponentLadders } = useAlgorithmRankings(matches)
+const { winPctRanking, srsRanking, colleyRanking, masseyRanking, winFlowRanking, palmyRanking, palmyOpponentLadders, xpalmyPoints, xpalmyXLadders, xpalmyYLadders, xpalmyRanking } = useAlgorithmRankings(matches)
 
 const validAlgoIds = ALGORITHMS.map((a) => a.id) as AlgorithmId[]
 
@@ -540,6 +748,22 @@ watch([selectedId, activeView], ([algo, view]) => {
 })
 const selectedAlgo = computed(() => ALGORITHMS.find((a) => a.id === selectedId.value)!)
 
+const xpalmyPointMap = computed(() => {
+  const map = new Map<number, { xRating: number; yRating: number }>()
+  for (const p of xpalmyPoints.value) map.set(p.teamId, { xRating: p.xRating, yRating: p.yRating })
+  return map
+})
+
+function xpalmyAttack(teamId: number): string {
+  const p = xpalmyPointMap.value.get(teamId)
+  return p ? ((1 - p.xRating) * 100).toFixed(1) : '—'
+}
+
+function xpalmyDefense(teamId: number): string {
+  const p = xpalmyPointMap.value.get(teamId)
+  return p ? ((1 - p.yRating) * 100).toFixed(1) : '—'
+}
+
 const currentRanking = computed<AlgorithmRankRow[]>(() => {
   switch (selectedId.value) {
     case 'winpct':  return winPctRanking.value
@@ -548,6 +772,7 @@ const currentRanking = computed<AlgorithmRankRow[]>(() => {
     case 'massey':  return masseyRanking.value
     case 'winflow': return winFlowRanking.value
     case 'palmy':   return palmyRanking.value
+    case 'xpalmy':  return xpalmyRanking.value
   }
 })
 
@@ -563,6 +788,7 @@ function formatRating(v: number): string {
     case 'colley':  return v.toFixed(3)
     case 'winflow': return v.toFixed(4)
     case 'palmy':   return v === -999 ? '—' : ((1 + v) * 100).toFixed(1)
+    case 'xpalmy':  return ((1 + v) * 100).toFixed(1)
   }
 }
 
@@ -651,6 +877,46 @@ function buildWormPath(pts: WormPoint[]): string {
     d += ` C ${p0.x + dx},${p0.y} ${p1.x - dx},${p1.y} ${p1.x},${p1.y}`
   }
   return d
+}
+
+// --- Graph screenshot ---
+
+const graphCaptureEl = ref<HTMLElement | null>(null)
+const graphCapturing = ref(false)
+
+async function screenshotGraph() {
+  if (!graphCaptureEl.value) return
+  graphCapturing.value = true
+  await new Promise((r) => setTimeout(r, 50))
+
+  let spriteEl: Element | null = null
+  const useEls: { el: Element; original: string }[] = []
+  try {
+    const spriteRes = await fetch(`${BASE_URL}icons.svg`)
+    const spriteText = await spriteRes.text()
+    const wrapper = document.createElement('div')
+    wrapper.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden'
+    wrapper.innerHTML = spriteText
+    spriteEl = wrapper
+    graphCaptureEl.value.prepend(wrapper)
+
+    graphCaptureEl.value.querySelectorAll('use[href]').forEach((use) => {
+      const href = use.getAttribute('href') ?? ''
+      useEls.push({ el: use, original: href })
+      const fragment = href.split('#')[1]
+      if (fragment) use.setAttribute('href', `#${fragment}`)
+    })
+
+    const dataUrl = await toPng(graphCaptureEl.value, { pixelRatio: 2 })
+    const link = document.createElement('a')
+    link.download = titleToFilename(selectedAlgo.value.name)
+    link.href = dataUrl
+    link.click()
+  } finally {
+    useEls.forEach(({ el, original }) => el.setAttribute('href', original))
+    spriteEl?.remove()
+    graphCapturing.value = false
+  }
 }
 
 // --- Palmy click popup ---
@@ -759,5 +1025,133 @@ function positionPopup(row: HTMLElement) {
   top = Math.max(8, Math.min(top, vh - POPUP_H - 8))
 
   popupStyle.value = { left: `${left}px`, top: `${top}px`, width: `${POPUP_W}px` }
+}
+
+// --- XPalmy scatter plot ---
+
+const SC = { x0: 60, x1: 480, y0: 30, y1: 450 } as const
+const SC_W = SC.x1 - SC.x0
+const SC_H = SC.y1 - SC.y0
+
+const xpalmyHoverTeamId = ref<number | null>(null)
+
+const xpalmyScatter = computed(() =>
+  xpalmyPoints.value.map((p) => ({
+    ...p,
+    plotX: SC.x0 + (1 - p.xRating) * SC_W,
+    plotY: SC.y0 + p.yRating * SC_H,
+  })),
+)
+
+// Hovered team rendered last so it sits on top in SVG z-order
+const xpalmyScatterSorted = computed(() => {
+  const hid = xpalmyHoverTeamId.value
+  if (hid === null) return xpalmyScatter.value
+  return [
+    ...xpalmyScatter.value.filter((p) => p.teamId !== hid),
+    ...xpalmyScatter.value.filter((p) => p.teamId === hid),
+  ]
+})
+
+const scatterMidX = SC.x0 + SC_W / 2
+const scatterMidY = SC.y0 + SC_H / 2
+
+// --- XPalmy popup ---
+
+const xpalmyHoveredId = ref<number | null>(null)
+const xpalmyPopupTab = ref<'x-own' | 'x-pos' | 'y-own' | 'y-pos'>('x-own')
+const xpalmyPopupStyle = ref<Record<string, string>>({})
+
+function closeXpalmyPopup() { xpalmyHoveredId.value = null }
+
+onMounted(() => document.addEventListener('click', closeXpalmyPopup))
+onUnmounted(() => document.removeEventListener('click', closeXpalmyPopup))
+
+const xpalmyHoveredName = computed(() => {
+  if (xpalmyHoveredId.value === null) return ''
+  return teamInfoMap.value.get(xpalmyHoveredId.value)?.teamName ?? ''
+})
+
+const xpalmyHoveredXLadder = computed((): XPalmyLadderEntry[] =>
+  xpalmyHoveredId.value !== null ? (xpalmyXLadders.value[xpalmyHoveredId.value] ?? []) : [],
+)
+
+const xpalmyHoveredYLadder = computed((): XPalmyLadderEntry[] =>
+  xpalmyHoveredId.value !== null ? (xpalmyYLadders.value[xpalmyHoveredId.value] ?? []) : [],
+)
+
+type XpalmyPosition = { ownerName: string; ownerIconId: string; rank: number; ladderSize: number; score: number; roundNumber: number }
+
+const xpalmyHoveredXPositions = computed((): XpalmyPosition[] => {
+  if (xpalmyHoveredId.value === null) return []
+  const tid = xpalmyHoveredId.value
+  const result: XpalmyPosition[] = []
+  for (const [ownerIdStr, ladder] of Object.entries(xpalmyXLadders.value)) {
+    const ownerId = Number(ownerIdStr)
+    if (ownerId === tid) continue
+    const ownerInfo = teamInfoMap.value.get(ownerId)
+    for (const entry of ladder) {
+      if (entry.teamId === tid)
+        result.push({ ownerName: ownerInfo?.teamName ?? String(ownerId), ownerIconId: ownerInfo?.iconId ?? '', rank: entry.rank, ladderSize: ladder.length, score: entry.oppScore, roundNumber: entry.roundNumber })
+    }
+  }
+  return result.sort((a, b) => a.rank - b.rank)
+})
+
+const xpalmyHoveredYPositions = computed((): XpalmyPosition[] => {
+  if (xpalmyHoveredId.value === null) return []
+  const tid = xpalmyHoveredId.value
+  const result: XpalmyPosition[] = []
+  for (const [ownerIdStr, ladder] of Object.entries(xpalmyYLadders.value)) {
+    const ownerId = Number(ownerIdStr)
+    if (ownerId === tid) continue
+    const ownerInfo = teamInfoMap.value.get(ownerId)
+    for (const entry of ladder) {
+      if (entry.teamId === tid)
+        result.push({ ownerName: ownerInfo?.teamName ?? String(ownerId), ownerIconId: ownerInfo?.iconId ?? '', rank: entry.rank, ladderSize: ladder.length, score: entry.ownScore, roundNumber: entry.roundNumber })
+    }
+  }
+  return result.sort((a, b) => a.rank - b.rank)
+})
+
+const xpalmyHoveredXAvg = computed(() => {
+  const pos = xpalmyHoveredXPositions.value
+  if (pos.length === 0) return '—'
+  return ((1 - pos.reduce((s, p) => s + p.rank / p.ladderSize, 0) / pos.length) * 100).toFixed(1)
+})
+
+const xpalmyHoveredYAvg = computed(() => {
+  const pos = xpalmyHoveredYPositions.value
+  if (pos.length === 0) return '—'
+  return ((1 - pos.reduce((s, p) => s + p.rank / p.ladderSize, 0) / pos.length) * 100).toFixed(1)
+})
+
+function applyXpalmyPopup(anchorRect: DOMRect) {
+  const vw = window.innerWidth, vh = window.innerHeight
+  const W = 340, H = 540
+  let left = anchorRect.left + anchorRect.width / 2 - W / 2
+  left = Math.max(8, Math.min(left, vw - W - 8))
+  let top = anchorRect.bottom + 8
+  if (top + H > vh - 8) top = anchorRect.top - H - 8
+  top = Math.max(8, Math.min(top, vh - H - 8))
+  xpalmyPopupStyle.value = { left: `${left}px`, top: `${top}px`, width: `${W}px` }
+}
+
+function onScatterDotClick(teamId: number, event: MouseEvent) {
+  event.stopPropagation()
+  if (xpalmyHoveredId.value !== teamId) xpalmyPopupTab.value = 'x-own'
+  xpalmyHoveredId.value = teamId
+  applyXpalmyPopup((event.currentTarget as Element).getBoundingClientRect())
+}
+
+function onXpalmyRowClick(teamId: number, event: MouseEvent) {
+  event.stopPropagation()
+  if (xpalmyHoveredId.value !== teamId) xpalmyPopupTab.value = 'x-own'
+  xpalmyHoveredId.value = teamId
+  const tableRect = tableEl.value?.getBoundingClientRect()
+  const rowRect = (event.currentTarget as Element).getBoundingClientRect()
+  applyXpalmyPopup(tableRect
+    ? new DOMRect(tableRect.left + tableRect.width / 2, rowRect.top, 0, rowRect.height)
+    : rowRect)
 }
 </script>

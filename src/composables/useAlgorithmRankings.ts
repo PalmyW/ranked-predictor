@@ -9,6 +9,7 @@ export type AlgorithmId =
   | 'massey'
   | 'winflow'
   | 'palmy'
+  | 'xpalmy'
 
 export interface AlgorithmInfo {
   id: AlgorithmId
@@ -68,8 +69,16 @@ export const ALGORITHMS: AlgorithmInfo[] = [
     id: 'palmy',
     name: 'Palmy',
     description:
-      'For each team, every opponent they’ve faced is ranked by the margin in that specific match—biggest win at #1, biggest loss at the bottom. Your Palmy rating is your average rank across all the opponent ladders you appear on. It doesn’t care whether you won or lost; it only measures how you performed compared with each opponent’s other games.',
+      `For each team, every opponent they've faced is ranked by the margin in that specific match—biggest win at #1, biggest loss at the bottom. Your Palmy rating is your average rank across all the opponent ladders you appear on. It doesn't care whether you won or lost; it only measures how you performed compared with each opponent's other games.`,
     ratingLabel: 'Rank',
+    creditName: 'Original (PalmyW)',
+  },
+  {
+    id: 'xpalmy',
+    name: 'XPalmy',
+    description:
+      'Palmy run twice to produce two independent axes. X: for each opponent, rank how much they scored against you (most → least) — your average position measures how threatening you are offensively. Y: for each opponent, rank how much you scored against them (least → most) — your average position measures how hard you are to score against defensively. Teams are plotted on a scatter chart: right = stronger attack, up = stronger defense.',
+    ratingLabel: 'Score',
     creditName: 'Original (PalmyW)',
   },
 ]
@@ -83,6 +92,38 @@ export interface PalmyLadderEntry {
   rank: number
   roundNumber: number
   roundName: string
+}
+
+export interface XPalmyLadderEntry {
+  teamId: number
+  teamName: string
+  abbreviation: string
+  iconId: string
+  oppScore: number
+  ownScore: number
+  rank: number
+  roundNumber: number
+  roundName: string
+}
+
+export interface XPalmyTeamPoint {
+  teamId: number
+  teamName: string
+  abbreviation: string
+  iconId: string
+  xRating: number
+  yRating: number
+  wins: number
+  losses: number
+  draws: number
+  played: number
+  officialRank: number
+}
+
+export interface XPalmyResult {
+  points: XPalmyTeamPoint[]
+  xLadders: Record<number, XPalmyLadderEntry[]>
+  yLadders: Record<number, XPalmyLadderEntry[]>
 }
 
 export interface AlgorithmRankRow {
@@ -462,6 +503,93 @@ export function runPalmy(
   return { ranking: toRows(ratings, stats, officialRankMap), opponentLadders }
 }
 
+export function runXPalmy(
+  concluded: readonly AflMatch[],
+  stats: Record<number, BasicStats>,
+  officialRankMap: Map<number, number>,
+): XPalmyResult {
+  const teamMap = Object.fromEntries(TEAMS.map((t) => [t.id, t]))
+  const xLadders: Record<number, XPalmyLadderEntry[]> = {}
+  const yLadders: Record<number, XPalmyLadderEntry[]> = {}
+  for (const t of TEAMS) {
+    xLadders[t.id] = []
+    yLadders[t.id] = []
+  }
+
+  for (const m of concluded) {
+    if (!m.homeScore || !m.awayScore) continue
+    const hScore = m.homeScore.totalScore
+    const aScore = m.awayScore.totalScore
+    const hId = m.homeTeamId
+    const aId = m.awayTeamId
+    const hTeam = teamMap[hId]
+    const aTeam = teamMap[aId]
+    if (!hTeam || !aTeam) continue
+
+    const base = { rank: 0, roundNumber: m.roundNumber, roundName: m.roundName }
+    // Home perspective: opposition (away) scored aScore, home scored hScore
+    const homeEntry: XPalmyLadderEntry = {
+      ...base,
+      teamId: aId, teamName: aTeam.name, abbreviation: aTeam.abbreviation, iconId: aTeam.iconId,
+      oppScore: aScore, ownScore: hScore,
+    }
+    xLadders[hId].push({ ...homeEntry })
+    yLadders[hId].push({ ...homeEntry })
+    // Away perspective: opposition (home) scored hScore, away scored aScore
+    const awayEntry: XPalmyLadderEntry = {
+      ...base,
+      teamId: hId, teamName: hTeam.name, abbreviation: hTeam.abbreviation, iconId: hTeam.iconId,
+      oppScore: hScore, ownScore: aScore,
+    }
+    xLadders[aId].push({ ...awayEntry })
+    yLadders[aId].push({ ...awayEntry })
+  }
+
+  // X-ladders: sort by oppScore descending (highest opposition score = rank 1)
+  for (const t of TEAMS) {
+    xLadders[t.id].sort((a, b) => b.oppScore - a.oppScore)
+    xLadders[t.id].forEach((e, i) => { e.rank = i + 1 })
+  }
+  // Y-ladders: sort by ownScore ascending (lowest own score = rank 1)
+  for (const t of TEAMS) {
+    yLadders[t.id].sort((a, b) => a.ownScore - b.ownScore)
+    yLadders[t.id].forEach((e, i) => { e.rank = i + 1 })
+  }
+
+  const points: XPalmyTeamPoint[] = TEAMS.map((teamY) => {
+    const xFracs: number[] = []
+    const yFracs: number[] = []
+    for (const teamX of TEAMS) {
+      if (teamX.id === teamY.id) continue
+      const xl = xLadders[teamX.id]
+      for (const e of xl) {
+        if (e.teamId === teamY.id) xFracs.push(e.rank / xl.length)
+      }
+      const yl = yLadders[teamX.id]
+      for (const e of yl) {
+        if (e.teamId === teamY.id) yFracs.push(e.rank / yl.length)
+      }
+    }
+    const avg = (arr: number[]) =>
+      arr.length === 0 ? 0.5 : arr.reduce((a, b) => a + b, 0) / arr.length
+    return {
+      teamId: teamY.id,
+      teamName: teamY.name,
+      abbreviation: teamY.abbreviation,
+      iconId: teamY.iconId,
+      xRating: avg(xFracs),
+      yRating: avg(yFracs),
+      wins: stats[teamY.id]?.wins ?? 0,
+      losses: stats[teamY.id]?.losses ?? 0,
+      draws: stats[teamY.id]?.draws ?? 0,
+      played: stats[teamY.id]?.played ?? 0,
+      officialRank: officialRankMap.get(teamY.id) ?? 0,
+    }
+  })
+
+  return { points, xLadders, yLadders }
+}
+
 // --- Public API ---
 
 /** Compute a single algorithm's ranking for any arbitrary set of matches. */
@@ -487,6 +615,12 @@ export function computeAlgorithmRanking(
       return runWinFlow(concluded, stats, officialRankMap)
     case 'palmy':
       return runPalmy(concluded, stats, officialRankMap).ranking
+    case 'xpalmy': {
+      const { points } = runXPalmy(concluded, stats, officialRankMap)
+      const ratings: Record<number, number> = {}
+      for (const p of points) ratings[p.teamId] = -(p.xRating + p.yRating) / 2
+      return toRows(ratings, stats, officialRankMap)
+    }
   }
 }
 
@@ -523,6 +657,18 @@ export function useAlgorithmRankings(matchesRef: MatchesRef) {
   const palmyRanking = computed(() => palmyData.value.ranking)
   const palmyOpponentLadders = computed(() => palmyData.value.opponentLadders)
 
+  const xpalmyData = computed(() =>
+    runXPalmy(concluded.value, basicStats.value, officialRankMap.value),
+  )
+  const xpalmyPoints = computed(() => xpalmyData.value.points)
+  const xpalmyXLadders = computed(() => xpalmyData.value.xLadders)
+  const xpalmyYLadders = computed(() => xpalmyData.value.yLadders)
+  const xpalmyRanking = computed(() => {
+    const ratings: Record<number, number> = {}
+    for (const p of xpalmyData.value.points) ratings[p.teamId] = -(p.xRating + p.yRating) / 2
+    return toRows(ratings, basicStats.value, officialRankMap.value)
+  })
+
   return {
     officialRankMap,
     winPctRanking,
@@ -532,5 +678,9 @@ export function useAlgorithmRankings(matchesRef: MatchesRef) {
     winFlowRanking,
     palmyRanking,
     palmyOpponentLadders,
+    xpalmyPoints,
+    xpalmyXLadders,
+    xpalmyYLadders,
+    xpalmyRanking,
   }
 }
