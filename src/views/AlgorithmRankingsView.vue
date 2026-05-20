@@ -1176,12 +1176,23 @@ const xpalmyTrailPoints = computed(() => {
   }))
 })
 
-// SVG path string connecting the hovered team's trail positions
+// SVG path string — Catmull-Rom spline so control points are derived from neighbours,
+// producing a smooth curve that actually bends through each historical position.
 const xpalmyTrailPath = computed(() => {
   const pts = xpalmyTrailPoints.value
   if (pts.length < 2) return ''
   let d = `M ${pts[0].plotX} ${pts[0].plotY}`
-  for (let i = 1; i < pts.length; i++) d += ` L ${pts[i].plotX} ${pts[i].plotY}`
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[Math.max(0, i - 1)]
+    const p1 = pts[i]
+    const p2 = pts[i + 1]
+    const p3 = pts[Math.min(pts.length - 1, i + 2)]
+    const cp1x = p1.plotX + (p2.plotX - p0.plotX) / 6
+    const cp1y = p1.plotY + (p2.plotY - p0.plotY) / 6
+    const cp2x = p2.plotX - (p3.plotX - p1.plotX) / 6
+    const cp2y = p2.plotY - (p3.plotY - p1.plotY) / 6
+    d += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.plotX},${p2.plotY}`
+  }
   return d
 })
 
