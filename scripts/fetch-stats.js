@@ -4,8 +4,12 @@ import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
-const FIXTURE = join(ROOT, 'public/data/fixture.json')
-const STATS_DIR = join(ROOT, 'public/data/stats')
+
+const seasonArg = process.argv.find((a) => a.startsWith('--season='))
+const season = seasonArg ? seasonArg.split('=')[1] : '2026'
+
+const FIXTURE = join(ROOT, `public/data/${season}/fixture.json`)
+const STATS_DIR = join(ROOT, `public/data/${season}/stats`)
 let TOKEN = process.env.AFL_STATS_TOKEN
 if (!TOKEN) {
   const tokRes = execSync(

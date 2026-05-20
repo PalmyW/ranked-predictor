@@ -430,6 +430,7 @@ import {
   titleToFilename,
 } from '../composables/usePowerRankingsTitle'
 import { useRanking } from '../composables/useRanking'
+import { getActiveSeasonYear } from '../config/seasons'
 
 const props = defineProps<{
   ranking: TeamRanking
@@ -560,7 +561,7 @@ function loadLabels() {
 }
 
 const stored = loadLabels()
-const year = ref(stored.year ?? '2026')
+const year = ref(getActiveSeasonYear())
 const title = ref(stored.title ?? 'POWER RANKINGS')
 const roundLabel = ref(stored.roundLabel ?? '')
 

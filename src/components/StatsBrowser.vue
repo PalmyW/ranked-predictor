@@ -272,8 +272,10 @@
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import type { AflMatch } from '../types/afl'
 import { TEAMS } from '../composables/useAFLData'
+import { getActiveSeasonYear } from '../config/seasons'
 
 const BASE_URL = import.meta.env.BASE_URL
+const SEASON = getActiveSeasonYear()
 const teamIconMap = new Map(TEAMS.map((t) => [t.id, t.iconId]))
 const teamAbbrMap = new Map(TEAMS.map((t) => [t.id, t.abbreviation]))
 
@@ -565,7 +567,7 @@ async function selectMatch(match: AflMatch) {
   sortDir.value = 'desc'
 
   try {
-    const url = `${import.meta.env.BASE_URL}data/stats/${match.providerId}.json`
+    const url = `${BASE_URL}data/${SEASON}/stats/${match.providerId}.json`
     const res = await fetch(url, { cache: 'no-store' })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()

@@ -581,9 +581,18 @@
     >
       <!-- XPalmy scatter plot -->
       <template v-if="selectedId === 'xpalmy'">
+        <div v-if="champions.length > 0 && !graphCapturing" class="flex justify-end px-3 pt-3 pb-1">
+          <button
+            @click="showChampions = !showChampions"
+            class="px-2.5 py-1 rounded text-xs font-semibold border transition-colors"
+            :class="showChampions
+              ? 'bg-yellow-400 border-yellow-400 text-gray-900'
+              : 'bg-transparent border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-yellow-400 hover:text-yellow-500'"
+          >🏆 Past champions</button>
+        </div>
         <svg viewBox="0 0 560 510" class="w-full" style="overflow: visible" aria-label="XPalmy scatter chart">
           <!-- Title (visible in screenshot) -->
-          <text x="280" y="18" text-anchor="middle" font-size="11" font-family="system-ui,sans-serif" fill="rgba(0,0,0,0.5)" font-weight="700" letter-spacing="2">XPALMY RATINGS · 2026</text>
+          <text x="280" y="18" text-anchor="middle" font-size="11" font-family="system-ui,sans-serif" fill="rgba(0,0,0,0.5)" font-weight="700" letter-spacing="2">XPALMY RATINGS · {{ currentSeasonYear }}</text>
           <!-- Quadrant backgrounds -->
           <rect :x="scatterMidX" :y="SC.y0" :width="SC.x1 - scatterMidX" :height="scatterMidY - SC.y0" fill="rgba(34,197,94,0.08)" />
           <rect :x="SC.x0" :y="SC.y0" :width="scatterMidX - SC.x0" :height="scatterMidY - SC.y0" fill="rgba(59,130,246,0.08)" />
@@ -608,6 +617,25 @@
 
           <!-- Y axis label (rotated) -->
           <text x="11" y="240" text-anchor="middle" font-size="9" font-family="system-ui,sans-serif" fill="rgba(0,0,0,0.35)" transform="rotate(-90,11,240)">← Poor Defense · Good Defense →</text>
+
+          <!-- Historical champion ghost dots -->
+          <template v-if="showChampions">
+            <g v-for="c in championsScatter" :key="`champ-${c.year}`">
+              <circle :cx="c.plotX" :cy="c.plotY" r="10" fill="rgba(250,204,21,0.15)" stroke="rgba(250,204,21,0.6)" stroke-width="1" stroke-dasharray="3,2" />
+              <svg :x="c.plotX - 7" :y="c.plotY - 7" width="14" height="14" opacity="0.5">
+                <use :href="`${BASE_URL}icons.svg#${c.iconId}`" />
+              </svg>
+              <text
+                :x="c.plotX"
+                :y="c.plotY - 12"
+                text-anchor="middle"
+                font-size="7"
+                font-family="system-ui,sans-serif"
+                fill="rgba(250,204,21,0.8)"
+                font-weight="600"
+              >{{ c.year }}</text>
+            </g>
+          </template>
 
           <!-- Team dots + logos (hovered team sorted last = on top in SVG) -->
           <g
@@ -648,7 +676,7 @@
           style="overflow: visible"
           aria-label="Algorithm rankings worm chart"
         >
-          <text x="300" y="14" text-anchor="middle" font-size="11" font-family="system-ui,sans-serif" fill="rgba(255,255,255,0.5)" font-weight="700" letter-spacing="2">{{ selectedAlgo.name.toUpperCase() }} RANKINGS · 2026</text>
+          <text x="300" y="14" text-anchor="middle" font-size="11" font-family="system-ui,sans-serif" fill="rgba(255,255,255,0.5)" font-weight="700" letter-spacing="2">{{ selectedAlgo.name.toUpperCase() }} RANKINGS · {{ currentSeasonYear }}</text>
           <line :x1="CHART.x0" :y1="yRef6" :x2="CHART.x1" :y2="yRef6" stroke="rgba(251,146,60,0.3)" stroke-width="1" stroke-dasharray="4,3" />
           <line :x1="CHART.x0" :y1="yRef10" :x2="CHART.x1" :y2="yRef10" stroke="rgba(59,130,246,0.3)" stroke-width="1" stroke-dasharray="4,3" />
           <text
@@ -722,6 +750,7 @@ import { useAFLData, TEAMS } from '../composables/useAFLData'
 import { useAlgorithmRankings, ALGORITHMS, computeAlgorithmRanking } from '../composables/useAlgorithmRankings'
 import type { AlgorithmId, AlgorithmRankRow, XPalmyLadderEntry } from '../composables/useAlgorithmRankings'
 import { titleToFilename } from '../composables/usePowerRankingsTitle'
+import { getActiveSeasonYear } from '../config/seasons'
 
 const BASE_URL = import.meta.env.BASE_URL
 
@@ -1027,6 +1056,29 @@ function positionPopup(row: HTMLElement) {
   popupStyle.value = { left: `${left}px`, top: `${top}px`, width: `${POPUP_W}px` }
 }
 
+// --- XPalmy champions overlay ---
+
+interface XPalmyChampion {
+  year: string
+  teamId: number
+  teamName: string
+  abbreviation: string
+  iconId: string
+  xRating: number
+  yRating: number
+}
+
+const showChampions = ref(false)
+const champions = ref<XPalmyChampion[]>([])
+const currentSeasonYear = getActiveSeasonYear()
+
+onMounted(async () => {
+  try {
+    const res = await fetch(`${BASE_URL}data/xpalmy-champions.json`, { cache: 'no-store' })
+    if (res.ok) champions.value = await res.json()
+  } catch { /* non-critical */ }
+})
+
 // --- XPalmy scatter plot ---
 
 const SC = { x0: 60, x1: 480, y0: 30, y1: 450 } as const
@@ -1043,6 +1095,16 @@ const xpalmyScatter = computed(() =>
   })),
 )
 
+const championsScatter = computed(() =>
+  champions.value
+    .filter((c) => c.year !== currentSeasonYear)
+    .map((c) => ({
+      ...c,
+      plotX: SC.x0 + (1 - c.xRating) * SC_W,
+      plotY: SC.y0 + c.yRating * SC_H,
+    })),
+)
+
 // Hovered team rendered last so it sits on top in SVG z-order
 const xpalmyScatterSorted = computed(() => {
   const hid = xpalmyHoverTeamId.value
@@ -1053,8 +1115,21 @@ const xpalmyScatterSorted = computed(() => {
   ]
 })
 
-const scatterMidX = SC.x0 + SC_W / 2
-const scatterMidY = SC.y0 + SC_H / 2
+const CHAMP_PAD = 10
+
+// Vertical divider: just left of the furthest-left champion (highest xRating = smallest plotX)
+const scatterMidX = computed(() => {
+  if (champions.value.length === 0) return SC.x0 + SC_W / 2
+  const minPlotX = Math.min(...champions.value.map((c) => SC.x0 + (1 - c.xRating) * SC_W))
+  return minPlotX - CHAMP_PAD
+})
+
+// Horizontal divider: just below the lowest champion (highest yRating = largest plotY)
+const scatterMidY = computed(() => {
+  if (champions.value.length === 0) return SC.y0 + SC_H / 2
+  const maxPlotY = Math.max(...champions.value.map((c) => SC.y0 + c.yRating * SC_H))
+  return maxPlotY + CHAMP_PAD
+})
 
 // --- XPalmy popup ---
 

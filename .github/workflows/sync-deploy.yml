@@ -26,7 +26,7 @@ jobs:
             -H 'referer: https://www.afl.com.au/' \
             -H 'user-agent: Mozilla/5.0 (compatible; ranked-predictor-ci/1.0)' \
             'https://aflapi.afl.com.au/afl/v2/matches?pageSize=300&competitionId=1&compSeasonId=85' \
-            -o public/data/fixture.json
+            -o public/data/2026/fixture.json
 
       - uses: actions/setup-node@v4
         with:

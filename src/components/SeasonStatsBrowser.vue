@@ -244,8 +244,10 @@
 import { ref, reactive, computed, watch } from 'vue'
 import type { AflTeam } from '../types/afl'
 import { TEAMS } from '../composables/useAFLData'
+import { getActiveSeasonYear } from '../config/seasons'
 
 const BASE_URL = import.meta.env.BASE_URL
+const SEASON = getActiveSeasonYear()
 
 const MODE_OPTIONS = [
   { value: 'averages' as const, label: 'Averages' },
@@ -316,7 +318,7 @@ async function loadTeamStats(team: AflTeam) {
   teamPlayers.value = []
 
   try {
-    const url = `${BASE_URL}data/team-stats/${team.teamProviderId}.json`
+    const url = `${BASE_URL}data/${SEASON}/team-stats/${team.teamProviderId}.json`
     const res = await fetch(url, { cache: 'no-store' })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()

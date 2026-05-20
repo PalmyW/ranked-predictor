@@ -1,5 +1,8 @@
 import { ref, readonly } from 'vue'
 import type { AflTeam, AflMatch, MatchStatus } from '../types/afl'
+import { getActiveSeasonYear, CURRENT_SEASON_YEAR } from '../config/seasons'
+
+const SEASON = getActiveSeasonYear()
 
 export const TEAMS: AflTeam[] = [
   { id: 1,  name: 'Kuwarna',           abbreviation: 'ADEL', letter: 'A', iconId: 'icn-aflc-adel', teamProviderId: 'CD_T10'   },
@@ -82,7 +85,7 @@ let pollingStarted = false
 const POLL_INTERVAL_MS = 15_000
 
 function fetchFixture(): Promise<void> {
-  const url = `${import.meta.env.BASE_URL}data/fixture.json`
+  const url = `${import.meta.env.BASE_URL}data/${SEASON}/fixture.json`
   return fetch(url, { cache: 'no-store' })
     .then((res) => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -100,7 +103,7 @@ function fetchFixture(): Promise<void> {
 }
 
 function fetchTimestamp(): Promise<void> {
-  const tsUrl = `${import.meta.env.BASE_URL}data/last-updated.json`
+  const tsUrl = `${import.meta.env.BASE_URL}data/${SEASON}/last-updated.json`
   return fetch(tsUrl, { cache: 'no-store' })
     .then((res) => (res.ok ? res.json() : null))
     .then((data: { updatedAt?: string } | null) => {
@@ -116,6 +119,7 @@ function fetchTimestamp(): Promise<void> {
 
 function startPolling() {
   if (pollingStarted) return
+  if (SEASON !== CURRENT_SEASON_YEAR) return
   pollingStarted = true
   setInterval(fetchTimestamp, POLL_INTERVAL_MS)
 }

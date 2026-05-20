@@ -188,6 +188,7 @@ const props = defineProps<{
   rangeResults: RangeEntry[] | null
   rangeTotal: number
   isRunningRange: boolean
+  viewOnly?: boolean
 }>()
 
 const RANGE_COUNTS = [100, 500, 1000, 5000]
@@ -225,13 +226,19 @@ async function handleRunMany() {
 
 const powerLabel = computed(() => ' ' + firstMeaningfulWord(powerRankingsTitle.value))
 
-const TABS = computed(() => [
+const ALL_TABS = computed(() => [
   { id: 'predicted', badge: 'P', badgeClass: 'px-1 rounded text-[1em] font-bold leading-tight bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400', label: 'redicted' },
   { id: 'simulated', badge: 'S', badgeClass: 'px-1 rounded text-[1em] font-bold leading-tight bg-purple-500 text-white', label: 'imulated' },
   { id: 'current',   badge: null, badgeClass: '', label: 'Current' },
   { id: 'power',     badge: '↕', badgeClass: 'text-[1em] font-bold text-amber-500 dark:text-amber-400', label: powerLabel.value },
   { id: 'parity',   badge: null, badgeClass: '', label: 'Parity' },
 ])
+
+const TABS = computed(() =>
+  props.viewOnly
+    ? ALL_TABS.value.filter((t) => t.id !== 'predicted' && t.id !== 'simulated')
+    : ALL_TABS.value
+)
 
 const analytics = useAnalytics()
 
@@ -246,7 +253,10 @@ const VALID_TAB_IDS = new Set(['predicted', 'simulated', 'current', 'power', 'pa
 
 function tabFromHash(): string {
   const hash = window.location.hash.slice(1)
-  return VALID_TAB_IDS.has(hash) ? hash : 'predicted'
+  const fallback = props.viewOnly ? 'current' : 'predicted'
+  if (!VALID_TAB_IDS.has(hash)) return fallback
+  if (props.viewOnly && (hash === 'predicted' || hash === 'simulated')) return 'current'
+  return hash
 }
 
 const activeTab = ref(tabFromHash())

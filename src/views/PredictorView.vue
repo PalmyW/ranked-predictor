@@ -8,9 +8,14 @@
         Failed to load fixture data: {{ error }}. Rankings still work but ladder data may be incomplete.
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-6">
-        <!-- Left: Team Ranker -->
-        <section class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-4">
+      <!-- View-only banner for historical seasons -->
+      <div v-if="!isCurrentSeason" class="mb-4 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded text-amber-700 dark:text-amber-400 text-sm">
+        Viewing {{ activeSeasonYear }} — prediction features are only available for the current season.
+      </div>
+
+      <div class="grid gap-6" :class="isCurrentSeason ? 'grid-cols-1 lg:grid-cols-[1fr_2fr]' : 'grid-cols-1'">
+        <!-- Left: Team Ranker (current season only) -->
+        <section v-if="isCurrentSeason" class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-4">
 
           <!-- Ladder source controls -->
           <div data-tour="ladder-source" class="mb-3 p-2.5 bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-lg space-y-2">
@@ -75,10 +80,11 @@
             :rangeResults="rangeResults"
             :rangeTotal="rangeTotal"
             :isRunningRange="isRunningRange"
+            :viewOnly="!isCurrentSeason"
           />
 
-          <!-- Share -->
-          <div data-tour="share-bar" class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-4">
+          <!-- Share (current season only) -->
+          <div v-if="isCurrentSeason" data-tour="share-bar" class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-4">
             <h2 class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Share Your Prediction</h2>
             <ShareBar :shareUrl="shareUrl" />
           </div>
@@ -103,6 +109,7 @@ import { useAFLData } from '../composables/useAFLData'
 import { useRanking } from '../composables/useRanking'
 import { useSimulation } from '../composables/useSimulation'
 import { useAnalytics } from '../composables/useAnalytics'
+import { useSeason } from '../composables/useSeason'
 import RoundBanner from '../components/RoundBanner.vue'
 import LadderTabs from '../components/LadderTabs.vue'
 import TeamRanker from '../components/TeamRanker.vue'
@@ -110,6 +117,7 @@ import ShareBar from '../components/ShareBar.vue'
 import MatchList from '../components/MatchList.vue'
 
 const { matches, teams, isLoading, error } = useAFLData()
+const { isCurrentSeason, activeSeasonYear } = useSeason()
 const { ranking, tierSizes, shareUrl, rankedFromUrl, rankedFromStorage, ladderSource, savedState, rankingHistory, setRanking, setTierSizes, resetToLadder, loadSavedRanking, saveToMyLadder, seedHistoryFromSavedRanking, snapshotRoundRanking, updateRoundSnapshot } = useRanking()
 const { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate, getSimulationFrames, rangeResults, rangeTotal, isRunningRange, runMany } = useSimulation(ranking, matches)
 const analytics = useAnalytics()

@@ -46,8 +46,17 @@
           class="hidden text-right text-xs text-gray-400 dark:text-gray-500 sm:block"
         >
           <span v-if="isLoading">Loading fixture...</span>
-          <span v-else-if="syncedAt">Synced {{ timeAgo(syncedAt) }}</span>
+          <span v-else-if="syncedAt && isCurrentSeason">Synced {{ timeAgo(syncedAt) }}</span>
         </div>
+        <select
+          v-if="seasons.length > 1 && route.path !== '/'"
+          :value="activeSeasonYear"
+          @change="onSeasonChange"
+          class="rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-500 transition-colors hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"
+          title="Switch season"
+        >
+          <option v-for="s in seasons" :key="s.year" :value="s.year">{{ s.year }}</option>
+        </select>
         <button
           @click="$emit('start-tour')"
           class="flex size-8 items-center justify-center rounded-full text-sm font-bold text-gray-500 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
@@ -69,6 +78,7 @@
 
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router'
+import { useSeason } from '../composables/useSeason'
 
 defineProps<{
   isLoading: boolean
@@ -83,6 +93,12 @@ defineEmits<{
 
 const route = useRoute()
 const router = useRouter()
+
+const { seasons, activeSeasonYear, isCurrentSeason, switchSeason } = useSeason()
+
+function onSeasonChange(e: Event) {
+  switchSeason((e.target as HTMLSelectElement).value)
+}
 
 function isActive(path: string) {
   return path === '/' ? route.path === '/' : route.path.startsWith(path)

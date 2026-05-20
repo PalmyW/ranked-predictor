@@ -3,8 +3,12 @@ import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
-const STATS_DIR = join(ROOT, 'public/data/stats')
-const OUTPUT_DIR = join(ROOT, 'public/data/team-stats')
+
+const seasonArg = process.argv.find((a) => a.startsWith('--season='))
+const season = seasonArg ? seasonArg.split('=')[1] : '2026'
+
+const STATS_DIR = join(ROOT, `public/data/${season}/stats`)
+const OUTPUT_DIR = join(ROOT, `public/data/${season}/team-stats`)
 
 const DIRECT_STATS = [
   'goals', 'behinds', 'superGoals', 'kicks', 'handballs', 'disposals',
@@ -167,4 +171,4 @@ for (const [teamId, teamPlayers] of teams) {
   writeFileSync(join(OUTPUT_DIR, `${teamId}.json`), JSON.stringify(output, null, 2))
 }
 
-console.log(`Done. Wrote ${teams.size} team files to public/data/team-stats/`)
+console.log(`Done. Wrote ${teams.size} team files to public/data/${season}/team-stats/`)
