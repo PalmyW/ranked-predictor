@@ -637,6 +637,32 @@
             </g>
           </template>
 
+          <!-- Trail path + dots for the hovered team (rendered before dots so logos sit on top) -->
+          <g v-if="xpalmyHoverTeamId !== null" pointer-events="none">
+            <path
+              :d="xpalmyTrailPath"
+              fill="none"
+              stroke="rgba(0,0,0,0.22)"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <g v-for="pt in xpalmyTrailPoints" :key="pt.round">
+              <circle
+                :cx="pt.plotX" :cy="pt.plotY" r="3"
+                fill="white" :fill-opacity="pt.opacity * 0.85"
+                stroke="rgba(0,0,0,1)" :stroke-opacity="pt.opacity * 0.35"
+                stroke-width="1"
+              />
+              <text
+                :x="pt.plotX" :y="pt.plotY - 5.5"
+                text-anchor="middle" font-size="7"
+                font-family="system-ui,sans-serif"
+                fill="rgba(0,0,0,1)" :fill-opacity="pt.opacity * 0.5"
+              >R{{ pt.round }}</text>
+            </g>
+          </g>
+
           <!-- Team dots + logos (hovered team sorted last = on top in SVG) -->
           <g
             v-for="p in xpalmyScatterSorted"
@@ -747,7 +773,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toPng } from 'html-to-image'
 import { useAFLData, TEAMS } from '../composables/useAFLData'
-import { useAlgorithmRankings, ALGORITHMS, computeAlgorithmRanking } from '../composables/useAlgorithmRankings'
+import { useAlgorithmRankings, ALGORITHMS, computeAlgorithmRanking, runXPalmy, buildBasicStats, buildOfficialRankMap } from '../composables/useAlgorithmRankings'
 import type { AlgorithmId, AlgorithmRankRow, XPalmyLadderEntry } from '../composables/useAlgorithmRankings'
 import { titleToFilename } from '../composables/usePowerRankingsTitle'
 import { getActiveSeasonYear } from '../config/seasons'
@@ -1113,6 +1139,50 @@ const xpalmyScatterSorted = computed(() => {
     ...xpalmyScatter.value.filter((p) => p.teamId !== hid),
     ...xpalmyScatter.value.filter((p) => p.teamId === hid),
   ]
+})
+
+// Per-round trail positions for each team (only computed when viewing the xpalmy graph)
+const xpalmyTrailHistory = computed(() => {
+  const result = new Map<number, Array<{ round: number; plotX: number; plotY: number }>>()
+  if (selectedId.value !== 'xpalmy' || activeView.value !== 'graph') return result
+  for (const t of TEAMS) result.set(t.id, [])
+  for (const round of concludedRounds.value) {
+    const roundMatches = matches.value.filter((m) => m.roundNumber <= round)
+    const roundConcluded = roundMatches.filter((m) => m.status === 'CONCLUDED' && m.homeScore && m.awayScore)
+    const stats = buildBasicStats(roundMatches)
+    const offMap = buildOfficialRankMap(stats)
+    const { points } = runXPalmy(roundConcluded, stats, offMap)
+    for (const p of points) {
+      if (p.played === 0) continue
+      result.get(p.teamId)?.push({
+        round,
+        plotX: SC.x0 + (1 - p.xRating) * SC_W,
+        plotY: SC.y0 + p.yRating * SC_H,
+      })
+    }
+  }
+  return result
+})
+
+// Trail points for the currently hovered team, with per-point opacity (old=faint, new=opaque)
+const xpalmyTrailPoints = computed(() => {
+  const tid = xpalmyHoverTeamId.value
+  if (tid === null) return []
+  const pts = xpalmyTrailHistory.value.get(tid) ?? []
+  const n = pts.length
+  return pts.map((pt, i) => ({
+    ...pt,
+    opacity: n <= 1 ? 1 : 0.2 + 0.8 * (i / (n - 1)),
+  }))
+})
+
+// SVG path string connecting the hovered team's trail positions
+const xpalmyTrailPath = computed(() => {
+  const pts = xpalmyTrailPoints.value
+  if (pts.length < 2) return ''
+  let d = `M ${pts[0].plotX} ${pts[0].plotY}`
+  for (let i = 1; i < pts.length; i++) d += ` L ${pts[i].plotX} ${pts[i].plotY}`
+  return d
 })
 
 const CHAMP_PAD = 10
