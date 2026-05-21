@@ -426,8 +426,8 @@ const STAT_LABELS: Record<string, string> = {
   defHalfPressureActs: 'DPA', spoils: 'SPL', interceptMarks: 'IM', marksOnLead: 'MOL',
   hitoutsToAdvantage: 'HOA', hitoutToAdvantageRate: 'HOAR%', hitoutWinPercentage: 'HOW%',
   ruckContests: 'RC', centreBounceAttendances: 'CBA',
-  contestDefOneOnOnes: 'CD1O1', contestDefLosses: 'CDL', contestDefLossPercentage: 'CDL%',
-  contestOffOneOnOnes: 'CO1O1', contestOffWins: 'COW', contestOffWinsPercentage: 'COW%',
+  contestDefOneOnOnes: 'D1O1', contestDefLosses: 'D1O1L', contestDefLossPercentage: 'D1O1L%',
+  contestOffOneOnOnes: 'O1O1', contestOffWins: 'O1O1W', contestOffWinsPercentage: 'O1O1W%',
   kickins: 'KI', kickinsPlayon: 'KIPO',
 }
 
