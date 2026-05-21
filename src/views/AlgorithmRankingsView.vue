@@ -1153,7 +1153,7 @@ const xpalmyTrailHistory = computed(() => {
     const offMap = buildOfficialRankMap(stats)
     const { points } = runXPalmy(roundConcluded, stats, offMap)
     for (const p of points) {
-      if (p.played === 0) continue
+      if (p.played < 2) continue
       result.get(p.teamId)?.push({
         round,
         plotX: SC.x0 + (1 - p.xRating) * SC_W,
