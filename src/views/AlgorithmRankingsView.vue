@@ -725,7 +725,7 @@
               font-family="system-ui,sans-serif"
               fill="rgba(255,255,255,0.3)"
               :transform="`rotate(-45, ${xScale(idx)}, ${CHART.y1 + 5})`"
-            >Rd {{ r }}</text>
+            >{{ roundLabels[r] ?? `Rd ${r}` }}</text>
           </g>
           <path
             v-for="d in wormData"
@@ -891,6 +891,22 @@ const concludedRounds = computed<number[]>(() => {
     if (m.status === 'CONCLUDED' && m.homeScore && m.awayScore) rounds.add(m.roundNumber)
   }
   return [...rounds].sort((a, b) => a - b)
+})
+
+const roundLabels = computed<Record<number, string>>(() => {
+  const map: Record<number, string> = {}
+  for (const m of matches.value) {
+    if (m.roundNumber in map) continue
+    const n = m.roundName
+    map[m.roundNumber] =
+      n === 'Opening Round'      ? 'OR' :
+      n === 'Finals Week 1'      ? 'F1' :
+      n === 'Semi Finals'        ? 'F2' :
+      n === 'Preliminary Finals' ? 'PF' :
+      n === 'Grand Final'        ? 'GF' :
+      `Rd ${m.roundNumber}`
+  }
+  return map
 })
 
 const roundHistory = computed<Map<number, AlgorithmRankRow[]>>(() => {
