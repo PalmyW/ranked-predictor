@@ -1249,15 +1249,12 @@ const scatterMidY = computed(() => {
 })
 
 const scatterMidR = computed(() => {
-  if (championsScatter.value.length === 0) return 40
   const cx = scatterMidX.value
   const cy = scatterMidY.value
-  const minDist = Math.min(
-    ...championsScatter.value.map((c) =>
-      Math.sqrt((c.plotX - cx) ** 2 + (c.plotY - cy) ** 2)
-    )
-  )
-  return Math.max(20, minDist - 15)
+  // Radius reaches the plot position of a 60/60 rated team (rating = 0.4)
+  const plotX60 = SC.x0 + (1 - 0.4) * SC_W
+  const plotY60 = SC.y0 + 0.4 * SC_H
+  return Math.sqrt((plotX60 - cx) ** 2 + (plotY60 - cy) ** 2)
 })
 
 // --- XPalmy popup ---
