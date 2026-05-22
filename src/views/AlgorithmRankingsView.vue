@@ -618,6 +618,26 @@
           <!-- Y axis label (rotated) -->
           <text x="11" y="240" text-anchor="middle" font-size="9" font-family="system-ui,sans-serif" fill="rgba(0,0,0,0.35)" transform="rotate(-90,11,240)">← Poor Defense · Good Defense →</text>
 
+          <!-- Mid circle -->
+          <circle
+            :cx="scatterMidX"
+            :cy="scatterMidY"
+            :r="scatterMidR"
+            fill="rgba(0,0,0,0.04)"
+            stroke="rgba(0,0,0,0.15)"
+            stroke-width="1"
+            stroke-dasharray="4,3"
+          />
+          <text
+            :x="scatterMidX"
+            :y="scatterMidY + 4"
+            text-anchor="middle"
+            font-size="9"
+            font-family="system-ui,sans-serif"
+            fill="rgba(0,0,0,0.3)"
+            font-weight="600"
+          >MID</text>
+
           <!-- Historical champion ghost dots -->
           <template v-if="showChampions">
             <g v-for="c in championsScatter" :key="`champ-${c.year}`">
@@ -1228,6 +1248,18 @@ const scatterMidY = computed(() => {
   return maxPlotY + CHAMP_PAD
 })
 
+const scatterMidR = computed(() => {
+  if (championsScatter.value.length === 0) return 40
+  const cx = scatterMidX.value
+  const cy = scatterMidY.value
+  const minDist = Math.min(
+    ...championsScatter.value.map((c) =>
+      Math.sqrt((c.plotX - cx) ** 2 + (c.plotY - cy) ** 2)
+    )
+  )
+  return Math.max(20, minDist - 15)
+})
+
 // --- XPalmy popup ---
 
 const xpalmyHoveredId = ref<number | null>(null)
@@ -1289,13 +1321,13 @@ const xpalmyHoveredYPositions = computed((): XpalmyPosition[] => {
 const xpalmyHoveredXAvg = computed(() => {
   const pos = xpalmyHoveredXPositions.value
   if (pos.length === 0) return '—'
-  return ((1 - pos.reduce((s, p) => s + p.rank / p.ladderSize, 0) / pos.length) * 100).toFixed(1)
+  return ((1 - pos.reduce((s, p) => s + (p.rank - 1) / Math.max(p.ladderSize - 1, 1), 0) / pos.length) * 100).toFixed(1)
 })
 
 const xpalmyHoveredYAvg = computed(() => {
   const pos = xpalmyHoveredYPositions.value
   if (pos.length === 0) return '—'
-  return ((1 - pos.reduce((s, p) => s + p.rank / p.ladderSize, 0) / pos.length) * 100).toFixed(1)
+  return ((1 - pos.reduce((s, p) => s + (p.rank - 1) / Math.max(p.ladderSize - 1, 1), 0) / pos.length) * 100).toFixed(1)
 })
 
 function applyXpalmyPopup(anchorRect: DOMRect) {

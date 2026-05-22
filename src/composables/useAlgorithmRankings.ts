@@ -491,7 +491,7 @@ export function runPalmy(
       const ladder = opponentLadders[teamX.id]
       for (const entry of ladder) {
         if (entry.teamId === teamY.id)
-          fractions.push(entry.rank / ladder.length)
+          fractions.push((entry.rank - 1) / Math.max(ladder.length - 1, 1))
       }
     }
     ratings[teamY.id] =
@@ -563,11 +563,11 @@ export function runXPalmy(
       if (teamX.id === teamY.id) continue
       const xl = xLadders[teamX.id]
       for (const e of xl) {
-        if (e.teamId === teamY.id) xFracs.push(e.rank / xl.length)
+        if (e.teamId === teamY.id) xFracs.push((e.rank - 1) / Math.max(xl.length - 1, 1))
       }
       const yl = yLadders[teamX.id]
       for (const e of yl) {
-        if (e.teamId === teamY.id) yFracs.push(e.rank / yl.length)
+        if (e.teamId === teamY.id) yFracs.push((e.rank - 1) / Math.max(yl.length - 1, 1))
       }
     }
     const avg = (arr: number[]) =>
