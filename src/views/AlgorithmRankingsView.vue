@@ -519,6 +519,7 @@
             <template v-if="selectedId === 'xpalmy'">
               <th class="w-16 py-2 text-center font-semibold text-orange-500 dark:text-orange-400">Attack</th>
               <th class="w-16 py-2 text-center font-semibold text-blue-500 dark:text-blue-400">Defense</th>
+              <th class="w-20 py-2 text-center font-semibold">Group</th>
             </template>
             <th v-else class="w-20 py-2 text-center font-semibold">{{ selectedAlgo.ratingLabel }}</th>
             <th class="w-14 py-2 text-center font-semibold text-gray-400 dark:text-gray-500" title="vs official AFL ladder">vs AFL</th>
@@ -553,6 +554,7 @@
             <template v-if="selectedId === 'xpalmy'">
               <td class="py-2 text-center font-semibold tabular-nums text-orange-500 dark:text-orange-400 text-xs">{{ xpalmyAttack(row.teamId) }}</td>
               <td class="py-2 text-center font-semibold tabular-nums text-blue-500 dark:text-blue-400 text-xs">{{ xpalmyDefense(row.teamId) }}</td>
+              <td class="py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400">{{ xpalmyGroup(row.teamId) }}</td>
             </template>
             <td v-else class="py-2 text-center font-semibold tabular-nums text-gray-800 dark:text-gray-200 text-xs">
               {{ formatRating(row.rating) }}
@@ -593,18 +595,18 @@
         <svg viewBox="0 0 560 510" class="w-full" style="overflow: visible" aria-label="XPalmy scatter chart">
           <!-- Title (visible in screenshot) -->
           <text x="280" y="18" text-anchor="middle" font-size="11" font-family="system-ui,sans-serif" fill="rgba(0,0,0,0.5)" font-weight="700" letter-spacing="2">XPALMY RATINGS · {{ currentSeasonYear }}</text>
-          <!-- Quadrant backgrounds -->
-          <rect :x="scatterMidX" :y="SC.y0" :width="SC.x1 - scatterMidX" :height="scatterMidY - SC.y0" fill="rgba(34,197,94,0.08)" />
-          <rect :x="SC.x0" :y="SC.y0" :width="scatterMidX - SC.x0" :height="scatterMidY - SC.y0" fill="rgba(59,130,246,0.08)" />
-          <rect :x="scatterMidX" :y="scatterMidY" :width="SC.x1 - scatterMidX" :height="SC.y1 - scatterMidY" fill="rgba(251,146,60,0.08)" />
-          <rect :x="SC.x0" :y="scatterMidY" :width="scatterMidX - SC.x0" :height="SC.y1 - scatterMidY" fill="rgba(239,68,68,0.08)" />
+          <!-- Quadrant backgrounds (rotated dividers → non-rectangular polygons) -->
+          <polygon :points="`${scatterDividerPoints.cx},${scatterDividerPoints.cy} ${scatterDividerPoints.vTop.x},${scatterDividerPoints.vTop.y} ${SC.x1},${SC.y0} ${SC.x1},${scatterDividerPoints.hRight.y}`" fill="rgba(34,197,94,0.08)" />
+          <polygon :points="`${scatterDividerPoints.cx},${scatterDividerPoints.cy} ${scatterDividerPoints.hLeft.x},${scatterDividerPoints.hLeft.y} ${SC.x0},${SC.y0} ${scatterDividerPoints.vTop.x},${scatterDividerPoints.vTop.y}`" fill="rgba(59,130,246,0.08)" />
+          <polygon :points="`${scatterDividerPoints.cx},${scatterDividerPoints.cy} ${SC.x1},${scatterDividerPoints.hRight.y} ${SC.x1},${SC.y1} ${scatterDividerPoints.vBot.x},${scatterDividerPoints.vBot.y}`" fill="rgba(251,146,60,0.08)" />
+          <polygon :points="`${scatterDividerPoints.cx},${scatterDividerPoints.cy} ${scatterDividerPoints.vBot.x},${scatterDividerPoints.vBot.y} ${SC.x0},${SC.y1} ${scatterDividerPoints.hLeft.x},${scatterDividerPoints.hLeft.y}`" fill="rgba(239,68,68,0.08)" />
 
           <!-- Chart border -->
           <rect :x="SC.x0" :y="SC.y0" :width="SC_W" :height="SC_H" fill="none" stroke="rgba(0,0,0,0.1)" stroke-width="1" />
 
           <!-- Quadrant dividers -->
-          <line :x1="scatterMidX" :y1="SC.y0" :x2="scatterMidX" :y2="SC.y1" stroke="rgba(0,0,0,0.12)" stroke-width="1" stroke-dasharray="4,3" />
-          <line :x1="SC.x0" :y1="scatterMidY" :x2="SC.x1" :y2="scatterMidY" stroke="rgba(0,0,0,0.12)" stroke-width="1" stroke-dasharray="4,3" />
+          <line :x1="scatterDividerPoints.vTop.x" :y1="scatterDividerPoints.vTop.y" :x2="scatterDividerPoints.vBot.x" :y2="scatterDividerPoints.vBot.y" stroke="rgba(0,0,0,0.12)" stroke-width="1" stroke-dasharray="4,3" />
+          <line :x1="scatterDividerPoints.hLeft.x" :y1="scatterDividerPoints.hLeft.y" :x2="scatterDividerPoints.hRight.x" :y2="scatterDividerPoints.hRight.y" stroke="rgba(0,0,0,0.12)" stroke-width="1" stroke-dasharray="4,3" />
 
           <!-- Quadrant labels -->
           <text :x="SC.x1 - 6" :y="SC.y0 + 14" text-anchor="end" font-size="9" font-family="system-ui,sans-serif" fill="rgba(22,163,74,0.7)" font-weight="600">ELITE</text>
@@ -837,6 +839,27 @@ function xpalmyAttack(teamId: number): string {
 function xpalmyDefense(teamId: number): string {
   const p = xpalmyPointMap.value.get(teamId)
   return p ? ((1 - p.yRating) * 100).toFixed(1) : '—'
+}
+
+function xpalmyGroup(teamId: number): string {
+  const p = xpalmyPointMap.value.get(teamId)
+  if (!p) return '—'
+  const plotX = SC.x0 + (1 - p.xRating) * SC_W
+  const plotY = SC.y0 + p.yRating * SC_H
+  const { cx, cy } = scatterDividerPoints.value
+  const t = DIVIDER_ANGLE_DEG * Math.PI / 180
+  const cosT = Math.cos(t)
+  const sinT = Math.sin(t)
+  const dx = plotX - cx
+  const dy = plotY - cy
+  const goodAttack = cosT * dx - sinT * dy > 0   // vertical divider: CCW
+  const goodDefense = cosT * dy - sinT * dx < 0  // horizontal divider: CW
+  const base = goodAttack && goodDefense ? 'elite'
+    : !goodAttack && goodDefense ? 'defensive'
+    : goodAttack && !goodDefense ? 'offensive'
+    : 'bum'
+  const dist = Math.sqrt(dx ** 2 + dy ** 2)
+  return dist < scatterMidR.value ? base + 'ish' : base
 }
 
 const currentRanking = computed<AlgorithmRankRow[]>(() => {
@@ -1255,6 +1278,24 @@ const scatterMidR = computed(() => {
   const plotX60 = SC.x0 + (1 - 0.4) * SC_W
   const plotY60 = SC.y0 + 0.4 * SC_H
   return Math.sqrt((plotX60 - cx) ** 2 + (plotY60 - cy) ** 2)
+})
+
+const DIVIDER_ANGLE_DEG = 10
+
+// Endpoints where the rotated divider lines hit the chart boundary.
+// Vertical divider: 10° CCW. Horizontal divider: 10° CW (enlarges ELITE + BUMS).
+const scatterDividerPoints = computed(() => {
+  const cx = scatterMidX.value
+  const cy = scatterMidY.value
+  const tanT = Math.tan(DIVIDER_ANGLE_DEG * Math.PI / 180)
+  return {
+    vTop:   { x: cx - (cy - SC.y0) * tanT, y: SC.y0 },
+    vBot:   { x: cx + (SC.y1 - cy) * tanT, y: SC.y1 },
+    hLeft:  { x: SC.x0, y: cy - (cx - SC.x0) * tanT },
+    hRight: { x: SC.x1, y: cy + (SC.x1 - cx) * tanT },
+    cx,
+    cy,
+  }
 })
 
 // --- XPalmy popup ---
