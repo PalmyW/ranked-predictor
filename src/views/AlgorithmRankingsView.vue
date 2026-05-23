@@ -847,13 +847,14 @@ function xpalmyGroup(teamId: number): string {
   const plotX = SC.x0 + (1 - p.xRating) * SC_W
   const plotY = SC.y0 + p.yRating * SC_H
   const { cx, cy } = scatterDividerPoints.value
-  const t = DIVIDER_ANGLE_DEG * Math.PI / 180
-  const cosT = Math.cos(t)
-  const sinT = Math.sin(t)
+  const cosV = Math.cos(VERT_DIVIDER_DEG * Math.PI / 180)
+  const sinV = Math.sin(VERT_DIVIDER_DEG * Math.PI / 180)
+  const cosH = Math.cos(HORIZ_DIVIDER_DEG * Math.PI / 180)
+  const sinH = Math.sin(HORIZ_DIVIDER_DEG * Math.PI / 180)
   const dx = plotX - cx
   const dy = plotY - cy
-  const goodAttack = cosT * dx - sinT * dy > 0   // vertical divider: CCW
-  const goodDefense = cosT * dy - sinT * dx < 0  // horizontal divider: CW
+  const goodAttack = cosV * dx - sinV * dy > 0
+  const goodDefense = cosH * dy - sinH * dx < 0
   const base = goodAttack && goodDefense ? 'elite'
     : !goodAttack && goodDefense ? 'defensive'
     : goodAttack && !goodDefense ? 'offensive'
@@ -1280,19 +1281,20 @@ const scatterMidR = computed(() => {
   return Math.sqrt((plotX60 - cx) ** 2 + (plotY60 - cy) ** 2)
 })
 
-const DIVIDER_ANGLE_DEG = 10
+const VERT_DIVIDER_DEG = 15   // 11:30→5:30 o'clock: 15° CCW from vertical
+const HORIZ_DIVIDER_DEG = 15  // 9:30→3:30: 15° CW from horizontal
 
 // Endpoints where the rotated divider lines hit the chart boundary.
-// Vertical divider: 10° CCW. Horizontal divider: 10° CW (enlarges ELITE + BUMS).
 const scatterDividerPoints = computed(() => {
   const cx = scatterMidX.value
   const cy = scatterMidY.value
-  const tanT = Math.tan(DIVIDER_ANGLE_DEG * Math.PI / 180)
+  const tanV = Math.tan(VERT_DIVIDER_DEG * Math.PI / 180)
+  const tanH = Math.tan(HORIZ_DIVIDER_DEG * Math.PI / 180)
   return {
-    vTop:   { x: cx - (cy - SC.y0) * tanT, y: SC.y0 },
-    vBot:   { x: cx + (SC.y1 - cy) * tanT, y: SC.y1 },
-    hLeft:  { x: SC.x0, y: cy - (cx - SC.x0) * tanT },
-    hRight: { x: SC.x1, y: cy + (SC.x1 - cx) * tanT },
+    vTop:   { x: cx - (cy - SC.y0) * tanV, y: SC.y0 },
+    vBot:   { x: cx + (SC.y1 - cy) * tanV, y: SC.y1 },
+    hLeft:  { x: SC.x0, y: cy - (cx - SC.x0) * tanH },
+    hRight: { x: SC.x1, y: cy + (SC.x1 - cx) * tanH },
     cx,
     cy,
   }
