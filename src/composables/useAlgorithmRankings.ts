@@ -2,6 +2,8 @@ import { computed } from 'vue'
 import type { AflMatch } from '../types/afl'
 import { TEAMS } from './useAFLData'
 
+export type VenueFilter = 'both' | 'home' | 'away'
+
 export type AlgorithmId =
   | 'winpct'
   | 'srs'
@@ -92,6 +94,7 @@ export interface PalmyLadderEntry {
   rank: number
   roundNumber: number
   roundName: string
+  wasTeamHome: boolean
 }
 
 export interface XPalmyLadderEntry {
@@ -104,6 +107,7 @@ export interface XPalmyLadderEntry {
   rank: number
   roundNumber: number
   roundName: string
+  wasTeamHome: boolean
 }
 
 export interface XPalmyTeamPoint {
@@ -159,6 +163,7 @@ interface BasicStats {
 
 export function buildBasicStats(
   matches: readonly AflMatch[],
+  venueFilter: VenueFilter = 'both',
 ): Record<number, BasicStats> {
   const stats: Record<number, BasicStats> = {}
   for (const t of TEAMS)
@@ -177,21 +182,21 @@ export function buildBasicStats(
     const hId = m.homeTeamId
     const aId = m.awayTeamId
     if (!stats[hId] || !stats[aId]) continue
-    stats[hId].for += hs
-    stats[hId].against += as_
-    stats[hId].played++
-    stats[aId].for += as_
-    stats[aId].against += hs
-    stats[aId].played++
-    if (hs > as_) {
-      stats[hId].wins++
-      stats[aId].losses++
-    } else if (as_ > hs) {
-      stats[aId].wins++
-      stats[hId].losses++
-    } else {
-      stats[hId].draws++
-      stats[aId].draws++
+    if (venueFilter !== 'away') {
+      stats[hId].for += hs
+      stats[hId].against += as_
+      stats[hId].played++
+      if (hs > as_) stats[hId].wins++
+      else if (as_ > hs) stats[hId].losses++
+      else stats[hId].draws++
+    }
+    if (venueFilter !== 'home') {
+      stats[aId].for += as_
+      stats[aId].against += hs
+      stats[aId].played++
+      if (as_ > hs) stats[aId].wins++
+      else if (hs > as_) stats[aId].losses++
+      else stats[aId].draws++
     }
   }
   return stats
@@ -215,7 +220,7 @@ export function buildOfficialRankMap(
   return map
 }
 
-function toRows(
+export function toRows(
   ratings: Record<number, number>,
   stats: Record<number, BasicStats>,
   officialRankMap: Map<number, number>,
@@ -437,6 +442,7 @@ export function runPalmy(
   concluded: readonly AflMatch[],
   stats: Record<number, BasicStats>,
   officialRankMap: Map<number, number>,
+  venueFilter: VenueFilter = 'both',
 ): {
   ranking: AlgorithmRankRow[]
   opponentLadders: Record<number, PalmyLadderEntry[]>
@@ -454,6 +460,7 @@ export function runPalmy(
     const hTeam = teamMap[hId]
     const aTeam = teamMap[aId]
     if (!hTeam || !aTeam) continue
+    // aId (away team) appears in hId's ladder; aId was away in this game
     opponentLadders[hId].push({
       teamId: aId,
       teamName: aTeam.name,
@@ -463,7 +470,9 @@ export function runPalmy(
       rank: 0,
       roundNumber: m.roundNumber,
       roundName: m.roundName,
+      wasTeamHome: false,
     })
+    // hId (home team) appears in aId's ladder; hId was home in this game
     opponentLadders[aId].push({
       teamId: hId,
       teamName: hTeam.name,
@@ -473,6 +482,7 @@ export function runPalmy(
       rank: 0,
       roundNumber: m.roundNumber,
       roundName: m.roundName,
+      wasTeamHome: true,
     })
   }
 
@@ -490,8 +500,10 @@ export function runPalmy(
       if (teamX.id === teamY.id) continue
       const ladder = opponentLadders[teamX.id]
       for (const entry of ladder) {
-        if (entry.teamId === teamY.id)
-          fractions.push((entry.rank - 1) / Math.max(ladder.length - 1, 1))
+        if (entry.teamId !== teamY.id) continue
+        if (venueFilter === 'home' && !entry.wasTeamHome) continue
+        if (venueFilter === 'away' && entry.wasTeamHome) continue
+        fractions.push((entry.rank - 1) / Math.max(ladder.length - 1, 1))
       }
     }
     ratings[teamY.id] =
@@ -507,6 +519,7 @@ export function runXPalmy(
   concluded: readonly AflMatch[],
   stats: Record<number, BasicStats>,
   officialRankMap: Map<number, number>,
+  venueFilter: VenueFilter = 'both',
 ): XPalmyResult {
   const teamMap = Object.fromEntries(TEAMS.map((t) => [t.id, t]))
   const xLadders: Record<number, XPalmyLadderEntry[]> = {}
@@ -527,19 +540,19 @@ export function runXPalmy(
     if (!hTeam || !aTeam) continue
 
     const base = { rank: 0, roundNumber: m.roundNumber, roundName: m.roundName }
-    // Home perspective: opposition (away) scored aScore, home scored hScore
+    // aId (away team) in hId's ladders; aId was away
     const homeEntry: XPalmyLadderEntry = {
       ...base,
       teamId: aId, teamName: aTeam.name, abbreviation: aTeam.abbreviation, iconId: aTeam.iconId,
-      oppScore: aScore, ownScore: hScore,
+      oppScore: aScore, ownScore: hScore, wasTeamHome: false,
     }
     xLadders[hId].push({ ...homeEntry })
     yLadders[hId].push({ ...homeEntry })
-    // Away perspective: opposition (home) scored hScore, away scored aScore
+    // hId (home team) in aId's ladders; hId was home
     const awayEntry: XPalmyLadderEntry = {
       ...base,
       teamId: hId, teamName: hTeam.name, abbreviation: hTeam.abbreviation, iconId: hTeam.iconId,
-      oppScore: hScore, ownScore: aScore,
+      oppScore: hScore, ownScore: aScore, wasTeamHome: true,
     }
     xLadders[aId].push({ ...awayEntry })
     yLadders[aId].push({ ...awayEntry })
@@ -563,11 +576,17 @@ export function runXPalmy(
       if (teamX.id === teamY.id) continue
       const xl = xLadders[teamX.id]
       for (const e of xl) {
-        if (e.teamId === teamY.id) xFracs.push((e.rank - 1) / Math.max(xl.length - 1, 1))
+        if (e.teamId !== teamY.id) continue
+        if (venueFilter === 'home' && !e.wasTeamHome) continue
+        if (venueFilter === 'away' && e.wasTeamHome) continue
+        xFracs.push((e.rank - 1) / Math.max(xl.length - 1, 1))
       }
       const yl = yLadders[teamX.id]
       for (const e of yl) {
-        if (e.teamId === teamY.id) yFracs.push((e.rank - 1) / Math.max(yl.length - 1, 1))
+        if (e.teamId !== teamY.id) continue
+        if (venueFilter === 'home' && !e.wasTeamHome) continue
+        if (venueFilter === 'away' && e.wasTeamHome) continue
+        yFracs.push((e.rank - 1) / Math.max(yl.length - 1, 1))
       }
     }
     const avg = (arr: number[]) =>

@@ -1,4 +1,4 @@
-import { readonly, ref } from 'vue'
+import { computed, readonly, ref } from 'vue'
 import { SEASONS, CURRENT_SEASON_YEAR, getActiveSeasonYear } from '../config/seasons'
 
 const activeSeasonYear = ref(getActiveSeasonYear())
@@ -12,11 +12,22 @@ export function useSeason() {
     window.location.href = window.location.pathname + (qs ? `?${qs}` : '')
   }
 
+  function resetToCurrentSeason() {
+    activeSeasonYear.value = CURRENT_SEASON_YEAR
+    const params = new URLSearchParams(window.location.search)
+    if (params.has('season')) {
+      params.delete('season')
+      const qs = params.toString()
+      window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''))
+    }
+  }
+
   return {
     activeSeasonYear: readonly(activeSeasonYear),
     seasons: SEASONS,
     currentSeasonYear: CURRENT_SEASON_YEAR,
-    isCurrentSeason: activeSeasonYear.value === CURRENT_SEASON_YEAR,
+    isCurrentSeason: computed(() => activeSeasonYear.value === CURRENT_SEASON_YEAR),
     switchSeason,
+    resetToCurrentSeason,
   }
 }

@@ -48,7 +48,8 @@ if (seasonsMatch) {
 }
 
 // XPalmy algorithm — mirrors runXPalmy from useAlgorithmRankings.ts
-function runXPalmy(concluded) {
+// venueFilter: 'both' | 'home' | 'away'
+function runXPalmy(concluded, venueFilter = 'both') {
   const xLadders = {}
   const yLadders = {}
   for (const t of TEAMS) { xLadders[t.id] = []; yLadders[t.id] = [] }
@@ -62,10 +63,12 @@ function runXPalmy(concluded) {
     if (!TEAM_MAP[hId] || !TEAM_MAP[aId]) continue
 
     const base = { roundNumber: m.roundNumber }
-    xLadders[hId].push({ ...base, teamId: aId, oppScore: aScore, ownScore: hScore, rank: 0 })
-    yLadders[hId].push({ ...base, teamId: aId, oppScore: aScore, ownScore: hScore, rank: 0 })
-    xLadders[aId].push({ ...base, teamId: hId, oppScore: hScore, ownScore: aScore, rank: 0 })
-    yLadders[aId].push({ ...base, teamId: hId, oppScore: hScore, ownScore: aScore, rank: 0 })
+    // aId (away team) in hId's ladders; aId was away
+    xLadders[hId].push({ ...base, teamId: aId, oppScore: aScore, ownScore: hScore, rank: 0, wasTeamHome: false })
+    yLadders[hId].push({ ...base, teamId: aId, oppScore: aScore, ownScore: hScore, rank: 0, wasTeamHome: false })
+    // hId (home team) in aId's ladders; hId was home
+    xLadders[aId].push({ ...base, teamId: hId, oppScore: hScore, ownScore: aScore, rank: 0, wasTeamHome: true })
+    yLadders[aId].push({ ...base, teamId: hId, oppScore: hScore, ownScore: aScore, rank: 0, wasTeamHome: true })
   }
 
   for (const t of TEAMS) {
@@ -82,9 +85,19 @@ function runXPalmy(concluded) {
     for (const teamX of TEAMS) {
       if (teamX.id === teamY.id) continue
       const xl = xLadders[teamX.id]
-      for (const e of xl) if (e.teamId === teamY.id) xFracs.push(e.rank / xl.length)
+      for (const e of xl) {
+        if (e.teamId !== teamY.id) continue
+        if (venueFilter === 'home' && !e.wasTeamHome) continue
+        if (venueFilter === 'away' && e.wasTeamHome) continue
+        xFracs.push((e.rank - 1) / Math.max(xl.length - 1, 1))
+      }
       const yl = yLadders[teamX.id]
-      for (const e of yl) if (e.teamId === teamY.id) yFracs.push(e.rank / yl.length)
+      for (const e of yl) {
+        if (e.teamId !== teamY.id) continue
+        if (venueFilter === 'home' && !e.wasTeamHome) continue
+        if (venueFilter === 'away' && e.wasTeamHome) continue
+        yFracs.push((e.rank - 1) / Math.max(yl.length - 1, 1))
+      }
     }
     return { teamId: teamY.id, xRating: avg(xFracs), yRating: avg(yFracs) }
   })
@@ -134,6 +147,8 @@ function findGrandFinalWinner(matches) {
   return homeScore > awayScore ? gf.homeTeamId : gf.awayTeamId
 }
 
+const r4 = (v) => Math.round(v * 10000) / 10000
+
 // Process each historical season
 const champions = []
 
@@ -156,21 +171,20 @@ for (const year of SEASONS) {
     continue
   }
 
-  const xpalmyPoints = runXPalmy(concluded)
-  const winnerPoint = xpalmyPoints.find((p) => p.teamId === winnerId)
-  if (!winnerPoint) {
+  const bothPoints = runXPalmy(concluded, 'both')
+  const homePoints = runXPalmy(concluded, 'home')
+  const awayPoints = runXPalmy(concluded, 'away')
+
+  const winnerBoth = bothPoints.find((p) => p.teamId === winnerId)
+  const winnerHome = homePoints.find((p) => p.teamId === winnerId)
+  const winnerAway = awayPoints.find((p) => p.teamId === winnerId)
+
+  if (!winnerBoth) {
     console.warn(`  ${year}: winner teamId ${winnerId} not found in TEAMS — skipping`)
     continue
   }
 
   const team = TEAM_MAP[winnerId]
-  const gfMatch = matches.find(
-    (m) => m.status === 'CONCLUDED' &&
-      (m.roundName.toLowerCase().includes('grand final') || true) &&
-      (m.homeTeamId === winnerId || m.awayTeamId === winnerId) &&
-      m.homeScore && m.awayScore
-  )
-  // Re-find properly
   const concludedGf = matches.find((m) => {
     if (m.status !== 'CONCLUDED' || !m.homeScore || !m.awayScore) return false
     if (!m.roundName.toLowerCase().includes('grand final')) return false
@@ -186,7 +200,7 @@ for (const year of SEASONS) {
     : null
   const loserTeam = loserTeamId ? TEAM_MAP[loserTeamId] : null
 
-  console.log(`  ${year}: ${team?.name ?? winnerId} (${winnerPoint.xRating.toFixed(3)}, ${winnerPoint.yRating.toFixed(3)})${loserTeam ? ` def. ${loserTeam.name}` : ''}`)
+  console.log(`  ${year}: ${team?.name ?? winnerId} both(${r4(winnerBoth.xRating)}, ${r4(winnerBoth.yRating)}) home(${r4(winnerHome.xRating)}, ${r4(winnerHome.yRating)}) away(${r4(winnerAway.xRating)}, ${r4(winnerAway.yRating)})${loserTeam ? ` def. ${loserTeam.name}` : ''}`)
 
   champions.push({
     year,
@@ -194,8 +208,12 @@ for (const year of SEASONS) {
     teamName: team?.name ?? String(winnerId),
     abbreviation: team?.abbreviation ?? String(winnerId),
     iconId: team?.iconId ?? '',
-    xRating: Math.round(winnerPoint.xRating * 10000) / 10000,
-    yRating: Math.round(winnerPoint.yRating * 10000) / 10000,
+    xRating: r4(winnerBoth.xRating),
+    yRating: r4(winnerBoth.yRating),
+    homeXRating: r4(winnerHome.xRating),
+    homeYRating: r4(winnerHome.yRating),
+    awayXRating: r4(winnerAway.xRating),
+    awayYRating: r4(winnerAway.yRating),
   })
 }
 

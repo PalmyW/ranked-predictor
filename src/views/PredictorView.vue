@@ -104,7 +104,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch, provide } from 'vue'
+import { computed, watch, provide, onMounted } from 'vue'
 import { useAFLData } from '../composables/useAFLData'
 import { useRanking } from '../composables/useRanking'
 import { useSimulation } from '../composables/useSimulation'
@@ -117,7 +117,8 @@ import ShareBar from '../components/ShareBar.vue'
 import MatchList from '../components/MatchList.vue'
 
 const { matches, teams, isLoading, error } = useAFLData()
-const { isCurrentSeason, activeSeasonYear } = useSeason()
+const { isCurrentSeason, activeSeasonYear, resetToCurrentSeason } = useSeason()
+onMounted(resetToCurrentSeason)
 const { ranking, tierSizes, shareUrl, rankedFromUrl, rankedFromStorage, ladderSource, savedState, rankingHistory, setRanking, setTierSizes, resetToLadder, loadSavedRanking, saveToMyLadder, seedHistoryFromSavedRanking, snapshotRoundRanking, updateRoundSnapshot } = useRanking()
 const { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate, getSimulationFrames, rangeResults, rangeTotal, isRunningRange, runMany } = useSimulation(ranking, matches)
 const analytics = useAnalytics()

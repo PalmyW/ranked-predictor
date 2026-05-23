@@ -332,6 +332,28 @@
       </div>
     </div>
 
+    <!-- Venue filter (Palmy / XPalmy only) -->
+    <div v-if="selectedId === 'palmy' || selectedId === 'xpalmy'" class="flex items-center gap-2 mb-4">
+      <span class="text-xs text-gray-500 dark:text-gray-400">Games:</span>
+      <div class="flex overflow-hidden rounded border border-gray-300 dark:border-gray-600 text-xs font-semibold">
+        <button
+          @click="palmyVenueFilter = 'home'"
+          class="px-3 py-1.5 transition-colors"
+          :class="palmyVenueFilter === 'home' ? 'bg-gray-800 dark:bg-gray-100 text-white dark:text-gray-900' : 'bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'"
+        >Home</button>
+        <button
+          @click="palmyVenueFilter = 'both'"
+          class="border-l border-gray-300 dark:border-gray-600 px-3 py-1.5 transition-colors"
+          :class="palmyVenueFilter === 'both' ? 'bg-gray-800 dark:bg-gray-100 text-white dark:text-gray-900' : 'bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'"
+        >Both</button>
+        <button
+          @click="palmyVenueFilter = 'away'"
+          class="border-l border-gray-300 dark:border-gray-600 px-3 py-1.5 transition-colors"
+          :class="palmyVenueFilter === 'away' ? 'bg-gray-800 dark:bg-gray-100 text-white dark:text-gray-900' : 'bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'"
+        >Away</button>
+      </div>
+    </div>
+
     <!-- Nerd stuff (collapsible) -->
     <div class="mb-5">
       <button
@@ -795,8 +817,8 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toPng } from 'html-to-image'
 import { useAFLData, TEAMS } from '../composables/useAFLData'
-import { useAlgorithmRankings, ALGORITHMS, computeAlgorithmRanking, runXPalmy, buildBasicStats, buildOfficialRankMap } from '../composables/useAlgorithmRankings'
-import type { AlgorithmId, AlgorithmRankRow, XPalmyLadderEntry } from '../composables/useAlgorithmRankings'
+import { useAlgorithmRankings, ALGORITHMS, computeAlgorithmRanking, runPalmy, runXPalmy, toRows, buildBasicStats, buildOfficialRankMap } from '../composables/useAlgorithmRankings'
+import type { AlgorithmId, AlgorithmRankRow, XPalmyLadderEntry, VenueFilter } from '../composables/useAlgorithmRankings'
 import { titleToFilename } from '../composables/usePowerRankingsTitle'
 import { getActiveSeasonYear } from '../config/seasons'
 
@@ -806,7 +828,32 @@ const route = useRoute()
 const router = useRouter()
 
 const { matches, isLoading } = useAFLData()
-const { winPctRanking, srsRanking, colleyRanking, masseyRanking, winFlowRanking, palmyRanking, palmyOpponentLadders, xpalmyPoints, xpalmyXLadders, xpalmyYLadders, xpalmyRanking } = useAlgorithmRankings(matches)
+const { officialRankMap: compositeOfficialRankMap, winPctRanking, srsRanking, colleyRanking, masseyRanking, winFlowRanking } = useAlgorithmRankings(matches)
+
+const palmyVenueFilter = ref<VenueFilter>('both')
+
+const palmyConcluded = computed(() =>
+  matches.value.filter((m) => m.status === 'CONCLUDED' && m.homeScore && m.awayScore),
+)
+const palmyBasicStats = computed(() => buildBasicStats(matches.value, palmyVenueFilter.value))
+
+const palmyData = computed(() =>
+  runPalmy(palmyConcluded.value, palmyBasicStats.value, compositeOfficialRankMap.value, palmyVenueFilter.value),
+)
+const palmyRanking = computed(() => palmyData.value.ranking)
+const palmyOpponentLadders = computed(() => palmyData.value.opponentLadders)
+
+const xpalmyData = computed(() =>
+  runXPalmy(palmyConcluded.value, palmyBasicStats.value, compositeOfficialRankMap.value, palmyVenueFilter.value),
+)
+const xpalmyPoints = computed(() => xpalmyData.value.points)
+const xpalmyXLadders = computed(() => xpalmyData.value.xLadders)
+const xpalmyYLadders = computed(() => xpalmyData.value.yLadders)
+const xpalmyRanking = computed(() => {
+  const ratings: Record<number, number> = {}
+  for (const p of xpalmyData.value.points) ratings[p.teamId] = -(p.xRating + p.yRating) / 2
+  return toRows(ratings, palmyBasicStats.value, compositeOfficialRankMap.value)
+})
 
 const validAlgoIds = ALGORITHMS.map((a) => a.id) as AlgorithmId[]
 
@@ -1045,6 +1092,7 @@ const tableEl = ref<HTMLElement | null>(null)
 const hoveredTeamId = ref<number | null>(null)
 const popupTab = ref<'own' | 'positions'>('own')
 const popupStyle = ref<Record<string, string>>({})
+const palmyAnchorEl = ref<HTMLElement | null>(null)
 
 function closePopup() { hoveredTeamId.value = null }
 
@@ -1062,13 +1110,20 @@ const hoveredTeamName = computed(() => {
   return teamInfoMap.value.get(hoveredTeamId.value)?.teamName ?? ''
 })
 
-const hoveredLadder = computed(() =>
-  hoveredTeamId.value !== null ? (palmyOpponentLadders.value[hoveredTeamId.value] ?? []) : [],
-)
+const hoveredLadder = computed(() => {
+  if (hoveredTeamId.value === null) return []
+  const ladder = palmyOpponentLadders.value[hoveredTeamId.value] ?? []
+  if (palmyVenueFilter.value === 'both') return ladder
+  // wasTeamHome refers to the entry's team (the opponent).
+  // Owner was home when opponent was away (!wasTeamHome), and vice-versa.
+  const home = palmyVenueFilter.value === 'home'
+  return ladder.filter((e) => (home ? !e.wasTeamHome : e.wasTeamHome))
+})
 
 const hoveredTeamPositions = computed(() => {
   if (hoveredTeamId.value === null) return []
   const tid = hoveredTeamId.value
+  const filter = palmyVenueFilter.value
   const result: Array<{
     ownerName: string
     ownerIconId: string
@@ -1082,18 +1137,20 @@ const hoveredTeamPositions = computed(() => {
     const ownerId = Number(ownerIdStr)
     if (ownerId === tid) continue
     const ownerInfo = teamInfoMap.value.get(ownerId)
-    for (const entry of ladder) {
-      if (entry.teamId === tid) {
-        result.push({
-          ownerName: ownerInfo?.teamName ?? String(ownerId),
-          ownerIconId: ownerInfo?.iconId ?? '',
-          rank: entry.rank,
-          ladderSize: ladder.length,
-          differential: entry.differential,
-          roundNumber: entry.roundNumber,
-        })
-      }
-    }
+    // Subset of the ladder matching the venue filter (wasTeamHome = opponent was home = owner was away)
+    const subset = filter === 'both' ? ladder
+      : ladder.filter((e) => filter === 'home' ? e.wasTeamHome : !e.wasTeamHome)
+    const idx = subset.findIndex((e) => e.teamId === tid)
+    if (idx === -1) continue
+    const entry = subset[idx]
+    result.push({
+      ownerName: ownerInfo?.teamName ?? String(ownerId),
+      ownerIconId: ownerInfo?.iconId ?? '',
+      rank: idx + 1,
+      ladderSize: subset.length,
+      differential: entry.differential,
+      roundNumber: entry.roundNumber,
+    })
   }
 
   return result.sort((a, b) => a.rank - b.rank)
@@ -1117,10 +1174,13 @@ function onRowClick(teamId: number, event: MouseEvent) {
   event.stopPropagation()
   if (hoveredTeamId.value !== teamId) popupTab.value = 'own'
   hoveredTeamId.value = teamId
-  positionPopup(event.currentTarget as HTMLElement)
+  palmyAnchorEl.value = event.currentTarget as HTMLElement
+  positionPopup()
 }
 
-function positionPopup(row: HTMLElement) {
+function positionPopup() {
+  const row = palmyAnchorEl.value
+  if (!row) return
   const rowRect = row.getBoundingClientRect()
   const vw = window.innerWidth
   const vh = window.innerHeight
@@ -1152,6 +1212,10 @@ interface XPalmyChampion {
   iconId: string
   xRating: number
   yRating: number
+  homeXRating?: number
+  homeYRating?: number
+  awayXRating?: number
+  awayYRating?: number
 }
 
 const showChampions = ref(false)
@@ -1181,14 +1245,21 @@ const xpalmyScatter = computed(() =>
   })),
 )
 
+function champRatings(c: XPalmyChampion): { x: number; y: number } {
+  if (palmyVenueFilter.value === 'home' && c.homeXRating != null && c.homeYRating != null)
+    return { x: c.homeXRating, y: c.homeYRating }
+  if (palmyVenueFilter.value === 'away' && c.awayXRating != null && c.awayYRating != null)
+    return { x: c.awayXRating, y: c.awayYRating }
+  return { x: c.xRating, y: c.yRating }
+}
+
 const championsScatter = computed(() =>
   champions.value
     .filter((c) => c.year !== currentSeasonYear)
-    .map((c) => ({
-      ...c,
-      plotX: SC.x0 + (1 - c.xRating) * SC_W,
-      plotY: SC.y0 + c.yRating * SC_H,
-    })),
+    .map((c) => {
+      const { x, y } = champRatings(c)
+      return { ...c, plotX: SC.x0 + (1 - x) * SC_W, plotY: SC.y0 + y * SC_H }
+    }),
 )
 
 // Hovered team rendered last so it sits on top in SVG z-order
@@ -1211,7 +1282,7 @@ const xpalmyTrailHistory = computed(() => {
     const roundConcluded = roundMatches.filter((m) => m.status === 'CONCLUDED' && m.homeScore && m.awayScore)
     const stats = buildBasicStats(roundMatches)
     const offMap = buildOfficialRankMap(stats)
-    const { points } = runXPalmy(roundConcluded, stats, offMap)
+    const { points } = runXPalmy(roundConcluded, stats, offMap, palmyVenueFilter.value)
     for (const p of points) {
       if (p.played < 2) continue
       result.get(p.teamId)?.push({
@@ -1261,14 +1332,14 @@ const CHAMP_PAD = 10
 // Vertical divider: just left of the furthest-left champion (highest xRating = smallest plotX)
 const scatterMidX = computed(() => {
   if (champions.value.length === 0) return SC.x0 + SC_W / 2
-  const minPlotX = Math.min(...champions.value.map((c) => SC.x0 + (1 - c.xRating) * SC_W))
+  const minPlotX = Math.min(...champions.value.map((c) => SC.x0 + (1 - champRatings(c).x) * SC_W))
   return minPlotX - CHAMP_PAD
 })
 
 // Horizontal divider: just below the lowest champion (highest yRating = largest plotY)
 const scatterMidY = computed(() => {
   if (champions.value.length === 0) return SC.y0 + SC_H / 2
-  const maxPlotY = Math.max(...champions.value.map((c) => SC.y0 + c.yRating * SC_H))
+  const maxPlotY = Math.max(...champions.value.map((c) => SC.y0 + champRatings(c).y * SC_H))
   return maxPlotY + CHAMP_PAD
 })
 
@@ -1305,6 +1376,7 @@ const scatterDividerPoints = computed(() => {
 const xpalmyHoveredId = ref<number | null>(null)
 const xpalmyPopupTab = ref<'x-own' | 'x-pos' | 'y-own' | 'y-pos'>('x-own')
 const xpalmyPopupStyle = ref<Record<string, string>>({})
+const xpalmyAnchorFn = ref<(() => DOMRect) | null>(null)
 
 function closeXpalmyPopup() { xpalmyHoveredId.value = null }
 
@@ -1316,28 +1388,39 @@ const xpalmyHoveredName = computed(() => {
   return teamInfoMap.value.get(xpalmyHoveredId.value)?.teamName ?? ''
 })
 
-const xpalmyHoveredXLadder = computed((): XPalmyLadderEntry[] =>
-  xpalmyHoveredId.value !== null ? (xpalmyXLadders.value[xpalmyHoveredId.value] ?? []) : [],
-)
+const xpalmyHoveredXLadder = computed((): XPalmyLadderEntry[] => {
+  if (xpalmyHoveredId.value === null) return []
+  const ladder = xpalmyXLadders.value[xpalmyHoveredId.value] ?? []
+  if (palmyVenueFilter.value === 'both') return ladder
+  const home = palmyVenueFilter.value === 'home'
+  return ladder.filter((e) => (home ? !e.wasTeamHome : e.wasTeamHome))
+})
 
-const xpalmyHoveredYLadder = computed((): XPalmyLadderEntry[] =>
-  xpalmyHoveredId.value !== null ? (xpalmyYLadders.value[xpalmyHoveredId.value] ?? []) : [],
-)
+const xpalmyHoveredYLadder = computed((): XPalmyLadderEntry[] => {
+  if (xpalmyHoveredId.value === null) return []
+  const ladder = xpalmyYLadders.value[xpalmyHoveredId.value] ?? []
+  if (palmyVenueFilter.value === 'both') return ladder
+  const home = palmyVenueFilter.value === 'home'
+  return ladder.filter((e) => (home ? !e.wasTeamHome : e.wasTeamHome))
+})
 
 type XpalmyPosition = { ownerName: string; ownerIconId: string; rank: number; ladderSize: number; score: number; roundNumber: number }
 
 const xpalmyHoveredXPositions = computed((): XpalmyPosition[] => {
   if (xpalmyHoveredId.value === null) return []
   const tid = xpalmyHoveredId.value
+  const filter = palmyVenueFilter.value
   const result: XpalmyPosition[] = []
   for (const [ownerIdStr, ladder] of Object.entries(xpalmyXLadders.value)) {
     const ownerId = Number(ownerIdStr)
     if (ownerId === tid) continue
     const ownerInfo = teamInfoMap.value.get(ownerId)
-    for (const entry of ladder) {
-      if (entry.teamId === tid)
-        result.push({ ownerName: ownerInfo?.teamName ?? String(ownerId), ownerIconId: ownerInfo?.iconId ?? '', rank: entry.rank, ladderSize: ladder.length, score: entry.oppScore, roundNumber: entry.roundNumber })
-    }
+    const subset = filter === 'both' ? ladder
+      : ladder.filter((e) => filter === 'home' ? e.wasTeamHome : !e.wasTeamHome)
+    const idx = subset.findIndex((e) => e.teamId === tid)
+    if (idx === -1) continue
+    const entry = subset[idx]
+    result.push({ ownerName: ownerInfo?.teamName ?? String(ownerId), ownerIconId: ownerInfo?.iconId ?? '', rank: idx + 1, ladderSize: subset.length, score: entry.oppScore, roundNumber: entry.roundNumber })
   }
   return result.sort((a, b) => a.rank - b.rank)
 })
@@ -1345,15 +1428,18 @@ const xpalmyHoveredXPositions = computed((): XpalmyPosition[] => {
 const xpalmyHoveredYPositions = computed((): XpalmyPosition[] => {
   if (xpalmyHoveredId.value === null) return []
   const tid = xpalmyHoveredId.value
+  const filter = palmyVenueFilter.value
   const result: XpalmyPosition[] = []
   for (const [ownerIdStr, ladder] of Object.entries(xpalmyYLadders.value)) {
     const ownerId = Number(ownerIdStr)
     if (ownerId === tid) continue
     const ownerInfo = teamInfoMap.value.get(ownerId)
-    for (const entry of ladder) {
-      if (entry.teamId === tid)
-        result.push({ ownerName: ownerInfo?.teamName ?? String(ownerId), ownerIconId: ownerInfo?.iconId ?? '', rank: entry.rank, ladderSize: ladder.length, score: entry.ownScore, roundNumber: entry.roundNumber })
-    }
+    const subset = filter === 'both' ? ladder
+      : ladder.filter((e) => filter === 'home' ? e.wasTeamHome : !e.wasTeamHome)
+    const idx = subset.findIndex((e) => e.teamId === tid)
+    if (idx === -1) continue
+    const entry = subset[idx]
+    result.push({ ownerName: ownerInfo?.teamName ?? String(ownerId), ownerIconId: ownerInfo?.iconId ?? '', rank: idx + 1, ladderSize: subset.length, score: entry.ownScore, roundNumber: entry.roundNumber })
   }
   return result.sort((a, b) => a.rank - b.rank)
 })
@@ -1370,7 +1456,9 @@ const xpalmyHoveredYAvg = computed(() => {
   return ((1 - pos.reduce((s, p) => s + (p.rank - 1) / Math.max(p.ladderSize - 1, 1), 0) / pos.length) * 100).toFixed(1)
 })
 
-function applyXpalmyPopup(anchorRect: DOMRect) {
+function applyXpalmyPopup() {
+  if (!xpalmyAnchorFn.value) return
+  const anchorRect = xpalmyAnchorFn.value()
   const vw = window.innerWidth, vh = window.innerHeight
   const W = 340, H = 540
   let left = anchorRect.left + anchorRect.width / 2 - W / 2
@@ -1385,17 +1473,31 @@ function onScatterDotClick(teamId: number, event: MouseEvent) {
   event.stopPropagation()
   if (xpalmyHoveredId.value !== teamId) xpalmyPopupTab.value = 'x-own'
   xpalmyHoveredId.value = teamId
-  applyXpalmyPopup((event.currentTarget as Element).getBoundingClientRect())
+  const el = event.currentTarget as Element
+  xpalmyAnchorFn.value = () => el.getBoundingClientRect()
+  applyXpalmyPopup()
 }
 
 function onXpalmyRowClick(teamId: number, event: MouseEvent) {
   event.stopPropagation()
   if (xpalmyHoveredId.value !== teamId) xpalmyPopupTab.value = 'x-own'
   xpalmyHoveredId.value = teamId
-  const tableRect = tableEl.value?.getBoundingClientRect()
-  const rowRect = (event.currentTarget as Element).getBoundingClientRect()
-  applyXpalmyPopup(tableRect
-    ? new DOMRect(tableRect.left + tableRect.width / 2, rowRect.top, 0, rowRect.height)
-    : rowRect)
+  const rowEl = event.currentTarget as Element
+  xpalmyAnchorFn.value = () => {
+    const tableRect = tableEl.value?.getBoundingClientRect()
+    const rowRect = rowEl.getBoundingClientRect()
+    return tableRect
+      ? new DOMRect(tableRect.left + tableRect.width / 2, rowRect.top, 0, rowRect.height)
+      : rowRect
+  }
+  applyXpalmyPopup()
 }
+
+function handlePopupScroll() {
+  if (hoveredTeamId.value !== null) positionPopup()
+  if (xpalmyHoveredId.value !== null) applyXpalmyPopup()
+}
+
+onMounted(() => window.addEventListener('scroll', handlePopupScroll, { passive: true }))
+onUnmounted(() => window.removeEventListener('scroll', handlePopupScroll))
 </script>
