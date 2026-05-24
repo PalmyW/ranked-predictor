@@ -113,11 +113,12 @@ const { rankings: initialHistory, tierSizesHistory: initialTierSizesHistory } = 
 const rankingHistory = ref<Record<number, TeamRanking>>(initialHistory)
 const tierSizesHistory = ref<Record<number, number[]>>(initialTierSizesHistory)
 
-type LadderSource = 'live' | 'shared' | 'mine'
+type LadderSource = 'live' | 'shared' | 'mine' | 'imported'
 const ladderSource = ref<LadderSource>(
   initialSource === 'url' ? 'shared' : initialSource === 'storage' ? 'mine' : 'live'
 )
 const savedState = ref<StoredState | null>(initialStored)
+const preImportSnapshot = ref<{ ranking: TeamRanking; tierSizes: number[]; source: LadderSource } | null>(null)
 
 export function useRanking() {
   const encodedRanking = computed(() => encodeRanking(ranking.value, tierSizes.value))
@@ -126,8 +127,9 @@ export function useRanking() {
     return window.location.origin + import.meta.env.BASE_URL + '?r=' + encodedRanking.value
   })
 
-  // Persist to localStorage on every change (except when viewing a shared ladder before any interaction)
+  // Persist to localStorage on every change (except when viewing a shared or imported ladder before any interaction)
   watch(encodedRanking, (encoded) => {
+    if (ladderSource.value === 'imported') return
     localStorage.setItem(STORAGE_KEY, encoded)
     // Any reorder while viewing a shared ladder claims it as the user's own
     if (ladderSource.value === 'shared') {
@@ -162,6 +164,25 @@ export function useRanking() {
     ranking.value = [...savedState.value.ranking]
     tierSizes.value = [...savedState.value.tierSizes]
     ladderSource.value = 'mine'
+  }
+
+  function importRanking(newRanking: TeamRanking) {
+    preImportSnapshot.value = {
+      ranking: [...ranking.value],
+      tierSizes: [...tierSizes.value],
+      source: ladderSource.value,
+    }
+    ranking.value = [...newRanking]
+    tierSizes.value = [...DEFAULT_TIER_SIZES]
+    ladderSource.value = 'imported'
+  }
+
+  function revertImport() {
+    if (!preImportSnapshot.value) return
+    ranking.value = [...preImportSnapshot.value.ranking]
+    tierSizes.value = [...preImportSnapshot.value.tierSizes]
+    ladderSource.value = preImportSnapshot.value.source
+    preImportSnapshot.value = null
   }
 
   function saveToMyLadder() {
@@ -256,6 +277,9 @@ export function useRanking() {
     moveTeam,
     loadSavedRanking,
     saveToMyLadder,
+    importRanking,
+    revertImport,
+    preImportSnapshot,
     seedHistoryFromSavedRanking,
     snapshotRoundRanking,
     updateRoundSnapshot,

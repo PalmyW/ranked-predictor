@@ -27,25 +27,35 @@
                   'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400': ladderSource === 'live',
                   'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400': ladderSource === 'shared',
                   'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400': ladderSource === 'mine',
+                  'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400': ladderSource === 'imported',
                 }"
-              >{{ ladderSource === 'live' ? 'Live ladder' : ladderSource === 'shared' ? 'Shared ladder' : 'My ladder' }}</span>
+              >{{ ladderSource === 'live' ? 'Live ladder' : ladderSource === 'shared' ? 'Shared ladder' : ladderSource === 'mine' ? 'My ladder' : `Imported from ${importedFromName}` }}</span>
             </span>
-            <div data-tour="ranking-actions" class="flex gap-1.5">
+            <div data-tour="ranking-actions" class="flex gap-1.5 flex-wrap">
               <button
-                v-if="savedState && ladderSource !== 'mine'"
+                v-if="savedState && ladderSource !== 'mine' && ladderSource !== 'imported'"
                 @click="handleLoadSaved"
                 class="px-2 py-1 text-xs font-semibold rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >My ladder</button>
+              <button
+                v-if="ladderSource === 'imported'"
+                @click="handleRevertImport"
+                class="px-2 py-1 text-xs font-semibold rounded border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-colors"
+              >Revert</button>
               <button
                 v-if="ladderSource !== 'mine'"
                 @click="handleSave"
                 class="px-2 py-1 text-xs font-semibold rounded border border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-colors"
               >Save</button>
-              <button
-                @click="handleReset"
+              <select
+                @change="onImportSelect"
                 :disabled="isLoading"
-                class="px-2 py-1 text-xs font-semibold rounded border border-green-300 dark:border-green-700 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >Live ladder</button>
+                class="px-2 py-1 text-xs font-semibold rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <option value="" disabled selected>Import from...</option>
+                <option value="live">Live ladder</option>
+                <option v-for="algo in ALGORITHMS" :key="algo.id" :value="algo.id">{{ algo.name }}</option>
+              </select>
             </div>
           </div>
 
@@ -104,9 +114,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch, provide, onMounted } from 'vue'
+import { computed, ref, watch, provide, onMounted } from 'vue'
 import { useAFLData } from '../composables/useAFLData'
 import { useRanking } from '../composables/useRanking'
+import { useAlgorithmRankings, ALGORITHMS } from '../composables/useAlgorithmRankings'
 import { useSimulation } from '../composables/useSimulation'
 import { useAnalytics } from '../composables/useAnalytics'
 import { useSeason } from '../composables/useSeason'
@@ -119,7 +130,19 @@ import MatchList from '../components/MatchList.vue'
 const { matches, teams, isLoading, error } = useAFLData()
 const { isCurrentSeason, activeSeasonYear, resetToCurrentSeason } = useSeason()
 onMounted(resetToCurrentSeason)
-const { ranking, tierSizes, shareUrl, rankedFromUrl, rankedFromStorage, ladderSource, savedState, rankingHistory, setRanking, setTierSizes, resetToLadder, loadSavedRanking, saveToMyLadder, seedHistoryFromSavedRanking, snapshotRoundRanking, updateRoundSnapshot } = useRanking()
+const { ranking, tierSizes, shareUrl, rankedFromUrl, rankedFromStorage, ladderSource, savedState, rankingHistory, setRanking, setTierSizes, resetToLadder, loadSavedRanking, saveToMyLadder, importRanking, revertImport, seedHistoryFromSavedRanking, snapshotRoundRanking, updateRoundSnapshot } = useRanking()
+const { winPctRanking, srsRanking, colleyRanking, masseyRanking, winFlowRanking, palmyRanking, xpalmyRanking } = useAlgorithmRankings(matches)
+
+const importedFromName = ref<string | null>(null)
+const algoRankingMap = computed<Record<string, { teamId: number }[]>>(() => ({
+  winpct: winPctRanking.value,
+  srs: srsRanking.value,
+  colley: colleyRanking.value,
+  massey: masseyRanking.value,
+  winflow: winFlowRanking.value,
+  palmy: palmyRanking.value,
+  xpalmy: xpalmyRanking.value,
+}))
 const { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate, getSimulationFrames, rangeResults, rangeTotal, isRunningRange, runMany } = useSimulation(ranking, matches)
 const analytics = useAnalytics()
 
@@ -177,5 +200,27 @@ function handleSave() {
   analytics.trackSaveRanking()
   analytics.trackLadderSourceChange('saved_from_shared')
   saveToMyLadder()
+}
+
+function onImportSelect(e: Event) {
+  const sel = e.target as HTMLSelectElement
+  const algoId = sel.value
+  sel.value = ''
+  if (algoId === 'live') {
+    if (actualLadder.value.length === 0) return
+    importedFromName.value = 'Live ladder'
+    importRanking(actualLadder.value.map((r) => r.teamId))
+    return
+  }
+  const rows = algoRankingMap.value[algoId]
+  if (!rows || rows.length === 0) return
+  const algo = ALGORITHMS.find((a) => a.id === algoId)
+  importedFromName.value = algo?.name ?? algoId
+  importRanking(rows.map((r) => r.teamId))
+}
+
+function handleRevertImport() {
+  revertImport()
+  importedFromName.value = null
 }
 </script>
