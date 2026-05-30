@@ -5,23 +5,23 @@ import { getActiveSeasonYear, CURRENT_SEASON_YEAR } from '../config/seasons'
 const SEASON = getActiveSeasonYear()
 
 export const TEAMS: AflTeam[] = [
-  { id: 1,  name: 'Kuwarna',           abbreviation: 'ADEL', letter: 'A', iconId: 'icn-aflc-adel', teamProviderId: 'CD_T10'   },
+  { id: 1,  name: 'Adelaide Crows',    abbreviation: 'ADEL', letter: 'A', iconId: 'icn-aflc-adel', teamProviderId: 'CD_T10'   },
   { id: 2,  name: 'Brisbane Lions',    abbreviation: 'BL',   letter: 'B', iconId: 'icn-aflc-bl',   teamProviderId: 'CD_T20'   },
   { id: 5,  name: 'Carlton',           abbreviation: 'CARL', letter: 'C', iconId: 'icn-aflc-carl', teamProviderId: 'CD_T30'   },
   { id: 3,  name: 'Collingwood',       abbreviation: 'COLL', letter: 'D', iconId: 'icn-aflc-coll', teamProviderId: 'CD_T40'   },
   { id: 12, name: 'Essendon',          abbreviation: 'ESS',  letter: 'E', iconId: 'icn-aflc-ess',  teamProviderId: 'CD_T50'   },
-  { id: 14, name: 'Walyalup',          abbreviation: 'FRE',  letter: 'F', iconId: 'icn-aflc-fre',  teamProviderId: 'CD_T60'   },
+  { id: 14, name: 'Fremantle',         abbreviation: 'FRE',  letter: 'F', iconId: 'icn-aflc-fre',  teamProviderId: 'CD_T60'   },
   { id: 10, name: 'Geelong Cats',      abbreviation: 'GEEL', letter: 'G', iconId: 'icn-aflc-geel', teamProviderId: 'CD_T70'   },
   { id: 4,  name: 'Gold Coast SUNS',   abbreviation: 'GCS',  letter: 'H', iconId: 'icn-aflc-gcs',  teamProviderId: 'CD_T1000' },
   { id: 15, name: 'GWS GIANTS',        abbreviation: 'GWS',  letter: 'I', iconId: 'icn-aflc-gws',  teamProviderId: 'CD_T1010' },
   { id: 9,  name: 'Hawthorn',          abbreviation: 'HAW',  letter: 'J', iconId: 'icn-aflc-haw',  teamProviderId: 'CD_T80'   },
-  { id: 17, name: 'Narrm',             abbreviation: 'MELB', letter: 'K', iconId: 'icn-aflc-melb', teamProviderId: 'CD_T90'   },
+  { id: 17, name: 'Melbourne',         abbreviation: 'MELB', letter: 'K', iconId: 'icn-aflc-melb', teamProviderId: 'CD_T90'   },
   { id: 6,  name: 'North Melbourne',   abbreviation: 'NMFC', letter: 'L', iconId: 'icn-aflc-nmfc', teamProviderId: 'CD_T100'  },
-  { id: 7,  name: 'Yartapuulti',       abbreviation: 'PORT', letter: 'M', iconId: 'icn-aflc-port', teamProviderId: 'CD_T110'  },
+  { id: 7,  name: 'Port Adelaide',     abbreviation: 'PORT', letter: 'M', iconId: 'icn-aflc-port', teamProviderId: 'CD_T110'  },
   { id: 16, name: 'Richmond',          abbreviation: 'RICH', letter: 'N', iconId: 'icn-aflc-rich', teamProviderId: 'CD_T120'  },
-  { id: 11, name: 'Euro-Yroke',        abbreviation: 'STK',  letter: 'O', iconId: 'icn-aflc-stk',  teamProviderId: 'CD_T130'  },
+  { id: 11, name: 'St Kilda',          abbreviation: 'STK',  letter: 'O', iconId: 'icn-aflc-stk',  teamProviderId: 'CD_T130'  },
   { id: 13, name: 'Sydney Swans',      abbreviation: 'SYD',  letter: 'P', iconId: 'icn-aflc-syd',  teamProviderId: 'CD_T160'  },
-  { id: 18, name: 'Waalitj Marawar',   abbreviation: 'WCE',  letter: 'Q', iconId: 'icn-aflc-wce',  teamProviderId: 'CD_T150'  },
+  { id: 18, name: 'West Coast Eagles', abbreviation: 'WCE',  letter: 'Q', iconId: 'icn-aflc-wce',  teamProviderId: 'CD_T150'  },
   { id: 8,  name: 'Western Bulldogs',  abbreviation: 'WB',   letter: 'R', iconId: 'icn-aflc-wb',   teamProviderId: 'CD_T140'  },
 ]
 
