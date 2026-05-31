@@ -1,7 +1,7 @@
 <template>
   <div ref="captureEl" class="mt-4">
     <div class="flex items-center justify-between mb-2">
-      <h3 class="text-sm font-bold text-gray-700 dark:text-gray-300">Finishing Position Range</h3>
+      <h3 class="text-sm font-bold text-gray-700 dark:text-gray-300 whitespace-nowrap">Finishing Position Range</h3>
       <div class="flex items-center gap-2">
         <p class="text-xs text-gray-400 dark:text-gray-500">{{ total.toLocaleString() }} simulations</p>
         <button
