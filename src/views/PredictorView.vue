@@ -89,6 +89,7 @@
             :runMany="runMany"
             :rangeResults="rangeResults"
             :rangeTotal="rangeTotal"
+            :simStats="simStats"
             :isRunningRange="isRunningRange"
             :viewOnly="!isCurrentSeason"
           />
@@ -143,7 +144,7 @@ const algoRankingMap = computed<Record<string, { teamId: number }[]>>(() => ({
   palmy: palmyRanking.value,
   xpalmy: xpalmyRanking.value,
 }))
-const { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate, getSimulationFrames, rangeResults, rangeTotal, isRunningRange, runMany } = useSimulation(ranking, matches)
+const { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate, getSimulationFrames, rangeResults, rangeTotal, simStats, isRunningRange, runMany } = useSimulation(ranking, matches)
 const analytics = useAnalytics()
 
 provide('matches', matches)

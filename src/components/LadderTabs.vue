@@ -109,7 +109,7 @@
               >{{ isRunningRange ? 'Running…' : 'Run' }}</button>
             </div>
           </div>
-          <SimulationRange v-if="rangeResults && !isRunningRange" :results="rangeResults" :total="rangeTotal" />
+          <SimulationRange v-if="rangeResults && !isRunningRange" :results="rangeResults" :total="rangeTotal" :stats="simStats" />
           <div v-else-if="isRunningRange" class="text-center py-6 text-sm text-gray-400 dark:text-gray-500">
             Running {{ rangeCount.toLocaleString() }} simulations…
           </div>
@@ -164,7 +164,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import type { LadderRow, TeamRanking } from '../types/afl'
-import type { RangeEntry } from '../composables/useSimulation'
+import type { RangeEntry, SimulationStats } from '../composables/useSimulation'
 import LadderTable from './LadderTable.vue'
 import HtmlTooltip from './HtmlTooltip.vue'
 import PowerRankings from './PowerRankings.vue'
@@ -187,6 +187,7 @@ const props = defineProps<{
   runMany: (n: number) => Promise<void>
   rangeResults: RangeEntry[] | null
   rangeTotal: number
+  simStats: SimulationStats | null
   isRunningRange: boolean
   viewOnly?: boolean
 }>()

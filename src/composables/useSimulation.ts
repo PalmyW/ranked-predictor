@@ -10,6 +10,13 @@ export interface RangeEntry {
   counts: number[]  // counts[i] = times finished in position i+1
 }
 
+export interface SimulationStats {
+  mostCommonLadder: number[]   // team IDs in finishing order
+  mostCommonCount: number      // how many times that exact ladder appeared
+  consensusLadder: number[]    // greedy: for each position, the most-likely team (no repeats)
+  uniqueCount: number          // number of distinct ladder orderings seen
+}
+
 type MatchesRef = { readonly value: readonly AflMatch[] }
 type RankingRef = { readonly value: TeamRanking }
 
@@ -206,26 +213,53 @@ function runManySimulations(
   rankMap: Record<number, number>,
   matches: readonly AflMatch[],
   n: number,
-): RangeEntry[] {
+): { results: RangeEntry[]; stats: SimulationStats } {
   const teamMap = Object.fromEntries(TEAMS.map((t) => [t.id, t]))
   const counts: Record<number, number[]> = {}
   for (const team of TEAMS) counts[team.id] = new Array(18).fill(0)
 
+  const ladderCounts = new Map<string, number>()
   const baseStats = buildStats(matches)
   for (let i = 0; i < n; i++) {
     const order = runOneSim(baseStats, matches, rankMap)
+    const key = order.join(',')
+    ladderCounts.set(key, (ladderCounts.get(key) ?? 0) + 1)
     for (let pos = 0; pos < order.length; pos++) {
       if (counts[order[pos]]) counts[order[pos]][pos]++
     }
   }
 
-  return TEAMS.map((team) => ({
+  // Most common exact ladder
+  let mostCommonKey = ''
+  let mostCommonCount = 0
+  for (const [key, count] of ladderCounts) {
+    if (count > mostCommonCount) { mostCommonCount = count; mostCommonKey = key }
+  }
+  const mostCommonLadder = mostCommonKey ? mostCommonKey.split(',').map(Number) : []
+
+  // Consensus ladder: greedy — for each position pick the team with most appearances there
+  const consensusLadder: number[] = []
+  const assigned = new Set<number>()
+  for (let pos = 0; pos < 18; pos++) {
+    let bestTeam = -1
+    let bestCount = -1
+    for (const team of TEAMS) {
+      if (assigned.has(team.id)) continue
+      const c = counts[team.id]?.[pos] ?? 0
+      if (c > bestCount) { bestCount = c; bestTeam = team.id }
+    }
+    if (bestTeam !== -1) { consensusLadder.push(bestTeam); assigned.add(bestTeam) }
+  }
+
+  const results = TEAMS.map((team) => ({
     teamId: team.id,
     teamName: teamMap[team.id]?.name ?? String(team.id),
     abbreviation: teamMap[team.id]?.abbreviation ?? '???',
     iconId: teamMap[team.id]?.iconId ?? '',
     counts: counts[team.id],
   }))
+
+  return { results, stats: { mostCommonLadder, mostCommonCount, consensusLadder, uniqueCount: ladderCounts.size } }
 }
 
 function simulateMatches(
@@ -287,6 +321,7 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef) {
   const simulatedMatchWinners = ref<Record<number, number> | null>(null)
   const rangeResults = ref<RangeEntry[] | null>(null)
   const rangeTotal = ref(0)
+  const simStats = ref<SimulationStats | null>(null)
   const isRunningRange = ref(false)
 
   function simulate() {
@@ -375,7 +410,9 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef) {
     ranking.value.forEach((id, i) => { rankMap[id] = i + 1 })
     await new Promise<void>((resolve) => {
       setTimeout(() => {
-        rangeResults.value = runManySimulations(rankMap, matches.value, n)
+        const { results, stats } = runManySimulations(rankMap, matches.value, n)
+        rangeResults.value = results
+        simStats.value = stats
         rangeTotal.value = n
         resolve()
       }, 0)
@@ -383,5 +420,5 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef) {
     isRunningRange.value = false
   }
 
-  return { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate, getSimulationFrames, rangeResults, rangeTotal, isRunningRange, runMany }
+  return { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate, getSimulationFrames, rangeResults, rangeTotal, simStats, isRunningRange, runMany }
 }

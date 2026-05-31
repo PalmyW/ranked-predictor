@@ -4,6 +4,20 @@
       <h3 class="text-sm font-bold text-gray-700 dark:text-gray-300 whitespace-nowrap">Finishing Position Range</h3>
       <div class="flex items-center gap-2">
         <p class="text-xs text-gray-400 dark:text-gray-500">{{ total.toLocaleString() }} simulations</p>
+        <!-- Stats button -->
+        <button
+          v-if="stats"
+          @click="showStats = true"
+          title="Simulation statistics"
+          class="rounded p-1.5 text-gray-500 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10"/>
+            <line x1="12" y1="20" x2="12" y2="4"/>
+            <line x1="6" y1="20" x2="6" y2="14"/>
+          </svg>
+        </button>
+        <!-- Download button -->
         <button
           v-if="!capturing"
           @click="screenshotTable"
@@ -77,7 +91,7 @@
     </div>
   </div>
 
-  <!-- Popup overlay -->
+  <!-- Team detail popup -->
   <Teleport to="body">
     <div
       v-if="selectedEntry"
@@ -125,16 +139,94 @@
       </div>
     </div>
   </Teleport>
+
+  <!-- Simulation stats modal -->
+  <Teleport to="body">
+    <div
+      v-if="showStats && stats"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      @click.self="showStats = false"
+    >
+      <div class="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <!-- Header -->
+        <div class="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 dark:border-gray-800 shrink-0">
+          <h4 class="font-bold text-gray-800 dark:text-gray-100 text-base">Simulation Statistics</h4>
+          <button
+            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xl leading-none"
+            @click="showStats = false"
+          >&times;</button>
+        </div>
+
+        <!-- Summary chips -->
+        <div class="flex flex-wrap gap-2 px-5 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0">
+          <span class="px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-xs font-semibold text-gray-700 dark:text-gray-300">
+            {{ total.toLocaleString() }} runs
+          </span>
+          <span class="px-2.5 py-1 rounded-full bg-purple-100 dark:bg-purple-900/30 text-xs font-semibold text-purple-700 dark:text-purple-300">
+            {{ stats.uniqueCount.toLocaleString() }} unique ladders
+          </span>
+          <span class="px-2.5 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-xs font-semibold text-blue-700 dark:text-blue-300">
+            Most common: {{ stats.mostCommonCount }}× ({{ ((stats.mostCommonCount / total) * 100).toFixed(2) }}%)
+          </span>
+        </div>
+
+        <!-- Ladder columns -->
+        <div class="grid grid-cols-2 gap-0 overflow-y-auto flex-1 divide-x divide-gray-100 dark:divide-gray-800">
+          <!-- Most Common Ladder -->
+          <div class="px-4 py-3">
+            <p class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Most Common Ladder</p>
+            <div class="space-y-0.5">
+              <div
+                v-for="(teamId, pos) in stats.mostCommonLadder"
+                :key="teamId"
+                class="flex items-center gap-2 py-1 rounded"
+                :class="pos === 5 ? 'border-b border-orange-300 dark:border-orange-700 mb-0.5 pb-1.5' : pos === 9 ? 'border-b border-blue-300 dark:border-blue-700 mb-0.5 pb-1.5' : ''"
+              >
+                <span class="w-5 text-right text-xs tabular-nums text-gray-400 dark:text-gray-500 shrink-0">{{ pos + 1 }}</span>
+                <svg class="size-5 shrink-0"><use :href="`/ranked-predictor/icons.svg#${teamMap.get(teamId)?.iconId ?? ''}`" /></svg>
+                <span class="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">{{ teamMap.get(teamId)?.teamName ?? teamId }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Consensus Ladder -->
+          <div class="px-4 py-3">
+            <p class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Consensus Ladder</p>
+            <div class="space-y-0.5">
+              <div
+                v-for="(teamId, pos) in stats.consensusLadder"
+                :key="teamId"
+                class="flex items-center gap-2 py-1 rounded"
+                :class="pos === 5 ? 'border-b border-orange-300 dark:border-orange-700 mb-0.5 pb-1.5' : pos === 9 ? 'border-b border-blue-300 dark:border-blue-700 mb-0.5 pb-1.5' : ''"
+              >
+                <span class="w-5 text-right text-xs tabular-nums text-gray-400 dark:text-gray-500 shrink-0">{{ pos + 1 }}</span>
+                <svg class="size-5 shrink-0"><use :href="`/ranked-predictor/icons.svg#${teamMap.get(teamId)?.iconId ?? ''}`" /></svg>
+                <span class="flex-1 text-xs font-medium text-gray-800 dark:text-gray-200 truncate">{{ teamMap.get(teamId)?.teamName ?? teamId }}</span>
+                <span class="text-[10px] tabular-nums text-gray-400 dark:text-gray-500 shrink-0">
+                  {{ consensusPct(teamId, pos) }}%
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p class="text-[10px] text-gray-400 dark:text-gray-500 text-center px-5 py-3 border-t border-gray-100 dark:border-gray-800 shrink-0">
+          Consensus places each team at their most likely position (no repeats) · % = how often that team finished there
+        </p>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { toPng } from 'html-to-image'
-import type { RangeEntry } from '../composables/useSimulation'
+import type { RangeEntry, SimulationStats } from '../composables/useSimulation'
 
 const props = defineProps<{
   results: RangeEntry[]
   total: number
+  stats?: SimulationStats | null
 }>()
 
 const POS_COLORS = [
@@ -161,6 +253,19 @@ const POS_COLORS = [
 const captureEl = ref<HTMLElement | null>(null)
 const capturing = ref(false)
 const selectedEntry = ref<RangeEntry | null>(null)
+const showStats = ref(false)
+
+const teamMap = computed(() => {
+  const map = new Map<number, RangeEntry>()
+  for (const r of props.results) map.set(r.teamId, r)
+  return map
+})
+
+function consensusPct(teamId: number, pos: number): string {
+  const entry = teamMap.value.get(teamId)
+  if (!entry || props.total === 0) return '—'
+  return ((entry.counts[pos] / props.total) * 100).toFixed(0)
+}
 
 async function screenshotTable() {
   if (!captureEl.value) return
