@@ -1,8 +1,21 @@
 <template>
-  <div class="mt-4">
+  <div ref="captureEl" class="mt-4">
     <div class="flex items-center justify-between mb-2">
       <h3 class="text-sm font-bold text-gray-700 dark:text-gray-300">Finishing Position Range</h3>
-      <p class="text-xs text-gray-400 dark:text-gray-500">{{ total.toLocaleString() }} simulations</p>
+      <div class="flex items-center gap-2">
+        <p class="text-xs text-gray-400 dark:text-gray-500">{{ total.toLocaleString() }} simulations</p>
+        <button
+          @click="screenshotTable"
+          title="Save as image"
+          class="rounded p-1.5 text-gray-500 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+        </button>
+      </div>
     </div>
 
     <!-- Position legend -->
@@ -115,6 +128,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { toPng } from 'html-to-image'
 import type { RangeEntry } from '../composables/useSimulation'
 
 const props = defineProps<{
@@ -143,7 +157,17 @@ const POS_COLORS = [
   '#292524', // 18 — near-black
 ]
 
+const captureEl = ref<HTMLElement | null>(null)
 const selectedEntry = ref<RangeEntry | null>(null)
+
+async function screenshotTable() {
+  if (!captureEl.value) return
+  const dataUrl = await toPng(captureEl.value, { pixelRatio: 2 })
+  const link = document.createElement('a')
+  link.download = 'finishing-position-range.png'
+  link.href = dataUrl
+  link.click()
+}
 
 function sumCounts(counts: number[], from: number, to: number): number {
   return counts.slice(from, to).reduce((a, b) => a + b, 0)
