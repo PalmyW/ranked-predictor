@@ -171,6 +171,7 @@ async function screenshotTable() {
   try {
     const dataUrl = await toPng(captureEl.value, {
       pixelRatio: 2,
+      skipFonts: true,
       width: captureEl.value.offsetWidth + pad * 2,
       height: captureEl.value.offsetHeight + pad * 2,
       style: {
