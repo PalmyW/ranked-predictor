@@ -5,6 +5,7 @@
       <div class="flex items-center gap-2">
         <p class="text-xs text-gray-400 dark:text-gray-500">{{ total.toLocaleString() }} simulations</p>
         <button
+          v-if="!capturing"
           @click="screenshotTable"
           title="Save as image"
           class="rounded p-1.5 text-gray-500 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200"
@@ -158,15 +159,34 @@ const POS_COLORS = [
 ]
 
 const captureEl = ref<HTMLElement | null>(null)
+const capturing = ref(false)
 const selectedEntry = ref<RangeEntry | null>(null)
 
 async function screenshotTable() {
   if (!captureEl.value) return
-  const dataUrl = await toPng(captureEl.value, { pixelRatio: 2 })
-  const link = document.createElement('a')
-  link.download = 'finishing-position-range.png'
-  link.href = dataUrl
-  link.click()
+  capturing.value = true
+  await new Promise((r) => setTimeout(r, 50))
+  const dark = document.documentElement.classList.contains('dark')
+  const pad = 16
+  try {
+    const dataUrl = await toPng(captureEl.value, {
+      pixelRatio: 2,
+      width: captureEl.value.offsetWidth + pad * 2,
+      height: captureEl.value.offsetHeight + pad * 2,
+      style: {
+        margin: '0',
+        padding: `${pad}px`,
+        background: dark ? '#111827' : '#ffffff',
+        borderRadius: '8px',
+      },
+    })
+    const link = document.createElement('a')
+    link.download = 'finishing-position-range.png'
+    link.href = dataUrl
+    link.click()
+  } finally {
+    capturing.value = false
+  }
 }
 
 function sumCounts(counts: number[], from: number, to: number): number {
