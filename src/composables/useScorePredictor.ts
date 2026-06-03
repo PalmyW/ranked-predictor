@@ -9,12 +9,23 @@ export interface TeamStrengthRow {
   teamName: string
   abbreviation: string
   iconId: string
+  // All-game stats
   played: number
   avgFor: number
   avgAgainst: number
-  defenceAdjustment: number // avg pts opponents score above their own avg when playing this team
+  defenceAdjustment: number // avg pts opponents score above their all-game avg against this team
   attackRank: number        // 1 = highest avgFor
-  defenceRank: number       // 1 = most negative defenceAdjustment (hardest to score against)
+  defenceRank: number       // 1 = most negative defenceAdjustment
+  // Home-specific stats
+  playedHome: number
+  avgForHome: number
+  avgAgainstHome: number
+  defenceAdjHome: number    // when this team is home, how much above their all-avg do visitors score
+  // Away-specific stats
+  playedAway: number
+  avgForAway: number
+  avgAgainstAway: number
+  defenceAdjAway: number    // when this team is away, how much above their all-avg do home teams score
 }
 
 export interface UpcomingMatchPrediction {
@@ -41,45 +52,76 @@ export type StrengthSortKey = 'attackRank' | 'defenceRank'
 
 const UPCOMING_STATUSES = new Set(['SCHEDULED', 'CONFIRMED_TEAMS', 'UNCONFIRMED_TEAMS'])
 
-export function useScorePredictor(matchesRef: Ref<readonly AflMatch[]>) {
+export function useScorePredictor(
+  matchesRef: Ref<readonly AflMatch[]>,
+  venueAdjusted: Ref<boolean>,
+) {
   const strengthRows = computed<TeamStrengthRow[]>(() => {
     const matches = matchesRef.value
 
-    // Pass 1: per-team avgFor and avgAgainst
-    const stats = buildBasicStats(matches, 'both')
+    // Pass 1: per-team stats for all / home / away games
+    const statsAll = buildBasicStats(matches, 'both')
+    const statsHome = buildBasicStats(matches, 'home')
+    const statsAway = buildBasicStats(matches, 'away')
+
     const avgFor: Record<number, number> = {}
+    const avgForHome: Record<number, number> = {}
+    const avgForAway: Record<number, number> = {}
     const avgAgainst: Record<number, number> = {}
+    const avgAgainstHome: Record<number, number> = {}
+    const avgAgainstAway: Record<number, number> = {}
+
     for (const t of TEAMS) {
-      const s = stats[t.id]
-      avgFor[t.id] = s && s.played > 0 ? s.for / s.played : 0
-      avgAgainst[t.id] = s && s.played > 0 ? s.against / s.played : 0
+      const s = statsAll[t.id]
+      const sh = statsHome[t.id]
+      const sa = statsAway[t.id]
+      avgFor[t.id] = s?.played ? s.for / s.played : 0
+      avgAgainst[t.id] = s?.played ? s.against / s.played : 0
+      avgForHome[t.id] = sh?.played ? sh.for / sh.played : 0
+      avgAgainstHome[t.id] = sh?.played ? sh.against / sh.played : 0
+      avgForAway[t.id] = sa?.played ? sa.for / sa.played : 0
+      avgAgainstAway[t.id] = sa?.played ? sa.against / sa.played : 0
     }
 
-    // Pass 2: defenceAdjustment per team
-    // For each concluded match, the opponent's score vs. their own avgFor is an
-    // adjustment contribution for the team they played against.
-    const adjSum: Record<number, number> = {}
-    const adjCount: Record<number, number> = {}
+    // Pass 2: defence adjustments — opponent score vs opponent's all-game average
+    // adjAll: both directions per game (existing all-games logic)
+    // adjHome[t]: when t is home, how much do visiting opponents score above their all-avg
+    // adjAway[t]: when t is away, how much do home opponents score above their all-avg
+    const adjAllSum: Record<number, number> = {}
+    const adjAllCount: Record<number, number> = {}
+    const adjHomeSum: Record<number, number> = {}
+    const adjHomeCount: Record<number, number> = {}
+    const adjAwaySum: Record<number, number> = {}
+    const adjAwayCount: Record<number, number> = {}
+
     for (const t of TEAMS) {
-      adjSum[t.id] = 0
-      adjCount[t.id] = 0
+      adjAllSum[t.id] = 0; adjAllCount[t.id] = 0
+      adjHomeSum[t.id] = 0; adjHomeCount[t.id] = 0
+      adjAwaySum[t.id] = 0; adjAwayCount[t.id] = 0
     }
+
     for (const m of matches) {
       if (m.status !== 'CONCLUDED' || !m.homeScore || !m.awayScore) continue
       const hId = m.homeTeamId
       const aId = m.awayTeamId
-      if (adjSum[hId] === undefined || adjSum[aId] === undefined) continue
-      // Away team scored against home team's defence
-      adjSum[hId] += m.awayScore.totalScore - avgFor[aId]
-      adjCount[hId]++
-      // Home team scored against away team's defence
-      adjSum[aId] += m.homeScore.totalScore - avgFor[hId]
-      adjCount[aId]++
-    }
+      if (adjAllSum[hId] === undefined || adjAllSum[aId] === undefined) continue
 
-    const defenceAdjustment: Record<number, number> = {}
-    for (const t of TEAMS) {
-      defenceAdjustment[t.id] = adjCount[t.id] > 0 ? adjSum[t.id] / adjCount[t.id] : 0
+      const hs = m.homeScore.totalScore
+      const as_ = m.awayScore.totalScore
+
+      // All-games: both teams get an adjustment entry
+      adjAllSum[hId] += as_ - avgFor[aId]   // visitor scored vs their all-avg, vs home team
+      adjAllCount[hId]++
+      adjAllSum[aId] += hs - avgFor[hId]    // home scored vs their all-avg, vs away team
+      adjAllCount[aId]++
+
+      // Home-specific for hId: visitor score vs their all-avg when hId is at home
+      adjHomeSum[hId] += as_ - avgFor[aId]
+      adjHomeCount[hId]++
+
+      // Away-specific for aId: home score vs their all-avg when aId is away
+      adjAwaySum[aId] += hs - avgFor[hId]
+      adjAwayCount[aId]++
     }
 
     // Build rows
@@ -88,13 +130,21 @@ export function useScorePredictor(matchesRef: Ref<readonly AflMatch[]>) {
       teamName: t.name,
       abbreviation: t.abbreviation,
       iconId: t.iconId,
-      played: stats[t.id]?.played ?? 0,
+      played: statsAll[t.id]?.played ?? 0,
       avgFor: avgFor[t.id],
       avgAgainst: avgAgainst[t.id],
-      defenceAdjustment: defenceAdjustment[t.id],
+      defenceAdjustment: adjAllCount[t.id] > 0 ? adjAllSum[t.id] / adjAllCount[t.id] : 0,
+      playedHome: statsHome[t.id]?.played ?? 0,
+      avgForHome: avgForHome[t.id],
+      avgAgainstHome: avgAgainstHome[t.id],
+      defenceAdjHome: adjHomeCount[t.id] > 0 ? adjHomeSum[t.id] / adjHomeCount[t.id] : 0,
+      playedAway: statsAway[t.id]?.played ?? 0,
+      avgForAway: avgForAway[t.id],
+      avgAgainstAway: avgAgainstAway[t.id],
+      defenceAdjAway: adjAwayCount[t.id] > 0 ? adjAwaySum[t.id] / adjAwayCount[t.id] : 0,
     }))
 
-    // Rank by attack: highest avgFor = rank 1, unplayed teams last
+    // Rank by all-games attack: highest avgFor = rank 1, unplayed teams last
     const attackSorted = [...rows].sort((a, b) => {
       if (a.played === 0 && b.played === 0) return 0
       if (a.played === 0) return 1
@@ -103,7 +153,7 @@ export function useScorePredictor(matchesRef: Ref<readonly AflMatch[]>) {
     })
     const attackRankMap = new Map(attackSorted.map((r, i) => [r.teamId, i + 1]))
 
-    // Rank by defence: most negative defenceAdjustment = rank 1, unplayed teams last
+    // Rank by all-games defence: most negative defenceAdjustment = rank 1, unplayed teams last
     const defenceSorted = [...rows].sort((a, b) => {
       if (a.played === 0 && b.played === 0) return 0
       if (a.played === 0) return 1
@@ -144,16 +194,33 @@ export function useScorePredictor(matchesRef: Ref<readonly AflMatch[]>) {
   function buildPrediction(m: AflMatch): UpcomingMatchPrediction {
     const home = teamMap.value.get(m.homeTeamId)
     const away = teamMap.value.get(m.awayTeamId)
-    const hasStrengthData = !!(home && away && home.played > 0 && away.played > 0)
+    const venue = venueAdjusted.value
 
-    const predictedHomeScore = hasStrengthData
-      ? Math.round(home!.avgFor + away!.defenceAdjustment)
-      : 0
-    const predictedAwayScore = hasStrengthData
-      ? Math.round(away!.avgFor + home!.defenceAdjustment)
-      : 0
-    const homeVsAvg = hasStrengthData ? predictedHomeScore - Math.round(home!.avgFor) : 0
-    const awayVsAvg = hasStrengthData ? predictedAwayScore - Math.round(away!.avgFor) : 0
+    const hasStrengthData = venue
+      ? !!(home && away && home.playedHome > 0 && away.playedAway > 0)
+      : !!(home && away && home.played > 0 && away.played > 0)
+
+    let predictedHomeScore = 0
+    let predictedAwayScore = 0
+    let homeVsAvg = 0
+    let awayVsAvg = 0
+
+    if (hasStrengthData && home && away) {
+      if (venue) {
+        // Use home attack for home team, away attack for away team
+        // defenceAdjAway[away] = how much home opponents score above all-avg vs this away team
+        // defenceAdjHome[home] = how much visiting opponents score above all-avg at this home ground
+        predictedHomeScore = Math.round(home.avgForHome + away.defenceAdjAway)
+        predictedAwayScore = Math.round(away.avgForAway + home.defenceAdjHome)
+        homeVsAvg = predictedHomeScore - Math.round(home.avgForHome)
+        awayVsAvg = predictedAwayScore - Math.round(away.avgForAway)
+      } else {
+        predictedHomeScore = Math.round(home.avgFor + away.defenceAdjustment)
+        predictedAwayScore = Math.round(away.avgFor + home.defenceAdjustment)
+        homeVsAvg = predictedHomeScore - Math.round(home.avgFor)
+        awayVsAvg = predictedAwayScore - Math.round(away.avgFor)
+      }
+    }
 
     return {
       matchId: m.id,

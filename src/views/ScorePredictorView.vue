@@ -23,32 +23,48 @@
       </div>
 
       <!-- Stats summary -->
-      <div class="space-y-1.5 border-b border-gray-100 px-3 py-2 dark:border-gray-800">
-        <div class="flex items-center justify-between">
+      <div class="border-b border-gray-100 px-3 py-2 dark:border-gray-800">
+        <!-- Header row labels -->
+        <div class="mb-1 flex items-center justify-end gap-2 text-gray-400 dark:text-gray-500">
+          <span class="w-14 text-right">All</span>
+          <span class="w-14 text-right">Home</span>
+          <span class="w-14 text-right">Away</span>
+        </div>
+        <!-- Avg attack -->
+        <div class="flex items-center justify-between gap-2 py-0.5">
           <span class="text-gray-500 dark:text-gray-400">Avg attack</span>
-          <div class="flex items-center gap-2">
-            <span class="font-semibold text-gray-800 dark:text-gray-200">{{ popupRow.avgFor.toFixed(1) }} pts</span>
-            <span :class="rankClass(popupRow.attackRank)" class="w-6 text-right">#{{ popupRow.attackRank }}</span>
+          <div class="flex items-center gap-2 tabular-nums">
+            <span class="w-14 text-right font-semibold text-gray-800 dark:text-gray-200">{{ popupRow.avgFor.toFixed(1) }}</span>
+            <span class="w-14 text-right text-gray-600 dark:text-gray-400">{{ popupRow.playedHome > 0 ? popupRow.avgForHome.toFixed(1) : '–' }}</span>
+            <span class="w-14 text-right text-gray-600 dark:text-gray-400">{{ popupRow.playedAway > 0 ? popupRow.avgForAway.toFixed(1) : '–' }}</span>
           </div>
         </div>
-        <div class="flex items-center justify-between">
+        <!-- Avg conceded -->
+        <div class="flex items-center justify-between gap-2 py-0.5">
           <span class="text-gray-500 dark:text-gray-400">Avg conceded</span>
-          <div class="flex items-center gap-2">
-            <span class="font-semibold text-gray-800 dark:text-gray-200">{{ popupRow.avgAgainst.toFixed(1) }} pts</span>
-            <span :class="rankClass(popupRow.defenceRank)" class="w-6 text-right">#{{ popupRow.defenceRank }}</span>
+          <div class="flex items-center gap-2 tabular-nums">
+            <span class="w-14 text-right font-semibold text-gray-800 dark:text-gray-200">{{ popupRow.avgAgainst.toFixed(1) }}</span>
+            <span class="w-14 text-right text-gray-600 dark:text-gray-400">{{ popupRow.playedHome > 0 ? popupRow.avgAgainstHome.toFixed(1) : '–' }}</span>
+            <span class="w-14 text-right text-gray-600 dark:text-gray-400">{{ popupRow.playedAway > 0 ? popupRow.avgAgainstAway.toFixed(1) : '–' }}</span>
           </div>
         </div>
-        <div class="flex items-center justify-between">
+        <!-- Defence adj -->
+        <div class="flex items-center justify-between gap-2 py-0.5">
           <span class="text-gray-500 dark:text-gray-400">Defence adj</span>
-          <span
-            :class="
-              popupRow.defenceAdjustment < 0
-                ? 'font-semibold text-green-600 dark:text-green-400'
-                : popupRow.defenceAdjustment > 0
-                  ? 'font-semibold text-red-500 dark:text-red-400'
-                  : 'text-gray-400'
-            "
-          >{{ popupRow.defenceAdjustment > 0 ? '+' : '' }}{{ popupRow.defenceAdjustment.toFixed(1) }} pts</span>
+          <div class="flex items-center gap-2 tabular-nums">
+            <span
+              class="w-14 text-right font-semibold"
+              :class="popupRow.defenceAdjustment < 0 ? 'text-green-600 dark:text-green-400' : popupRow.defenceAdjustment > 0 ? 'text-red-500 dark:text-red-400' : 'text-gray-400'"
+            >{{ popupRow.defenceAdjustment > 0 ? '+' : '' }}{{ popupRow.defenceAdjustment.toFixed(1) }}</span>
+            <span
+              class="w-14 text-right font-semibold"
+              :class="popupRow.defenceAdjHome < 0 ? 'text-green-600 dark:text-green-400' : popupRow.defenceAdjHome > 0 ? 'text-red-500 dark:text-red-400' : 'text-gray-400'"
+            >{{ popupRow.playedHome > 0 ? (popupRow.defenceAdjHome > 0 ? '+' : '') + popupRow.defenceAdjHome.toFixed(1) : '–' }}</span>
+            <span
+              class="w-14 text-right font-semibold"
+              :class="popupRow.defenceAdjAway < 0 ? 'text-green-600 dark:text-green-400' : popupRow.defenceAdjAway > 0 ? 'text-red-500 dark:text-red-400' : 'text-gray-400'"
+            >{{ popupRow.playedAway > 0 ? (popupRow.defenceAdjAway > 0 ? '+' : '') + popupRow.defenceAdjAway.toFixed(1) : '–' }}</span>
+          </div>
         </div>
       </div>
 
@@ -121,7 +137,7 @@
       class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900"
     >
       <div
-        class="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-700"
+        class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 px-4 py-3 dark:border-gray-700"
       >
         <div>
           <h2 class="text-sm font-bold text-gray-800 dark:text-gray-100">Predicted Scores</h2>
@@ -129,32 +145,56 @@
             {{ nextRoundName }}
           </p>
         </div>
-        <div
-          v-if="allUpcomingPredictions.length > 0"
-          class="flex overflow-hidden rounded border border-gray-300 text-xs font-semibold dark:border-gray-600"
-        >
-          <button
-            @click="showAllUpcoming = false"
-            class="px-3 py-1 transition-colors"
-            :class="
-              !showAllUpcoming
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
-            "
+        <div class="flex items-center gap-2">
+          <!-- Venue toggle -->
+          <div class="flex overflow-hidden rounded border border-gray-300 text-xs font-semibold dark:border-gray-600">
+            <button
+              @click="venueAdjusted = false"
+              class="px-3 py-1 transition-colors"
+              :class="
+                !venueAdjusted
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+              "
+            >All Games</button>
+            <button
+              @click="venueAdjusted = true"
+              class="px-3 py-1 transition-colors"
+              :class="
+                venueAdjusted
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+              "
+            >Home/Away</button>
+          </div>
+          <!-- Round toggle -->
+          <div
+            v-if="allUpcomingPredictions.length > 0"
+            class="flex overflow-hidden rounded border border-gray-300 text-xs font-semibold dark:border-gray-600"
           >
-            Next Round
-          </button>
-          <button
-            @click="showAllUpcoming = true"
-            class="px-3 py-1 transition-colors"
-            :class="
-              showAllUpcoming
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
-            "
-          >
-            All Upcoming
-          </button>
+            <button
+              @click="showAllUpcoming = false"
+              class="px-3 py-1 transition-colors"
+              :class="
+                !showAllUpcoming
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+              "
+            >
+              Next Round
+            </button>
+            <button
+              @click="showAllUpcoming = true"
+              class="px-3 py-1 transition-colors"
+              :class="
+                showAllUpcoming
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+              "
+            >
+              All Upcoming
+            </button>
+          </div>
         </div>
       </div>
 
@@ -262,7 +302,7 @@
                     : 'text-gray-400 dark:text-gray-500'
               "
             >
-              {{ m.homeVsAvg > 0 ? '+' : '' }}{{ m.homeVsAvg }} vs avg
+              {{ m.homeVsAvg > 0 ? '+' : '' }}{{ m.homeVsAvg }} vs {{ venueAdjusted ? 'home' : '' }}avg
             </span>
             <span
               :class="
@@ -273,7 +313,7 @@
                     : 'text-gray-400 dark:text-gray-500'
               "
             >
-              {{ m.awayVsAvg > 0 ? '+' : '' }}{{ m.awayVsAvg }} vs avg
+              {{ m.awayVsAvg > 0 ? '+' : '' }}{{ m.awayVsAvg }} vs {{ venueAdjusted ? 'away' : '' }}avg
             </span>
           </div>
         </div>
@@ -416,13 +456,15 @@ const BASE_URL = import.meta.env.BASE_URL
 
 const { matches, isLoading } = useAFLData()
 
+const venueAdjusted = ref(false)
+
 const {
   strengthRows,
   hasEnoughData,
   nextRoundName,
   nextRoundPredictions,
   allUpcomingPredictions,
-} = useScorePredictor(matches)
+} = useScorePredictor(matches, venueAdjusted)
 
 const showAllUpcoming = ref(false)
 const sortKey = ref<StrengthSortKey>('attackRank')
