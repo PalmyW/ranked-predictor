@@ -160,7 +160,7 @@ const STEPS: TourStep[] = [
   {
     id: 'rankings-algo-selector',
     title: 'Switch Algorithms',
-    description: 'Pick from six different ranking methods: Win %, SRS, Colley Matrix, Massey, Win Flow, and Palmy. Each uses a different mathematical approach to weigh results.',
+    description: 'Pick from seven different ranking methods: Win %, SRS, Colley Matrix, Massey, Win Flow, Palmy, and XPalmy. Each uses a different mathematical approach to weigh results.',
     target: '[data-tour="rankings-algo-selector"]',
     route: '/rankings',
   },
@@ -170,6 +170,27 @@ const STEPS: TourStep[] = [
     description: 'Teams are ordered by the algorithm\'s rating. The "vs AFL" column shows where this algorithm agrees or disagrees with the official points-based ladder.',
     target: '[data-tour="rankings-table"]',
     route: '/rankings',
+  },
+  {
+    id: 'score-predictor-nav',
+    title: 'PalmyScore™',
+    description: "The PalmyScore™ page predicts upcoming match scores using each team's attack and defence ratings. Let's take a look.",
+    target: '[data-tour="score-predictor-nav"]',
+    route: '/rankings',
+  },
+  {
+    id: 'score-predictor-predictions',
+    title: 'Match Predictions',
+    description: 'Predicted scores for every upcoming match, calculated from each team\'s season attack average adjusted by their opponent\'s defence rating. Toggle between All Games and Home/Away to factor in venue history.',
+    target: '[data-tour="score-predictor-predictions"]',
+    route: '/score-predictor',
+  },
+  {
+    id: 'score-predictor-strength',
+    title: 'Attack & Defence Ratings',
+    description: "Every team's average score, average conceded, and defence adjustment — how many extra points opponents tend to score above their own average when facing that team. Sort by Attack or Defence rank.",
+    target: '[data-tour="score-predictor-strength"]',
+    route: '/score-predictor',
   },
   {
     id: 'dark-mode',

@@ -35,7 +35,7 @@
               ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
               : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
           "
-          :data-tour="tab.path === '/stats' ? 'stats-nav' : tab.path === '/season-stats' ? 'season-stats-nav' : tab.path === '/rankings' ? 'rankings-nav' : undefined"
+          :data-tour="tab.path === '/stats' ? 'stats-nav' : tab.path === '/season-stats' ? 'season-stats-nav' : tab.path === '/rankings' ? 'rankings-nav' : tab.path === '/score-predictor' ? 'score-predictor-nav' : undefined"
         >
           {{ tab.label }}
         </button>

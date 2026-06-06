@@ -134,6 +134,7 @@
     <!-- Predicted Scores card -->
     <div
       v-if="hasEnoughData || isLoading"
+      data-tour="score-predictor-predictions"
       class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900"
     >
       <div
@@ -323,6 +324,7 @@
     <!-- Team Strength table card -->
     <div
       v-if="hasEnoughData || isLoading"
+      data-tour="score-predictor-strength"
       class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900"
     >
       <div
