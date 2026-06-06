@@ -114,7 +114,7 @@
   <main class="mx-auto max-w-4xl px-4 py-6 space-y-6">
     <!-- Page heading -->
     <div>
-      <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Score Predictor</h1>
+      <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">PalmyScore™</h1>
       <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
         Each team's attack and defence rating is derived from their season averages. The defence
         adjustment measures how many points above or below their average opponents score when facing
@@ -140,7 +140,7 @@
         class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 px-4 py-3 dark:border-gray-700"
       >
         <div>
-          <h2 class="text-sm font-bold text-gray-800 dark:text-gray-100">Predicted Scores</h2>
+          <h2 class="text-sm font-bold text-gray-800 dark:text-gray-100">PalmyScore™ Predictions</h2>
           <p v-if="nextRoundName" class="text-xs text-gray-400 dark:text-gray-500">
             {{ nextRoundName }}
           </p>
