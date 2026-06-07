@@ -18,6 +18,17 @@
 
     <!-- Tab content -->
     <div class="p-4">
+      <!-- PalmyScore Predicted -->
+      <div v-if="activeTab === 'palmy-predicted'">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h2 class="text-lg font-bold text-gray-800 dark:text-gray-100">PalmyScore™ Predicted Ladder</h2>
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Match winners determined by PalmyScore™ predicted scores</p>
+          </div>
+        </div>
+        <LadderTable :ladder="palmyPredictedLadder" :isLoading="isLoading" :baselineRanking="actualLadder.map(r => r.teamId)" />
+      </div>
+
       <!-- Predicted -->
       <div v-if="activeTab === 'predicted'">
         <div class="flex items-center justify-between mb-3">
@@ -175,6 +186,7 @@ import { powerRankingsTitle, firstMeaningfulWord } from '../composables/usePower
 
 const props = defineProps<{
   predictedLadder: LadderRow[]
+  palmyPredictedLadder: LadderRow[]
   simulatedLadder: LadderRow[] | null
   actualLadder: LadderRow[]
   ranking: TeamRanking
@@ -229,6 +241,7 @@ const powerLabel = computed(() => ' ' + firstMeaningfulWord(powerRankingsTitle.v
 
 const ALL_TABS = computed(() => [
   { id: 'predicted', badge: 'P', badgeClass: 'px-1 rounded text-[1em] font-bold leading-tight bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400', label: 'redicted' },
+  { id: 'palmy-predicted', badge: 'PS', badgeClass: 'px-1 rounded text-[1em] font-bold leading-tight bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400', label: '™' },
   { id: 'simulated', badge: 'S', badgeClass: 'px-1 rounded text-[1em] font-bold leading-tight bg-purple-500 text-white', label: 'imulated' },
   { id: 'current',   badge: null, badgeClass: '', label: 'Current' },
   { id: 'power',     badge: '↕', badgeClass: 'text-[1em] font-bold text-amber-500 dark:text-amber-400', label: powerLabel.value },
@@ -237,7 +250,7 @@ const ALL_TABS = computed(() => [
 
 const TABS = computed(() =>
   props.viewOnly
-    ? ALL_TABS.value.filter((t) => t.id !== 'predicted' && t.id !== 'simulated')
+    ? ALL_TABS.value.filter((t) => t.id !== 'predicted' && t.id !== 'palmy-predicted' && t.id !== 'simulated')
     : ALL_TABS.value
 )
 
@@ -245,12 +258,13 @@ const analytics = useAnalytics()
 
 const TAB_TOUR_IDS: Record<string, string> = {
   predicted: 'predicted-tab',
+  'palmy-predicted': 'palmy-predicted-tab',
   simulated: 'simulated-tab',
   power: 'power-rankings-tab',
   parity: 'parity-tab',
 }
 
-const VALID_TAB_IDS = new Set(['predicted', 'simulated', 'current', 'power', 'parity'])
+const VALID_TAB_IDS = new Set(['predicted', 'palmy-predicted', 'simulated', 'current', 'power', 'parity'])
 
 function tabFromHash(): string {
   const hash = window.location.hash.slice(1)
@@ -274,7 +288,7 @@ function sleep(ms: number): Promise<void> {
 function switchTab(id: string) {
   activeTab.value = id
   window.location.hash = id
-  analytics.trackTabSwitch(id as 'predicted' | 'simulated' | 'current' | 'power' | 'parity')
+  analytics.trackTabSwitch(id as 'predicted' | 'palmy-predicted' | 'simulated' | 'current' | 'power' | 'parity')
 }
 
 function onHashChange() {

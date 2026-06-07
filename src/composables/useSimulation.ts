@@ -262,6 +262,58 @@ function runManySimulations(
   return { results, stats: { mostCommonLadder, mostCommonCount, consensusLadder, uniqueCount: ladderCounts.size } }
 }
 
+export interface MatchScorePrediction {
+  matchId: number
+  homeTeamId: number
+  awayTeamId: number
+  predictedHomeScore: number
+  predictedAwayScore: number
+  hasStrengthData: boolean
+}
+
+export function buildPalmyLadder(
+  matches: readonly AflMatch[],
+  predictions: readonly MatchScorePrediction[],
+  fallbackRankMap: Record<number, number>,
+): LadderRow[] {
+  const predMap = new Map(predictions.map(p => [p.matchId, p]))
+  const baseStats = buildStats(matches)
+  const simStats: Record<number, TeamStats> = {}
+  for (const [id, s] of Object.entries(baseStats)) simStats[Number(id)] = { ...s }
+
+  for (const match of matches) {
+    if (match.status === 'CONCLUDED') continue
+    const hId = match.homeTeamId
+    const aId = match.awayTeamId
+    if (!hId || !aId || !simStats[hId] || !simStats[aId]) continue
+
+    const pred = predMap.get(match.id)
+    let hScore: number
+    let aScore: number
+    if (pred?.hasStrengthData) {
+      hScore = pred.predictedHomeScore
+      aScore = pred.predictedAwayScore
+    } else {
+      const hWins = (fallbackRankMap[hId] ?? 999) <= (fallbackRankMap[aId] ?? 999)
+      hScore = hWins ? SIM_WIN_SCORE : SIM_LOSS_SCORE
+      aScore = hWins ? SIM_LOSS_SCORE : SIM_WIN_SCORE
+    }
+
+    simStats[hId].for += hScore; simStats[hId].against += aScore; simStats[hId].played++
+    simStats[aId].for += aScore; simStats[aId].against += hScore; simStats[aId].played++
+    if (hScore > aScore) {
+      simStats[hId].wins++; simStats[hId].pts += 4; simStats[aId].losses++
+    } else if (aScore > hScore) {
+      simStats[aId].wins++; simStats[aId].pts += 4; simStats[hId].losses++
+    } else {
+      simStats[hId].draws++; simStats[hId].pts += 2
+      simStats[aId].draws++; simStats[aId].pts += 2
+    }
+  }
+
+  return statsToLadder(simStats, matches, fallbackRankMap)
+}
+
 function simulateMatches(
   matches: readonly AflMatch[],
   rankMap: Record<number, number>,

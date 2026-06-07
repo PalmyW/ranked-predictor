@@ -74,6 +74,13 @@ const STEPS: TourStep[] = [
     route: '/',
   },
   {
+    id: 'palmy-predicted-tab',
+    title: 'PalmyScore™ Predicted Ladder',
+    description: 'See how the season would finish if every remaining match went to the PalmyScore™ predicted winner — no ranking influence, just score-based predictions.',
+    target: '[data-tour="palmy-predicted-tab"]',
+    route: '/',
+  },
+  {
     id: 'round-banner',
     title: 'Round Match Cards',
     description: 'Browse match cards round by round. See predicted winners, live scores, and simulated results at a glance.',

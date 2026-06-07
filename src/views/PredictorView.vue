@@ -77,6 +77,7 @@
         <section class="space-y-6">
           <LadderTabs
             :predictedLadder="predictedLadder"
+            :palmyPredictedLadder="palmyPredictedLadder"
             :simulatedLadder="simulatedLadder"
             :actualLadder="actualLadder"
             :ranking="ranking"
@@ -119,7 +120,8 @@ import { computed, ref, watch, provide, onMounted } from 'vue'
 import { useAFLData } from '../composables/useAFLData'
 import { useRanking } from '../composables/useRanking'
 import { useAlgorithmRankings, ALGORITHMS } from '../composables/useAlgorithmRankings'
-import { useSimulation } from '../composables/useSimulation'
+import { useSimulation, buildPalmyLadder } from '../composables/useSimulation'
+import { useScorePredictor } from '../composables/useScorePredictor'
 import { useAnalytics } from '../composables/useAnalytics'
 import { useSeason } from '../composables/useSeason'
 import RoundBanner from '../components/RoundBanner.vue'
@@ -145,6 +147,20 @@ const algoRankingMap = computed<Record<string, { teamId: number }[]>>(() => ({
   xpalmy: xpalmyRanking.value,
 }))
 const { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate, getSimulationFrames, rangeResults, rangeTotal, simStats, isRunningRange, runMany } = useSimulation(ranking, matches)
+
+const palmyVenueAdjusted = ref(false)
+const { allUpcomingPredictions } = useScorePredictor(matches, palmyVenueAdjusted)
+
+const actualLadderRankMap = computed<Record<number, number>>(() => {
+  const map: Record<number, number> = {}
+  actualLadder.value.forEach((row, i) => { map[row.teamId] = i + 1 })
+  return map
+})
+
+const palmyPredictedLadder = computed(() =>
+  buildPalmyLadder(matches.value, allUpcomingPredictions.value, actualLadderRankMap.value)
+)
+
 const analytics = useAnalytics()
 
 provide('matches', matches)
