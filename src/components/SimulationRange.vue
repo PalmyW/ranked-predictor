@@ -61,7 +61,7 @@
               v-if="count > 0"
               :style="{ width: `${(count / total) * 100}%`, background: POS_COLORS[i] }"
               class="relative flex items-center justify-center overflow-hidden shrink-0"
-              :title="`${i + 1}th: ${count} (${((count / total) * 100).toFixed(1)}%)`"
+              :title="`${ordinal(i + 1)}: ${count} (${((count / total) * 100).toFixed(1)}%)`"
             >
               <span
                 v-if="count / total >= 0.04"
@@ -249,6 +249,12 @@ const POS_COLORS = [
   '#57534e', // 17
   '#292524', // 18 — near-black
 ]
+
+function ordinal(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd']
+  const v = n % 100
+  return n + (s[(v - 20) % 10] ?? s[v] ?? s[0])
+}
 
 const captureEl = ref<HTMLElement | null>(null)
 const capturing = ref(false)
