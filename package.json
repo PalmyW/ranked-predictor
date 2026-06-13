@@ -11,7 +11,10 @@
     "fetch-stats": "node scripts/fetch-stats.js",
     "aggregate-stats": "node scripts/aggregate-team-stats.js",
     "fetch-historical": "node scripts/fetch-historical-season.js",
-    "compute-champions": "node scripts/compute-xpalmy-champions.js"
+    "compute-champions": "node scripts/compute-xpalmy-champions.js",
+    "db:install": "cd local-db && npm install",
+    "db:import": "cd local-db && node scripts/import.js",
+    "db:start": "cd local-db && node --env-file-if-exists=.env server/index.js"
   },
   "dependencies": {
     "html-to-image": "^1.11.13",

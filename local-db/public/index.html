@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AFL Stats DB</title>
+  <link rel="stylesheet" href="https://unpkg.com/tabulator-tables@6.3.0/dist/css/tabulator.min.css" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+
+<header>
+  <h1>AFL Stats DB</h1>
+  <nav class="tab-bar">
+    <button class="tab-btn active" data-tab="matches">Matches</button>
+    <button class="tab-btn" data-tab="match-stats">Player Match Stats</button>
+    <button class="tab-btn" data-tab="season-stats">Season Averages</button>
+    <button class="tab-btn" data-tab="query">SQL Query</button>
+  </nav>
+  <div class="db-status" id="db-status">Loading…</div>
+</header>
+
+<main>
+
+  <!-- ── Matches ─────────────────────────────────────────────────────────── -->
+  <section class="tab-panel active" id="tab-matches">
+    <div class="filters">
+      <div class="filter-group">
+        <label>Season</label>
+        <select id="m-year"><option value="">All seasons</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Round</label>
+        <select id="m-round"><option value="">All rounds</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Team</label>
+        <select id="m-team"><option value="">All teams</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Status</label>
+        <select id="m-status">
+          <option value="">All</option>
+          <option value="CONCLUDED">Concluded</option>
+          <option value="SCHEDULED">Scheduled</option>
+          <option value="LIVE">Live</option>
+        </select>
+      </div>
+      <div class="filter-group" style="justify-content: flex-end">
+        <label>&nbsp;</label>
+        <button class="btn" id="m-load">Load</button>
+      </div>
+    </div>
+    <div class="table-meta">
+      <span id="m-count"></span>
+      <div class="table-actions">
+        <div id="m-col-toggle"></div>
+        <button class="btn secondary" id="m-export">Export CSV</button>
+      </div>
+    </div>
+    <div id="matches-table"></div>
+  </section>
+
+  <!-- ── Player Match Stats ──────────────────────────────────────────────── -->
+  <section class="tab-panel" id="tab-match-stats">
+    <div class="filters">
+      <div class="filter-group">
+        <label>Season</label>
+        <select id="pms-year"><option value="">All seasons</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Round</label>
+        <select id="pms-round"><option value="">All rounds</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Team</label>
+        <select id="pms-team"><option value="">All teams</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Match ID</label>
+        <input type="text" id="pms-match" placeholder="CD_M202601400…" style="width:170px" />
+      </div>
+      <div class="filter-group">
+        <label>Sort by</label>
+        <select id="pms-sort" style="width:160px"></select>
+      </div>
+      <div class="filter-group">
+        <label>Dir</label>
+        <select id="pms-dir">
+          <option value="desc">Highest first</option>
+          <option value="asc">Lowest first</option>
+        </select>
+      </div>
+      <div class="filter-group" style="justify-content: flex-end">
+        <label>&nbsp;</label>
+        <button class="btn" id="pms-load">Load</button>
+      </div>
+    </div>
+    <div class="table-meta">
+      <span id="pms-count"></span>
+      <div class="table-actions">
+        <div id="pms-col-toggle"></div>
+        <button class="btn secondary" id="pms-export">Export CSV</button>
+      </div>
+    </div>
+    <div id="pms-table"></div>
+  </section>
+
+  <!-- ── Season Averages ────────────────────────────────────────────────── -->
+  <section class="tab-panel" id="tab-season-stats">
+    <div class="filters">
+      <div class="filter-group">
+        <label>Season</label>
+        <select id="pss-year"><option value="">All seasons</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Team</label>
+        <select id="pss-team"><option value="">All teams</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Min games</label>
+        <input type="number" id="pss-min-games" value="1" min="1" max="25" style="width:70px" />
+      </div>
+      <div class="filter-group">
+        <label>Show</label>
+        <select id="pss-mode">
+          <option value="avg">Averages</option>
+          <option value="tot">Totals</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Sort by</label>
+        <select id="pss-sort" style="width:160px"></select>
+      </div>
+      <div class="filter-group">
+        <label>Dir</label>
+        <select id="pss-dir">
+          <option value="desc">Highest first</option>
+          <option value="asc">Lowest first</option>
+        </select>
+      </div>
+      <div class="filter-group" style="justify-content: flex-end">
+        <label>&nbsp;</label>
+        <button class="btn" id="pss-load">Load</button>
+      </div>
+    </div>
+    <div class="table-meta">
+      <span id="pss-count"></span>
+      <div class="table-actions">
+        <div id="pss-col-toggle"></div>
+        <button class="btn secondary" id="pss-export">Export CSV</button>
+      </div>
+    </div>
+    <div id="pss-table"></div>
+  </section>
+
+  <!-- ── SQL Query ──────────────────────────────────────────────────────── -->
+  <section class="tab-panel" id="tab-query">
+    <div class="query-layout">
+      <div class="query-editor">
+        <div class="ai-prompt-wrap">
+          <textarea id="ai-prompt" rows="2" spellcheck="false"
+            placeholder="Ask Claude — e.g. 'Top 10 players by average disposals in 2026'"></textarea>
+          <button class="btn ai-ask-btn" id="ai-ask">Ask Claude</button>
+        </div>
+        <textarea id="sql-input" rows="6" spellcheck="false" placeholder="SELECT ..."></textarea>
+        <div class="query-actions">
+          <button class="btn" id="sql-run">Run Query</button>
+          <button class="btn secondary" id="sql-clear">Clear</button>
+          <span class="query-time" id="query-time"></span>
+        </div>
+        <div id="query-error" class="error-box" style="display:none"></div>
+        <div class="query-history-section">
+          <div class="query-history-header" id="history-toggle">
+            <span>History</span>
+            <span id="history-badge"></span>
+            <span class="history-chevron">▾</span>
+            <button class="btn secondary history-clear-all" id="history-clear-all" style="display:none">Clear all</button>
+          </div>
+          <div id="query-history" class="query-history-list" style="display:none"></div>
+        </div>
+        <div class="query-results">
+          <div class="table-meta">
+            <span id="query-count"></span>
+            <div class="table-actions">
+              <div id="query-col-toggle"></div>
+              <button class="btn secondary" id="query-export" style="display:none">Export CSV</button>
+            </div>
+          </div>
+          <div id="query-table"></div>
+        </div>
+      </div>
+      <div class="schema-panel">
+        <h3>Schema Reference</h3>
+        <div id="schema-list"></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script src="https://unpkg.com/tabulator-tables@6.3.0/dist/js/tabulator.min.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>
