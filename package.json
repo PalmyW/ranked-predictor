@@ -14,6 +14,7 @@
     "compute-champions": "node scripts/compute-xpalmy-champions.js",
     "db:install": "cd local-db && npm install",
     "db:import": "cd local-db && node scripts/import.js",
+    "db:dev": "cd local-db && npm run dev",
     "db:start": "cd local-db && node --env-file-if-exists=.env server/index.js"
   },
   "dependencies": {

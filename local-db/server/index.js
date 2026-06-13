@@ -17,18 +17,30 @@ if (!existsSync(DB_PATH)) {
 const db = openDb();
 const app = express();
 app.use(express.json());
-app.use(express.static(join(__dirname, '../public')));
+
+const isProd = process.env.NODE_ENV === 'production';
+app.use(express.static(join(__dirname, isProd ? '../dist' : '../public')));
+if (isProd) {
+  app.get('*', (_, res) => res.sendFile(join(__dirname, '../dist/index.html')));
+}
+
+// Percentage/rate/efficiency/ratio columns — avg only, never totaled
+const PCT_KW = ['percentage', 'efficiency', 'accuracy', 'rate', 'ratio']
+const isPct = base => PCT_KW.some(k => base.includes(k))
 
 // Allowlist of sortable columns for player-season-stats (all are computed aliases)
 const SEASON_SORT_COLS = new Set([
   'games_played', 'year',
-  ...STAT_COLS.map(([, base]) => `tot_${base}`),
+  ...STAT_COLS.filter(([, b]) => !isPct(b)).map(([, base]) => `tot_${base}`),
   ...STAT_COLS.map(([, base]) => `avg_${base}`),
 ]);
 
 // Pre-built aggregate SELECT for season stats (computed from match stats)
+// Percentage-like columns only get avg_, not tot_
 const SEASON_AGG = STAT_COLS.map(([, base]) =>
-  `  SUM(p.stat_${base}) AS tot_${base}, ROUND(AVG(p.stat_${base}), 2) AS avg_${base}`
+  isPct(base)
+    ? `  ROUND(AVG(p.stat_${base}), 2) AS avg_${base}`
+    : `  SUM(p.stat_${base}) AS tot_${base}, ROUND(AVG(p.stat_${base}), 2) AS avg_${base}`
 ).join(',\n');
 
 const SEASON_BASE = `
@@ -226,15 +238,17 @@ Note: has team_name for the player's own team only. Does NOT have home_team_name
 To get home/away context, JOIN ON match_id with v_matches.
 
 ### v_player_season_stats
-Columns: year, player_id, team_id, team_name, team_abbr, given_name, surname, position, jumper_number, games_played, [tot_{base} × 62], [avg_{base} × 62]
+Columns: year, player_id, team_id, team_name, team_abbr, given_name, surname, position, jumper_number, games_played, [tot_{base} for countable stats], [avg_{base} for all stats]
 Note: aggregated per player per year per team. Does NOT have match_id or round_number.
+IMPORTANT: percentage/rate/efficiency/accuracy/ratio columns do NOT have a tot_{base} column — only avg_{base}. Examples: disposal_efficiency, goal_accuracy, kick_efficiency, kick_to_handball_ratio, contested_possession_rate, hitout_win_percentage, hitout_to_advantage_rate, contest_def_loss_percentage, contest_off_wins_percentage, time_on_ground_percentage.
+Never reference tot_disposal_efficiency, tot_time_on_ground_percentage, etc. — those columns do not exist.
 
 ## Stat column bases (62 total)
 
 ${statBases}
 
 - In player_match_stats / v_player_match_stats: stat_{base}  (e.g. stat_disposals)
-- In v_player_season_stats: tot_{base} (season total) or avg_{base} (season average)
+- In v_player_season_stats: tot_{base} (season total, countable stats only) or avg_{base} (season average, all stats)
 
 ## Teams
 
@@ -246,7 +260,29 @@ ${teamLines}
 - round_number is an integer (1–24 approx)
 - match status values: CONCLUDED, SCHEDULED, UNCONFIRMED, CANCELLED
 - player_id is a text key like "CD_I123456"
-- Use LIMIT to cap results (default 20–100 rows)`;
+- Use LIMIT to cap results (default 20–100 rows)
+
+## SQL rules — MUST follow
+
+- Always combine player names as \`given_name || ' ' || surname AS player\` unless the user explicitly asks for separate columns.
+- NEVER nest aggregate functions. MAX(SUM(...)) and MAX(MAX(...)) are illegal in SQLite and will cause an error.
+- When you need to compare or take the maximum of two aggregated values, use a CTE (WITH clause) to compute the aggregates first, then apply MAX/MIN/comparison in the outer query. Prefer CTEs over subqueries for clarity.
+- When referencing columns from a subquery or CTE, ONLY use the alias given to that subquery/CTE — never use the table aliases that were used inside it.
+
+Example — WRONG (nested aggregates):
+  SELECT MAX(SUM(CASE WHEN ... THEN x ELSE 0 END), SUM(CASE WHEN ... THEN y ELSE 0 END)) ...
+
+Example — WRONG (wrong alias in outer query — inner alias "m" leaks out):
+  SELECT m.match_id FROM (SELECT m.match_id FROM v_matches m GROUP BY m.match_id) AS sub
+
+Example — CORRECT (CTE approach, outer query uses CTE name):
+  WITH agg AS (
+    SELECT m.match_id, m.year,
+      SUM(CASE WHEN ... THEN x ELSE 0 END) AS a,
+      SUM(CASE WHEN ... THEN y ELSE 0 END) AS b
+    FROM v_matches m GROUP BY m.match_id
+  )
+  SELECT agg.match_id, agg.year, MAX(a, b) AS result FROM agg ORDER BY result DESC LIMIT 1;`;
 }
 
 const AI_SYSTEM_PROMPT = buildAISystemPrompt(db);
@@ -280,7 +316,7 @@ app.post('/api/query', (req, res) => {
   if (!sql || typeof sql !== 'string') {
     return res.status(400).json({ error: 'Missing sql field' });
   }
-  if (!/^\s*SELECT\b/i.test(sql)) {
+  if (!/^\s*(SELECT|WITH)\b/i.test(sql)) {
     return res.status(400).json({ error: 'Only SELECT statements are allowed' });
   }
   if (sql.includes(';')) {

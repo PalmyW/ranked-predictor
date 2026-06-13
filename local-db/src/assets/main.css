@@ -1,0 +1,27 @@
+/* Tailwind utilities only — skip preflight to avoid Vuetify CSS reset conflict */
+@import "tailwindcss/utilities";
+
+/* Monospace font utility for SQL areas */
+.font-mono {
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace !important;
+}
+
+/* ── Formatter output utilities (used via v-html in DataTable cells) ─────── */
+
+.score      { font-variant-numeric: tabular-nums; }
+.score-win  { color: rgb(var(--v-theme-success)) !important; font-weight: 600; }
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tag-concluded { background: rgba(var(--v-theme-success), 0.15); color: rgb(var(--v-theme-success)); }
+.tag-scheduled { background: rgba(var(--v-theme-primary), 0.15); color: rgb(var(--v-theme-primary)); }
+.tag-live      { background: rgba(var(--v-theme-warning), 0.15); color: rgb(var(--v-theme-warning)); }
