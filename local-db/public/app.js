@@ -748,6 +748,27 @@ async function runQuery() {
   } else {
     document.getElementById('query-col-toggle').innerHTML = '';
   }
+
+  const hasMatchId = result.columns.includes('match_id');
+  document.getElementById('query-table').classList.toggle('clickable-rows', hasMatchId);
+  queryTable.off('rowClick');
+  if (hasMatchId) {
+    queryTable.on('rowClick', (e, row) => {
+      const matchId = row.getData().match_id;
+      if (!matchId) return;
+      if (e.metaKey || e.ctrlKey) {
+        window.open(`${window.location.pathname}?tab=match-stats&match=${encodeURIComponent(matchId)}`, '_blank');
+        return;
+      }
+      document.getElementById('pms-year').value = '';
+      document.getElementById('pms-round').value = '';
+      document.getElementById('pms-team').value = '';
+      document.getElementById('pms-match').value = matchId;
+      updateUrl('match-stats', { match: matchId });
+      activateTab('match-stats');
+      loadPMS();
+    });
+  }
 }
 
 document.getElementById('sql-run').addEventListener('click', runQuery);
@@ -758,6 +779,7 @@ document.getElementById('sql-clear').addEventListener('click', () => {
   document.getElementById('query-count').textContent = '';
   document.getElementById('query-export').style.display = 'none';
   document.getElementById('query-col-toggle').innerHTML = '';
+  document.getElementById('query-table').classList.remove('clickable-rows');
   if (queryTable) { queryTable.destroy(); queryTable = null; }
 });
 document.getElementById('query-export').addEventListener('click', () =>

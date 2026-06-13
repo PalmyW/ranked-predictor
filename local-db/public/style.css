@@ -305,6 +305,10 @@ select { cursor: pointer; }
 .tabulator .tabulator-page.active { background: #4f7ef7 !important; color: #fff !important; }
 .tabulator .tabulator-page:disabled { opacity: 0.4 !important; }
 
+/* Clickable rows (query results with match_id) */
+.clickable-rows .tabulator-row { cursor: pointer; }
+.clickable-rows .tabulator-row:hover .tabulator-cell { background: rgba(79, 126, 247, 0.08) !important; }
+
 /* ── SQL Query panel ──────────────────────────────────────────────────────── */
 .query-layout {
   display: grid;
