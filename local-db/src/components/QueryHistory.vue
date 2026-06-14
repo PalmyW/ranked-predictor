@@ -50,7 +50,7 @@ function preview(sql) {
           <v-list-item
             v-for="(h, i) in history"
             :key="h.ts"
-            @click="emit('select', h.sql)"
+            @click="emit('select', h)"
             class="cursor-pointer"
           >
             <v-list-item-title class="text-caption" :class="{ 'font-mono': !h.prompt }">

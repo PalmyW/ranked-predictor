@@ -108,7 +108,7 @@ app.get('/api/matches', (req, res) => {
     JOIN teams at ON m.away_team_id = at.team_id
     LEFT JOIN venues v ON m.venue_id = v.venue_id
     ${whereSQL}
-    ORDER BY m.year DESC, m.round_number, m.utc_start_time
+    ORDER BY m.utc_start_time DESC NULLS LAST
     LIMIT ? OFFSET ?
   `;
   res.json(db.prepare(sql).all(...params, limit, offset));
@@ -215,7 +215,7 @@ function buildAISystemPrompt(db) {
   const teamLines = teams.map(t => `  ${t.team_id}: ${t.name}`).join('\n');
 
   return `You are a SQLite query generator for an AFL (Australian Football League) statistics database.
-Return ONLY a valid SQLite SELECT statement. No explanation, no markdown, no code fences, no trailing semicolon.
+Start your response with a TITLE: line (3–6 words summarising the query result), then provide the SQL wrapped in a \`\`\`sql … \`\`\` code block. No trailing semicolon. No other explanation.
 CRITICAL: Only use columns that are explicitly listed for the table/view you are querying. Never assume a column exists.
 
 ## Base tables
@@ -301,9 +301,22 @@ app.post('/api/ai/query', async (req, res) => {
       system: AI_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: prompt.trim() }],
     });
-    let sql = msg.content[0].text.trim();
-    sql = sql.replace(/^```sql\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/, '').replace(/;$/, '').trim();
-    res.json({ sql });
+    const raw = msg.content[0].text.trim();
+    const titleMatch = raw.match(/^TITLE:\s*(.+)/mi);
+    const title = titleMatch?.[1]?.trim();
+    const codeMatch = raw.match(/```(?:sql)?\s*([\s\S]+?)```/i);
+    let sql, note;
+    if (codeMatch) {
+      sql = codeMatch[1].replace(/;$/, '').trim();
+      const stripped = raw
+        .replace(/^TITLE:.*$/mi, '')
+        .replace(/```(?:sql)?[\s\S]+?```/gi, '')
+        .trim();
+      note = stripped || undefined;
+    } else {
+      sql = raw.replace(/^TITLE:.*$/mi, '').replace(/;$/, '').trim();
+    }
+    res.json({ sql, ...(title && { title }), ...(note && { note }) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

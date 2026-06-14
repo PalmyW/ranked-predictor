@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, inject } from 'vue'
+import { ref, computed, inject, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi.js'
 import { useQueryHistory } from '@/composables/useQueryHistory.js'
@@ -8,6 +8,7 @@ import ColToggle from '@/components/ColToggle.vue'
 import AiPrompt from '@/components/AiPrompt.vue'
 import SchemaPanel from '@/components/SchemaPanel.vue'
 import QueryHistory from '@/components/QueryHistory.vue'
+import ExportImageModal from '@/components/ExportImageModal.vue'
 import { SAMPLE_QUERY, fmt } from '@/constants/stats.js'
 
 const router  = useRouter()
@@ -27,6 +28,16 @@ const tableRef = ref(null)
 
 const colVis = ref({})
 const currentPrompt = ref('')
+const fixLoading    = ref(false)
+const fixNote       = ref('')
+let   fixNoteTimer  = null
+const pendingTitle  = ref('')
+const resultsTitle  = ref('')
+const showExport    = ref(false)
+
+const lastFocused    = ref('sql') // 'sql' | 'claude'
+const sqlTextareaRef = ref(null)
+const aiRef          = ref(null)
 
 const hasMatchId = computed(() => columns.value.some(c => c.field === 'match_id'))
 
@@ -81,6 +92,8 @@ async function runQuery() {
     })
     rows.value = result.rows
     colVis.value = {}
+    resultsTitle.value = pendingTitle.value
+    pendingTitle.value = ''
 
     pushHistory({ sql, ts: Date.now(), rowCount: result.rowCount, executionMs: result.executionMs, prompt: currentPrompt.value || undefined })
   } finally {
@@ -97,11 +110,69 @@ function clearQuery() {
   rows.value = []
   colVis.value = {}
   currentPrompt.value = ''
+  resultsTitle.value = ''
+  pendingTitle.value = ''
 }
 
-function onAiSql({ sql, prompt }) {
+async function fixWithClaude() {
+  fixLoading.value = true
+  try {
+    const res = await fetch('/api/ai/query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: `Fix this SQLite query that returned an error.\n\nQuery:\n${sqlText.value.trim()}\n\nError:\n${error.value}`,
+      }),
+    })
+    const data = await res.json()
+    if (data.sql) {
+      sqlText.value = data.sql
+      error.value = ''
+      if (data.note) {
+        fixNote.value = data.note
+        clearTimeout(fixNoteTimer)
+        fixNoteTimer = setTimeout(() => { fixNote.value = '' }, 10000)
+      }
+    } else {
+      error.value = data.error ?? 'Claude could not fix the query'
+    }
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    fixLoading.value = false
+  }
+}
+
+function onHistorySelect(h) {
+  sqlText.value = h.sql
+  if (h.prompt) {
+    aiRef.value?.setPrompt(h.prompt)
+    pendingTitle.value = ''
+  } else {
+    aiRef.value?.setPrompt('')
+  }
+}
+
+function onSchemaSelect(name) {
+  if (lastFocused.value === 'claude') {
+    aiRef.value?.insert(name)
+  } else {
+    const ta = sqlTextareaRef.value?.$el?.querySelector('textarea')
+    if (!ta) { sqlText.value += name; return }
+    const start = ta.selectionStart ?? sqlText.value.length
+    const end   = ta.selectionEnd   ?? sqlText.value.length
+    sqlText.value = sqlText.value.substring(0, start) + name + sqlText.value.substring(end)
+    nextTick(() => {
+      ta.selectionStart = ta.selectionEnd = start + name.length
+      ta.focus()
+    })
+  }
+}
+
+function onAiSql({ sql, prompt, title }) {
   sqlText.value = sql
   currentPrompt.value = prompt
+  pendingTitle.value = title || ''
 }
 
 function onColChange({ key, visible }) {
@@ -136,9 +207,10 @@ function exportCsv() {
   <div style="display:flex; gap:24px; align-items:flex-start">
     <!-- Main area -->
     <div style="flex:1; min-width:0">
-      <AiPrompt @sql="onAiSql" @error="error = $event" class="mb-4" />
+      <AiPrompt ref="aiRef" @sql="onAiSql" @error="error = $event" @focus="lastFocused = 'claude'" class="mb-4" />
 
       <v-textarea
+        ref="sqlTextareaRef"
         v-model="sqlText"
         label="SQL"
         :rows="6"
@@ -149,6 +221,7 @@ function exportCsv() {
         auto-grow
         hide-details
         @keydown="onKeydown"
+        @focus="lastFocused = 'sql'"
       />
 
       <v-row align="center" dense class="mb-4">
@@ -178,35 +251,75 @@ function exportCsv() {
             Export CSV
           </v-btn>
         </v-col>
+        <v-col v-if="rowCount" cols="auto">
+          <v-btn @click="showExport = true" variant="tonal" size="small" prepend-icon="mdi-image-outline">
+            Export Image
+          </v-btn>
+        </v-col>
       </v-row>
 
       <v-alert
-        v-if="error" type="error" density="compact" closable
-        class="font-mono text-sm mb-4" @click:close="error = ''"
+        v-if="error"
+        type="error"
+        closable
+        class="font-mono text-sm mb-4"
+        @click:close="error = ''"
       >
-        {{ error }}
+        <div>{{ error }}</div>
+        <template #actions>
+          <v-btn
+            @click="fixWithClaude"
+            :loading="fixLoading"
+            color="error"
+            variant="tonal"
+            size="x-small"
+            prepend-icon="mdi-creation"
+          >
+            Fix with Claude
+          </v-btn>
+        </template>
       </v-alert>
 
-      <DataTable
-        v-if="columns.length"
-        ref="tableRef"
-        :columns="columns"
-        :data="rows"
-        layout="fitDataStretch"
-        :clickable="hasMatchId"
-        @row-click="onRowClick"
-      />
+      <v-alert
+        v-if="fixNote"
+        type="info"
+        density="compact"
+        closable
+        class="text-sm mb-4"
+        @click:close="fixNote = ''"
+      >
+        {{ fixNote }}
+      </v-alert>
+
+      <div v-if="columns.length">
+        <div v-if="resultsTitle" class="text-h6 font-weight-medium mb-3">{{ resultsTitle }}</div>
+        <DataTable
+          ref="tableRef"
+          :columns="columns"
+          :data="rows"
+          layout="fitDataStretch"
+          :clickable="hasMatchId"
+          @row-click="onRowClick"
+        />
+      </div>
     </div>
 
     <!-- Schema sidebar -->
     <div style="width:280px; flex-shrink:0">
-      <SchemaPanel class="mb-4" />
+      <SchemaPanel class="mb-4" @select="onSchemaSelect" />
       <QueryHistory
         :history="history"
-        @select="sqlText = $event"
+        @select="onHistorySelect"
         @remove="removeHistory($event)"
         @clear="clearHistory()"
       />
     </div>
   </div>
+
+  <ExportImageModal
+    v-model="showExport"
+    :title="resultsTitle"
+    :columns="columns"
+    :rows="rows"
+  />
 </template>

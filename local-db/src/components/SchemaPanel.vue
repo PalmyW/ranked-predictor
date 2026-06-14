@@ -2,6 +2,8 @@
 import { ref, onMounted } from 'vue'
 import { useApi } from '@/composables/useApi.js'
 
+const emit = defineEmits(['select'])
+
 const { api } = useApi()
 const schema = ref({})
 const loading = ref(true)
@@ -39,6 +41,7 @@ onMounted(async () => {
             :title="name"
             prepend-icon="mdi-table"
             density="compact"
+            @click="emit('select', name)"
           />
         </template>
 
@@ -47,6 +50,8 @@ onMounted(async () => {
           :key="col"
           density="compact"
           class="pl-8"
+          style="cursor: pointer"
+          @click="emit('select', col)"
         >
           <v-list-item-title class="text-caption font-mono">{{ col }}</v-list-item-title>
         </v-list-item>
