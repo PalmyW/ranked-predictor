@@ -37,12 +37,42 @@ function onPlayerSelect(item) {
 
 // ── Player data ───────────────────────────────────────────────────────────────
 
-const playerId    = ref('')
-const playerInfo  = ref(null)   // { given_name, surname, position, team_name }
-const seasonStats = ref([])
+const playerId     = ref('')
+const playerInfo   = ref(null)   // { given_name, surname, position, team_name }
+const playerDetails = ref(null)  // from players table
+const seasonStats  = ref([])
 const matchHistory = ref([])
 const loadingData  = ref(false)
 const activeTab    = ref('seasons')
+
+const STAR_SIGN_EMOJI = {
+  Aries: '♈', Taurus: '♉', Gemini: '♊', Cancer: '♋',
+  Leo: '♌', Virgo: '♍', Libra: '♎', Scorpio: '♏',
+  Sagittarius: '♐', Capricorn: '♑', Aquarius: '♒', Pisces: '♓',
+}
+
+const playerAge = computed(() => {
+  const dob = playerDetails.value?.date_of_birth
+  if (!dob) return null
+  const [d, m, y] = dob.split('/').map(Number)
+  const today = new Date()
+  let age = today.getFullYear() - y
+  if (today.getMonth() + 1 < m || (today.getMonth() + 1 === m && today.getDate() < d)) age--
+  return age
+})
+
+const draftLabel = computed(() => {
+  const p = playerDetails.value
+  if (!p?.draft_year) return null
+  const type = p.draft_type === 'nationalDraft' ? 'National Draft'
+    : p.draft_type === 'rookieElevation' ? 'Rookie Elevation'
+    : p.draft_type === 'fatherSonSelection' ? 'Father-Son'
+    : p.draft_type === 'academySelection' ? 'Academy'
+    : p.draft_type ?? ''
+  return p.draft_position
+    ? `${p.draft_year} ${type} (Pick ${p.draft_position})`
+    : `${p.draft_year} ${type}`
+})
 
 const playerName = computed(() =>
   playerInfo.value
@@ -77,9 +107,10 @@ async function loadPlayer(id) {
   seasonStats.value = []
   matchHistory.value = []
   playerInfo.value = null
+  playerDetails.value = null
 
   try {
-    const [seasons, matches] = await Promise.all([
+    const [seasons, matches, detailsRows] = await Promise.all([
       runSQL(
         `SELECT year, team_name, position, games_played,
            avg_disposals, avg_kicks, avg_handballs, avg_marks, avg_tackles,
@@ -119,10 +150,18 @@ async function loadPlayer(id) {
          ORDER BY m.utc_start_time DESC`,
         [id]
       ),
+      runSQL(
+        `SELECT given_name, surname, date_of_birth, height_cm, weight_kg,
+                kicking_foot, state_of_origin, position, draft_year, draft_position,
+                draft_type, debut_year, recruited_from, photo_url, star_sign
+         FROM players WHERE player_id = ?`,
+        [id]
+      ),
     ])
 
-    seasonStats.value  = seasons
-    matchHistory.value = matches
+    seasonStats.value   = seasons
+    matchHistory.value  = matches
+    playerDetails.value = detailsRows[0] ?? null
     if (seasons.length) {
       const s = seasons[0]
       playerInfo.value = { given_name: s.given_name, surname: s.surname, position: s.position, team_name: s.team_name }
@@ -242,16 +281,56 @@ function onMatchClick({ data }) {
     <!-- Player profile -->
     <template v-else-if="playerInfo">
       <!-- Header -->
-      <div class="d-flex align-center gap-4 mb-5 flex-wrap">
-        <div>
+      <div class="d-flex align-start gap-4 mb-5 flex-wrap">
+        <!-- Photo -->
+        <v-avatar v-if="playerDetails?.photo_url" size="88" rounded="lg" class="flex-shrink-0">
+          <v-img :src="playerDetails.photo_url" :alt="playerName" cover />
+        </v-avatar>
+        <v-avatar v-else size="88" rounded="lg" color="surface-variant" class="flex-shrink-0">
+          <v-icon size="44" color="medium-emphasis">mdi-account-outline</v-icon>
+        </v-avatar>
+
+        <div class="flex-grow-1">
           <h1 class="text-h5 font-weight-bold mb-1">{{ playerName }}</h1>
-          <div class="d-flex align-center gap-2">
+          <div class="d-flex align-center gap-2 flex-wrap mb-2">
             <v-chip size="small" color="primary" variant="tonal">{{ playerInfo.team_name }}</v-chip>
             <v-chip v-if="playerInfo.position" size="small" variant="outlined">{{ playerInfo.position }}</v-chip>
           </div>
+
+          <!-- Bio details -->
+          <div v-if="playerDetails" class="d-flex flex-wrap gap-x-4 gap-y-1 text-body-2 text-medium-emphasis">
+            <span v-if="playerAge">
+              <span class="text-on-surface font-weight-medium">{{ playerAge }}</span> yrs
+              <span class="text-caption ml-1">({{ playerDetails.date_of_birth }})</span>
+            </span>
+            <span v-if="playerDetails.height_cm">
+              <span class="text-on-surface font-weight-medium">{{ playerDetails.height_cm }}</span> cm
+            </span>
+            <span v-if="playerDetails.weight_kg">
+              <span class="text-on-surface font-weight-medium">{{ playerDetails.weight_kg }}</span> kg
+            </span>
+            <span v-if="playerDetails.kicking_foot">
+              <span class="text-on-surface font-weight-medium">{{ playerDetails.kicking_foot === 'LEFT' ? 'Left' : 'Right' }}</span> foot
+            </span>
+            <span v-if="playerDetails.state_of_origin">
+              <span class="text-on-surface font-weight-medium">{{ playerDetails.state_of_origin }}</span>
+            </span>
+            <span v-if="playerDetails.star_sign">
+              {{ STAR_SIGN_EMOJI[playerDetails.star_sign] ?? '' }} <span class="text-on-surface font-weight-medium">{{ playerDetails.star_sign }}</span>
+            </span>
+            <span v-if="draftLabel">
+              Draft: <span class="text-on-surface font-weight-medium">{{ draftLabel }}</span>
+            </span>
+            <span v-if="playerDetails.debut_year">
+              Debut: <span class="text-on-surface font-weight-medium">{{ playerDetails.debut_year }}</span>
+            </span>
+            <span v-if="playerDetails.recruited_from" class="text-truncate" style="max-width:320px">
+              From: <span class="text-on-surface font-weight-medium" :title="playerDetails.recruited_from">{{ playerDetails.recruited_from }}</span>
+            </span>
+          </div>
         </div>
-        <v-spacer />
-        <div class="text-right text-medium-emphasis">
+
+        <div class="text-right text-medium-emphasis flex-shrink-0">
           <div class="text-body-2"><span class="font-weight-bold text-on-surface">{{ careerGames }}</span> career games</div>
           <div class="text-caption">{{ yearsActive }}</div>
         </div>

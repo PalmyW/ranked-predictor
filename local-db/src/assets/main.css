@@ -1,5 +1,6 @@
-/* Tailwind utilities only — skip preflight to avoid Vuetify CSS reset conflict */
-@import "tailwindcss/utilities";
+/* Tailwind theme vars + utilities — skip preflight to avoid Vuetify CSS reset conflict */
+@import "tailwindcss/theme.css";
+@import "tailwindcss/utilities.css";
 
 /* Monospace font utility for SQL areas */
 .font-mono {
