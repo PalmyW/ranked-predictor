@@ -4,6 +4,7 @@ import { join, dirname } from 'path';
 import { openDb } from './lib/db.js';
 import { importFixtures } from './lib/import-fixtures.js';
 import { importMatchStats } from './lib/import-match-stats.js';
+import { importPlayers } from './lib/import-players.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, '../../public/data');
@@ -59,8 +60,18 @@ for (const year of years) {
   console.log('');
 }
 
+process.stdout.write(`[players] player profiles... `);
+const pp = importPlayers(db, DATA_DIR);
+if (pp.skipped) {
+  process.stdout.write('no players directory\n');
+} else {
+  process.stdout.write(`${pp.files} files, ${pp.rows} rows (${pp.skippedFiles ?? 0} unchanged)\n`);
+}
+console.log('');
+
 console.log('Done.');
 console.log(`  Matches imported/updated: ${totalMatches}`);
 console.log(`  Player match stat rows:   ${totalStatRows}`);
+console.log(`  Player profiles:          ${pp.rows ?? 0}`);
 
 db.close();

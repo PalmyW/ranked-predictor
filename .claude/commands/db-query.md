@@ -36,18 +36,33 @@ $ARGUMENTS
 - 62 `stat_*` REAL columns  *(see stat columns below)*
 - UNIQUE(match_id, player_id, team_id)
 
-**player_season_stats** — one row per player per season
-- `id` AUTOINCREMENT PK
-- `year`, `team_id`, `player_id`, `given_name`, `surname`, `position`, `jumper_number`, `games_played`
-- 62 `tot_*` REAL columns  *(season totals)*
-- 62 `avg_*` REAL columns  *(per-game averages)*
-- UNIQUE(year, team_id, player_id)
+**players** — biographical profile for each player (1,891 rows; join on `player_id`)
+- `player_id` TEXT PK  *(e.g. "CD_I293957")*
+- `given_name`, `surname` TEXT
+- `date_of_birth` TEXT  *(format "DD/MM/YYYY" — use this to compute age, no `age` column)*
+- `height_cm`, `weight_kg` INTEGER
+- `kicking_foot` TEXT  *("LEFT" | "RIGHT")*
+- `state_of_origin` TEXT  *(e.g. "VIC", "SA")*
+- `position` TEXT  *(e.g. "KEY_FORWARD", "MEDIUM_DEFENDER", "RUCK")*
+- `draft_year`, `debut_year` TEXT
+- `draft_position` INTEGER, `draft_type` TEXT  *(e.g. "nationalDraft", "rookieElevation")*
+- `recruited_from` TEXT
+- `photo_url` TEXT
+- `bio` TEXT  *(usually NULL)*
+- `star_sign` TEXT  *(e.g. "Aries", "Pisces" — computed from date_of_birth on import)*
+
+To compute current age from `date_of_birth`:
+```sql
+CAST((julianday('now') - julianday(
+  substr(date_of_birth,7,4)||'-'||substr(date_of_birth,4,2)||'-'||substr(date_of_birth,1,2)
+)) / 365.25 AS INTEGER) AS age
+```
 
 ---
 
 ### Convenience views (team names pre-joined — prefer these)
 
-**v_player_season_stats** — player_season_stats + `team_name`, `team_abbr`
+**v_player_season_stats** — aggregated per player-season-team: `year`, `player_id`, `team_id`, `team_name`, `team_abbr`, `given_name`, `surname`, `position`, `jumper_number`, `games_played`, 62 `tot_*` + 62 `avg_*` columns
 **v_player_match_stats** — player_match_stats + `team_name`, `team_abbr`
 **v_matches** — matches + `home_team_name`, `home_abbr`, `away_team_name`, `away_abbr`, `venue_name`
 
@@ -164,6 +179,21 @@ SELECT year, team_name, games_played,
 FROM v_player_season_stats
 WHERE surname = 'Bontempelli' AND given_name = 'Marcus'
 ORDER BY year
+```
+
+**Player profile joined with season stats (height, DOB, averages):**
+```sql
+SELECT
+  pl.given_name, pl.surname, pl.position, pl.height_cm,
+  CAST((julianday('now') - julianday(
+    substr(pl.date_of_birth,7,4)||'-'||substr(pl.date_of_birth,4,2)||'-'||substr(pl.date_of_birth,1,2)
+  )) / 365.25 AS INTEGER) AS age,
+  ps.team_name, ps.games_played, ps.avg_disposals, ps.avg_goals
+FROM players pl
+JOIN v_player_season_stats ps ON ps.player_id = pl.player_id
+WHERE ps.year = 2026 AND ps.games_played >= 10
+ORDER BY ps.avg_disposals DESC
+LIMIT 20
 ```
 
 **Team season summary (total goals, wins):**

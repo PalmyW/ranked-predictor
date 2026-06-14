@@ -138,6 +138,26 @@ CREATE INDEX IF NOT EXISTS idx_pms_round  ON player_match_stats(year, round_numb
 -- player_season_stats removed: aggregates now computed dynamically from player_match_stats
 -- v_player_season_stats view is created programmatically in db.js (openDb)
 
+CREATE TABLE IF NOT EXISTS players (
+  player_id       TEXT PRIMARY KEY,
+  given_name      TEXT,
+  surname         TEXT,
+  date_of_birth   TEXT,
+  height_cm       INTEGER,
+  weight_kg       INTEGER,
+  kicking_foot    TEXT,
+  state_of_origin TEXT,
+  position        TEXT,
+  draft_year      TEXT,
+  draft_position  INTEGER,
+  draft_type      TEXT,
+  debut_year      TEXT,
+  recruited_from  TEXT,
+  photo_url       TEXT,
+  bio             TEXT,
+  star_sign       TEXT
+);
+
 CREATE TABLE IF NOT EXISTS import_log (
   file_path   TEXT PRIMARY KEY,
   file_size   INTEGER NOT NULL,

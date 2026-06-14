@@ -10,10 +10,50 @@ const SCHEMA_PATH = join(__dirname, '../../db/schema.sql');
 export function openDb() {
   const db = new DatabaseSync(DB_PATH);
   db.exec('PRAGMA journal_mode = WAL');
-  db.exec('PRAGMA foreign_keys = OFF'); // OFF while we drop old table
+  db.exec('PRAGMA foreign_keys = OFF');
   // Migration: player_season_stats is now computed from player_match_stats
   db.exec('DROP TABLE IF EXISTS player_season_stats');
   db.exec('DROP VIEW IF EXISTS v_player_season_stats');
+  // Migration: add star_sign column to players
+  const hasStarSign = db.prepare("SELECT 1 FROM pragma_table_info('players') WHERE name='star_sign'").get();
+  if (!hasStarSign) {
+    db.exec('ALTER TABLE players ADD COLUMN star_sign TEXT');
+    db.exec(`UPDATE players SET star_sign = (
+      SELECT CASE
+        WHEN m=3 AND d>=21 OR m=4 AND d<=19 THEN 'Aries'
+        WHEN m=4 AND d>=20 OR m=5 AND d<=20 THEN 'Taurus'
+        WHEN m=5 AND d>=21 OR m=6 AND d<=20 THEN 'Gemini'
+        WHEN m=6 AND d>=21 OR m=7 AND d<=22 THEN 'Cancer'
+        WHEN m=7 AND d>=23 OR m=8 AND d<=22 THEN 'Leo'
+        WHEN m=8 AND d>=23 OR m=9 AND d<=22 THEN 'Virgo'
+        WHEN m=9 AND d>=23 OR m=10 AND d<=22 THEN 'Libra'
+        WHEN m=10 AND d>=23 OR m=11 AND d<=21 THEN 'Scorpio'
+        WHEN m=11 AND d>=22 OR m=12 AND d<=21 THEN 'Sagittarius'
+        WHEN m=12 AND d>=22 OR m=1 AND d<=19 THEN 'Capricorn'
+        WHEN m=1 AND d>=20 OR m=2 AND d<=18 THEN 'Aquarius'
+        WHEN m=2 AND d>=19 OR m=3 AND d<=20 THEN 'Pisces'
+      END
+      FROM (SELECT
+        CAST(substr(players.date_of_birth,1,2) AS INT) AS d,
+        CAST(substr(players.date_of_birth,4,2) AS INT) AS m
+      )
+    ) WHERE date_of_birth IS NOT NULL`);
+  }
+  // Migration: remove age column from players (computed from date_of_birth instead)
+  const hasAge = db.prepare("SELECT 1 FROM pragma_table_info('players') WHERE name='age'").get();
+  if (hasAge) {
+    db.exec('ALTER TABLE players RENAME TO players_old');
+    db.exec(`CREATE TABLE players (
+      player_id TEXT PRIMARY KEY, given_name TEXT, surname TEXT, date_of_birth TEXT,
+      height_cm INTEGER, weight_kg INTEGER, kicking_foot TEXT, state_of_origin TEXT,
+      position TEXT, draft_year TEXT, draft_position INTEGER, draft_type TEXT,
+      debut_year TEXT, recruited_from TEXT, photo_url TEXT, bio TEXT
+    )`);
+    db.exec(`INSERT INTO players SELECT player_id, given_name, surname, date_of_birth,
+      height_cm, weight_kg, kicking_foot, state_of_origin, position, draft_year,
+      draft_position, draft_type, debut_year, recruited_from, photo_url, bio FROM players_old`);
+    db.exec('DROP TABLE players_old');
+  }
   db.exec('PRAGMA foreign_keys = ON');
   const schema = readFileSync(SCHEMA_PATH, 'utf8');
   db.exec(schema);

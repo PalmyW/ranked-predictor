@@ -225,6 +225,8 @@ teams: team_id, name, abbreviation, nickname
 venues: venue_id, name, abbreviation, location, state, timezone, land_owner
 matches: match_id, year, comp_season_id, round_number, round_name, round_abbreviation, home_team_id, away_team_id, venue_id, utc_start_time, status, home_goals, home_behinds, home_score, away_goals, away_behinds, away_score
 player_match_stats: id, match_id, year, round_number, player_id, given_name, surname, team_id, position, jumper_number, [stat_{base} × 62 — see stat bases below]
+players: player_id (PK, join to player_match_stats/v_player_season_stats), given_name, surname, date_of_birth (TEXT "DD/MM/YYYY"), height_cm, weight_kg, kicking_foot ("LEFT"|"RIGHT"), state_of_origin, position, draft_year, draft_position, draft_type, debut_year, recruited_from, photo_url, bio, star_sign
+  — age is NOT stored; compute it as: CAST((julianday('now') - julianday(substr(date_of_birth,7,4)||'-'||substr(date_of_birth,4,2)||'-'||substr(date_of_birth,1,2))) / 365.25 AS INTEGER)
 
 ## Views — use these in preference to base tables
 
