@@ -1,7 +1,8 @@
 <script setup>
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, inject } from 'vue'
 
 const emit = defineEmits(['sql', 'error', 'focus'])
+const refreshAiStats = inject('refreshAiStats', () => {})
 
 const prompt      = ref('')
 const loading     = ref(false)
@@ -98,6 +99,7 @@ async function ask() {
     emit('error', e.message)
   } finally {
     loading.value = false
+    refreshAiStats()
   }
 }
 

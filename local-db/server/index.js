@@ -287,6 +287,21 @@ Example — CORRECT (CTE approach, outer query uses CTE name):
 
 const AI_SYSTEM_PROMPT = buildAISystemPrompt(db);
 
+const aiStats = {
+  model: 'claude-haiku-4-5-20251001',
+  requestCount: 0,
+  inputTokens: 0,
+  outputTokens: 0,
+  rateLimit: null,
+};
+
+app.get('/api/ai/stats', (req, res) => {
+  res.json({
+    enabled: !!process.env.ANTHROPIC_API_KEY,
+    ...aiStats,
+  });
+});
+
 app.post('/api/ai/query', async (req, res) => {
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.status(503).json({ error: 'ANTHROPIC_API_KEY environment variable is not set. Start the server with ANTHROPIC_API_KEY=sk-ant-... npm run start' });
@@ -295,12 +310,27 @@ app.post('/api/ai/query', async (req, res) => {
   if (!prompt?.trim()) return res.status(400).json({ error: 'Missing prompt' });
   try {
     const client = new Anthropic();
-    const msg = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+    const { data: msg, response: httpRes } = await client.messages.create({
+      model: aiStats.model,
       max_tokens: 1024,
       system: AI_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: prompt.trim() }],
-    });
+    }).withResponse();
+
+    aiStats.requestCount += 1;
+    aiStats.inputTokens  += msg.usage?.input_tokens  ?? 0;
+    aiStats.outputTokens += msg.usage?.output_tokens ?? 0;
+
+    const h = httpRes.headers;
+    aiStats.rateLimit = {
+      tokensLimit:         Number(h.get('anthropic-ratelimit-tokens-limit'))      || null,
+      tokensRemaining:     Number(h.get('anthropic-ratelimit-tokens-remaining'))   || null,
+      tokensReset:         h.get('anthropic-ratelimit-tokens-reset')               || null,
+      requestsLimit:       Number(h.get('anthropic-ratelimit-requests-limit'))     || null,
+      requestsRemaining:   Number(h.get('anthropic-ratelimit-requests-remaining')) || null,
+      requestsReset:       h.get('anthropic-ratelimit-requests-reset')             || null,
+    };
+
     const raw = msg.content[0].text.trim();
     const titleMatch = raw.match(/^TITLE:\s*(.+)/mi);
     const title = titleMatch?.[1]?.trim();
@@ -352,6 +382,28 @@ app.post('/api/query', (req, res) => {
     res.status(400).json({ error: err.message });
   }
 });
+
+// ── Player search ─────────────────────────────────────────────────────────────
+
+app.get('/api/players/search', (req, res) => {
+  const q = (req.query.q ?? '').trim()
+  if (q.length < 2) return res.json([])
+  const like = `%${q}%`
+  const rows = db.prepare(`
+    WITH latest AS (
+      SELECT player_id, given_name, surname, team_name, position,
+             ROW_NUMBER() OVER (PARTITION BY player_id ORDER BY year DESC) AS rn
+      FROM v_player_season_stats
+      WHERE given_name || ' ' || surname LIKE ? OR surname LIKE ?
+    )
+    SELECT player_id, given_name, surname, team_name, position,
+           given_name || ' ' || surname AS name
+    FROM latest WHERE rn = 1
+    ORDER BY surname, given_name
+    LIMIT 25
+  `).all(like, like)
+  res.json(rows)
+})
 
 // ── Schema info (for SQL query helper panel) ──────────────────────────────────
 

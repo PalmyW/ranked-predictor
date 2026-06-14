@@ -14,6 +14,7 @@ import { SAMPLE_QUERY, fmt } from '@/constants/stats.js'
 const router  = useRouter()
 const { api } = useApi()
 const teamMap = inject('teamMap')
+const refreshAiStats = inject('refreshAiStats', () => {})
 
 const { history, push: pushHistory, remove: removeHistory, clear: clearHistory } = useQueryHistory()
 
@@ -39,7 +40,10 @@ const lastFocused    = ref('sql') // 'sql' | 'claude'
 const sqlTextareaRef = ref(null)
 const aiRef          = ref(null)
 
-const hasMatchId = computed(() => columns.value.some(c => c.field === 'match_id'))
+const hasMatchId      = computed(() => columns.value.some(c => c.field === 'match_id'))
+const hasPlayerId     = computed(() => columns.value.some(c => c.field === 'player_id'))
+const isClickable     = computed(() => hasMatchId.value || hasPlayerId.value)
+const visibleColumns  = computed(() => columns.value.filter(c => colVis.value[c.field] !== false))
 
 const colSections = computed(() =>
   columns.value.length
@@ -140,6 +144,7 @@ async function fixWithClaude() {
     error.value = e.message
   } finally {
     fixLoading.value = false
+    refreshAiStats()
   }
 }
 
@@ -182,13 +187,16 @@ function onColChange({ key, visible }) {
 }
 
 function onRowClick({ event, data }) {
-  if (!data.match_id) return
-  if (event.metaKey || event.ctrlKey) {
-    const base = `${window.location.origin}${window.location.pathname}`
-    window.open(`${base}#/match-stats?match=${encodeURIComponent(data.match_id)}`, '_blank')
-    return
+  if (data.match_id) {
+    if (event.metaKey || event.ctrlKey) {
+      const base = `${window.location.origin}${window.location.pathname}`
+      window.open(`${base}#/match-stats?match=${encodeURIComponent(data.match_id)}`, '_blank')
+      return
+    }
+    router.push({ name: 'match-stats', query: { match: data.match_id } })
+  } else if (data.player_id) {
+    router.push({ name: 'player', query: { id: data.player_id } })
   }
-  router.push({ name: 'match-stats', query: { match: data.match_id } })
 }
 
 function onKeydown(e) {
@@ -261,23 +269,25 @@ function exportCsv() {
       <v-alert
         v-if="error"
         type="error"
+        density="compact"
         closable
         class="font-mono text-sm mb-4"
         @click:close="error = ''"
       >
-        <div>{{ error }}</div>
-        <template #actions>
+        <div class="d-flex align-center gap-3">
+          <span style="flex:1">{{ error }}</span>
           <v-btn
-            @click="fixWithClaude"
+            @click.stop="fixWithClaude"
             :loading="fixLoading"
-            color="error"
-            variant="tonal"
+            color="white"
+            variant="outlined"
             size="x-small"
             prepend-icon="mdi-creation"
+            style="flex-shrink:0"
           >
             Fix with Claude
           </v-btn>
-        </template>
+        </div>
       </v-alert>
 
       <v-alert
@@ -298,7 +308,7 @@ function exportCsv() {
           :columns="columns"
           :data="rows"
           layout="fitDataStretch"
-          :clickable="hasMatchId"
+          :clickable="isClickable"
           @row-click="onRowClick"
         />
       </div>
@@ -319,7 +329,7 @@ function exportCsv() {
   <ExportImageModal
     v-model="showExport"
     :title="resultsTitle"
-    :columns="columns"
+    :columns="visibleColumns"
     :rows="rows"
   />
 </template>

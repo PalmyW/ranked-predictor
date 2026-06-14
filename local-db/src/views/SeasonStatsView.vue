@@ -114,6 +114,10 @@ function exportCsv() {
   tableRef.value?.getTable()?.download('csv', 'afl-season-stats.csv')
 }
 
+function onRowClick({ data }) {
+  if (data.player_id) router.push({ name: 'player', query: { id: data.player_id } })
+}
+
 onMounted(() => {
   const q = route.query
   if (q.year)      year.value     = q.year
@@ -205,7 +209,9 @@ onMounted(() => {
       :columns="columns"
       :data="rows"
       layout="fitDataStretch"
+      :clickable="true"
       @table-ready="onTableReady"
+      @row-click="onRowClick"
     />
   </div>
 </template>

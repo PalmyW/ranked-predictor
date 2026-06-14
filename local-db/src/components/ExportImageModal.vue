@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, nextTick, watch } from 'vue'
+import { ref, computed, nextTick, watch, onMounted } from 'vue'
 import { toPng } from 'html-to-image'
 import { fmt } from '@/constants/stats.js'
 
@@ -12,15 +12,29 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 const previewRef = ref(null)
+const titleRef   = ref(null)
 const downloading = ref(false)
 const exportTitle = ref('')
 
 watch(
   () => props.modelValue,
   (open) => {
-    if (open) exportTitle.value = props.title
+    if (open) {
+      exportTitle.value = props.title
+      nextTick(() => {
+        if (titleRef.value) titleRef.value.innerText = props.title
+      })
+    }
   },
 )
+
+function onTitleInput(e) {
+  exportTitle.value = e.target.innerText.replace(/\n/g, ' ').trim()
+}
+
+function onTitleKeydown(e) {
+  if (e.key === 'Enter') e.preventDefault()
+}
 
 const THEMES = [
   {
@@ -135,16 +149,6 @@ function close() {
         class="pa-4 d-flex align-center flex-wrap gap-4"
         style="background: rgba(var(--v-theme-on-surface), 0.02)"
       >
-        <v-text-field
-          v-model="exportTitle"
-          label="Title"
-          variant="outlined"
-          density="compact"
-          hide-details
-          prepend-inner-icon="mdi-format-title"
-          style="min-width: 220px; max-width: 380px; flex: 1"
-        />
-
         <div class="d-flex align-center gap-2">
           <span
             class="text-caption text-medium-emphasis"
@@ -192,9 +196,8 @@ function close() {
             borderRadius: '12px',
           }"
         >
-          <!-- Title area -->
+          <!-- Title area — always shown so the editable region is always present -->
           <div
-            v-if="exportTitle"
             :style="{
               marginBottom: '24px',
               paddingBottom: '16px',
@@ -214,15 +217,24 @@ function close() {
               SirPalmyThing Stats
             </div>
             <div
+              ref="titleRef"
+              contenteditable="true"
+              spellcheck="false"
+              @input="onTitleInput"
+              @keydown="onTitleKeydown"
+              :data-placeholder="'Click to add a title…'"
               :style="{
                 fontSize: '22px',
                 fontWeight: '800',
                 letterSpacing: '0.01em',
-                color: theme.text,
+                color: exportTitle ? theme.text : theme.sub,
+                outline: 'none',
+                minWidth: '120px',
+                cursor: 'text',
+                borderRadius: '4px',
               }"
-            >
-              {{ exportTitle }}
-            </div>
+              class="title-editable"
+            />
           </div>
 
           <!-- Table -->
@@ -530,3 +542,18 @@ function close() {
     </v-card>
   </v-dialog>
 </template>
+
+<style scoped>
+.title-editable:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.title-editable:focus {
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: 0 0 0 2px rgba(79, 126, 247, 0.5);
+}
+.title-editable:empty::before {
+  content: attr(data-placeholder);
+  opacity: 0.4;
+  pointer-events: none;
+}
+</style>
