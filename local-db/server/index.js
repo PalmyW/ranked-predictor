@@ -426,6 +426,23 @@ app.get('/api/players/search', (req, res) => {
   res.json(rows)
 })
 
+// ── Image proxy (same-origin player photos for canvas/image export) ───────────
+
+app.get('/api/image', async (req, res) => {
+  const url = req.query.url;
+  if (!url || !/^https:\/\//i.test(url)) return res.status(400).send('Invalid url');
+  try {
+    const upstream = await fetch(url);
+    if (!upstream.ok) return res.status(upstream.status).end();
+    const buf = Buffer.from(await upstream.arrayBuffer());
+    res.set('Content-Type', upstream.headers.get('content-type') ?? 'image/png');
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.send(buf);
+  } catch (err) {
+    res.status(502).send('Image fetch failed');
+  }
+});
+
 // ── Schema info (for SQL query helper panel) ──────────────────────────────────
 
 app.get('/api/schema', (req, res) => {

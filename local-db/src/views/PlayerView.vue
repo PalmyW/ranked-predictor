@@ -4,7 +4,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi.js'
 import DataTable from '@/components/DataTable.vue'
 import PlayerChart from '@/components/PlayerChart.vue'
-import { numCol, fmt, STAT_BASES, statLabel, STAR_SIGN_EMOJI } from '@/constants/stats.js'
+import PlayerExportModal from '@/components/PlayerExportModal.vue'
+import { numCol, fmt, STAT_BASES, statLabel, STAR_SIGN_EMOJI, isPct } from '@/constants/stats.js'
 
 const route  = useRoute()
 const router = useRouter()
@@ -46,19 +47,85 @@ const matchHistory = ref([])
 const loadingData  = ref(false)
 const activeTab    = ref('seasons')
 
-// Where the player ranks for each stat's average this (latest) season,
-// among all players with more than 5 games.
+// Where the player ranks for each stat's average, among all qualifying players,
+// over a selectable range (last N games / season / all-time).
 const seasonRanks  = ref([])     // [{ base, label, value, rank, total }]
-const rankSeason   = ref(null)   // year the rankings are computed for
+const rankSeason   = ref(null)   // year the season-range rankings are computed for
+const rankLoading  = ref(false)
 
-// SQL fragment: avg of every stat base, e.g. "ROUND(AVG(p.stat_disposals), 2) AS avg_disposals, ..."
-// Goal accuracy is only meaningful in matches where the player had a shot, so we
-// average it over those rows only (AVG ignores the NULLs from goalless games).
-const RANK_AVG_SELECT = STAT_BASES
-  .map(b => b === 'goal_accuracy'
-    ? `ROUND(AVG(CASE WHEN p.stat_shots_at_goal >= 1 THEN p.stat_goal_accuracy END), 2) AS avg_goal_accuracy`
-    : `ROUND(AVG(p.stat_${b}), 2) AS avg_${b}`)
-  .join(',\n           ')
+const RANK_RANGE_OPTIONS = [
+  { label: 'L4',       value: 'last4' },
+  { label: 'L8',       value: 'last8' },
+  { label: 'Season',   value: 'season' },
+  { label: 'All-time', value: 'alltime' },
+]
+
+const RANK_METRIC_OPTIONS = [
+  { label: 'Average', value: 'avg' },
+  { label: 'Totals',  value: 'tot' },
+]
+
+const LS_RANK_RANGE  = 'player-rank-range'
+const LS_RANK_METRIC = 'player-rank-metric'
+const LS_RANK_MIN    = 'player-rank-min'
+const rankRange  = ref(localStorage.getItem(LS_RANK_RANGE)  || 'season')
+const rankMetric = ref(localStorage.getItem(LS_RANK_METRIC) || 'avg')
+const applyMin   = ref(localStorage.getItem(LS_RANK_MIN) !== 'false')
+watch(rankRange,  v => localStorage.setItem(LS_RANK_RANGE,  v))
+watch(rankMetric, v => localStorage.setItem(LS_RANK_METRIC, v))
+watch(applyMin,   v => localStorage.setItem(LS_RANK_MIN, String(v)))
+
+// One aggregate per stat base, aliased val_<base>, for the given table alias.
+// Totals (SUM) skip percentage/rate stats since summing them is meaningless.
+// Goal accuracy (an average) is only counted in matches where the player had a shot.
+function statSelect(alias, metric) {
+  return STAT_BASES
+    .filter(b => metric === 'avg' || !isPct(b))
+    .map(b => {
+      if (metric === 'tot') return `ROUND(SUM(${alias}.stat_${b}), 2) AS val_${b}`
+      if (b === 'goal_accuracy')
+        return `ROUND(AVG(CASE WHEN ${alias}.stat_shots_at_goal >= 1 THEN ${alias}.stat_goal_accuracy END), 2) AS val_goal_accuracy`
+      return `ROUND(AVG(${alias}.stat_${b}), 2) AS val_${b}`
+    })
+    .join(',\n           ')
+}
+
+// SQL returning one row per qualifying player with every val_* column, for the
+// selected range. Rankings are then computed client-side in computeSeasonRanks.
+function buildRankSql(range, metric, useMin) {
+  if (range === 'alltime') {
+    return `SELECT p.player_id, MAX(p.year) AS year, COUNT(*) AS games_played,
+           ${statSelect('p', metric)}
+         FROM player_match_stats p
+         GROUP BY p.player_id
+         ${useMin ? 'HAVING COUNT(*) > 5' : ''}`
+  }
+  if (range === 'last4' || range === 'last8') {
+    const n = range === 'last4' ? 4 : 8
+    // The N most recent rounds of the latest season.
+    return `WITH latest_rounds AS (
+           SELECT DISTINCT round_number
+           FROM player_match_stats
+           WHERE year = (SELECT MAX(year) FROM player_match_stats)
+           ORDER BY round_number DESC
+           LIMIT ${n}
+         )
+         SELECT p.player_id, MAX(p.year) AS year, COUNT(*) AS games_played,
+           ${statSelect('p', metric)}
+         FROM player_match_stats p
+         WHERE p.year = (SELECT MAX(year) FROM player_match_stats)
+           AND p.round_number IN (SELECT round_number FROM latest_rounds)
+         GROUP BY p.player_id
+         ${useMin ? `HAVING COUNT(*) >= ${n}` : ''}`
+  }
+  // season (default): the latest season
+  return `SELECT p.player_id, MAX(p.year) AS year, COUNT(*) AS games_played,
+           ${statSelect('p', metric)}
+         FROM player_match_stats p
+         WHERE p.year = (SELECT MAX(year) FROM player_match_stats)
+         GROUP BY p.player_id
+         ${useMin ? 'HAVING COUNT(*) > 5' : ''}`
+}
 
 // Stats where a lower value is better — rank ascending for these.
 const LOWER_IS_BETTER = new Set([
@@ -72,7 +139,7 @@ function computeSeasonRanks(allRows, id) {
 
   const ranks = []
   for (const base of STAT_BASES) {
-    const field = `avg_${base}`
+    const field = `val_${base}`
     const myVal = me[field]
     if (myVal === null || myVal === undefined) continue
     const vals = allRows.map(r => r[field]).filter(v => v !== null && v !== undefined)
@@ -91,6 +158,53 @@ function computeSeasonRanks(allRows, id) {
   ranks.sort((a, b) => (a.rank / a.total) - (b.rank / b.total))
   return { season: me.year, ranks }
 }
+
+async function loadRankings() {
+  const id = playerId.value
+  if (!id) return
+  rankLoading.value = true
+  try {
+    const rows = await runSQL(buildRankSql(rankRange.value, rankMetric.value, applyMin.value))
+    const { season, ranks } = computeSeasonRanks(rows, id)
+    seasonRanks.value = ranks
+    rankSeason.value  = season
+  } catch {
+    seasonRanks.value = []
+  } finally {
+    rankLoading.value = false
+  }
+}
+
+watch([rankRange, rankMetric, applyMin], loadRankings)
+
+const rankTitle = computed(() => {
+  switch (rankRange.value) {
+    case 'last4':   return 'Last 4 Rounds Rankings'
+    case 'last8':   return 'Last 8 Rounds Rankings'
+    case 'alltime': return 'All-Time Rankings'
+    default:        return `${rankSeason.value ?? ''} Season Rankings`
+  }
+})
+
+const rankMetricLabel = computed(() => rankMetric.value === 'tot' ? 'Totals' : 'Average')
+
+const showRankExport = ref(false)
+
+const rankSubtitle = computed(() => {
+  const isTot = rankMetric.value === 'tot'
+  const isCareer = rankRange.value === 'alltime'
+  const metricWord = isTot ? (isCareer ? 'career total' : 'total') : (isCareer ? 'career average' : 'average')
+  const parts = [`${metricWord} per stat vs. all players`]
+  if (rankRange.value === 'last4' || rankRange.value === 'last8') {
+    const n = rankRange.value === 'last4' ? 4 : 8
+    parts.push(applyMin.value ? `who played all of the last ${n} rounds` : `over the last ${n} rounds this season`)
+  } else if (applyMin.value) {
+    parts.push(isCareer ? 'with 6+ career games' : 'with 6+ games this season')
+  } else if (rankRange.value === 'season') {
+    parts.push('this season')
+  }
+  return `${parts.join(' ')} · best first`
+})
 
 const playerAge = computed(() => {
   const dob = playerDetails.value?.date_of_birth
@@ -131,6 +245,15 @@ const yearsActive = computed(() => {
   return min === max ? String(min) : `${min}–${max}`
 })
 
+// Player identity passed to image exports.
+const playerCard = computed(() => ({
+  name: playerName.value,
+  photoUrl: playerDetails.value?.photo_url ?? '',
+  starSign: playerDetails.value?.star_sign ?? '',
+  teamName: playerInfo.value?.team_name ?? '',
+  position: fmtPosition(playerDetails.value?.position || playerInfo.value?.position),
+}))
+
 async function runSQL(sql, params = []) {
   const res = await api('/api/query', {
     method: 'POST',
@@ -153,7 +276,7 @@ async function loadPlayer(id) {
   rankSeason.value = null
 
   try {
-    const [seasons, matches, detailsRows, rankRows] = await Promise.all([
+    const [seasons, matches, detailsRows] = await Promise.all([
       runSQL(
         `SELECT
            p.year,
@@ -321,30 +444,17 @@ async function loadPlayer(id) {
          FROM players WHERE player_id = ?`,
         [id]
       ),
-      runSQL(
-        `SELECT
-           p.player_id,
-           MAX(p.year) AS year,
-           COUNT(*) AS games_played,
-           ${RANK_AVG_SELECT}
-         FROM player_match_stats p
-         WHERE p.year = (SELECT MAX(year) FROM player_match_stats)
-         GROUP BY p.player_id
-         HAVING COUNT(*) > 5`
-      ),
     ])
 
     seasonStats.value   = seasons
     matchHistory.value  = matches
     playerDetails.value = detailsRows[0] ?? null
 
-    const { season, ranks } = computeSeasonRanks(rankRows, id)
-    seasonRanks.value = ranks
-    rankSeason.value  = season
     if (seasons.length) {
       const s = seasons[0]
       playerInfo.value = { given_name: s.given_name, surname: s.surname, position: s.position, team_name: s.team_name }
     }
+    loadRankings()
   } finally {
     loadingData.value = false
   }
@@ -529,19 +639,73 @@ function rankColor({ rank, total }) {
       </div>
 
       <!-- Chart -->
-      <PlayerChart :match-history="matchHistory" :season-stats="seasonStats" />
+      <PlayerChart :match-history="matchHistory" :season-stats="seasonStats" :player="playerCard" />
 
-      <!-- Season stat rankings -->
-      <v-card v-if="seasonRanks.length" variant="tonal" rounded="lg" class="mb-5">
+      <!-- Stat rankings -->
+      <v-card variant="tonal" rounded="lg" class="mb-5">
         <v-card-title class="text-subtitle-1 d-flex align-center flex-wrap gap-2 py-3">
           <v-icon size="small" color="primary">mdi-trophy-outline</v-icon>
-          {{ rankSeason }} Season Rankings
+          {{ rankTitle }}
           <span class="text-caption text-medium-emphasis font-weight-regular">
-            average per stat vs. all players with 6+ games · best first
+            {{ rankSubtitle }}
           </span>
+          <v-spacer />
+          <v-switch
+            v-model="applyMin"
+            label="Min games"
+            density="compact"
+            color="primary"
+            hide-details
+            inset
+            class="flex-grow-0"
+          />
+          <v-btn-toggle
+            v-model="rankMetric"
+            mandatory
+            density="compact"
+            color="primary"
+            variant="outlined"
+            divided
+          >
+            <v-btn
+              v-for="m in RANK_METRIC_OPTIONS"
+              :key="m.value"
+              :value="m.value"
+              size="small"
+            >{{ m.label }}</v-btn>
+          </v-btn-toggle>
+          <v-btn-toggle
+            v-model="rankRange"
+            mandatory
+            density="compact"
+            color="primary"
+            variant="outlined"
+            divided
+          >
+            <v-btn
+              v-for="r in RANK_RANGE_OPTIONS"
+              :key="r.value"
+              :value="r.value"
+              size="small"
+            >{{ r.label }}</v-btn>
+          </v-btn-toggle>
+          <v-btn
+            icon="mdi-image-outline"
+            variant="tonal"
+            size="small"
+            title="Export as image"
+            :disabled="!seasonRanks.length"
+            @click="showRankExport = true"
+          />
         </v-card-title>
         <v-card-text class="pt-0">
-          <dl class="rank-grid">
+          <div v-if="rankLoading" class="d-flex justify-center py-8">
+            <v-progress-circular indeterminate color="primary" />
+          </div>
+          <div v-else-if="!seasonRanks.length" class="text-center text-medium-emphasis text-body-2 py-6">
+            Not enough games for this range.
+          </div>
+          <dl v-else class="rank-grid">
             <div v-for="r in seasonRanks" :key="r.base" class="rank-item">
               <dt class="text-body-2 text-medium-emphasis text-truncate" :title="r.label">{{ r.label }}</dt>
               <dd class="d-flex align-center justify-space-between gap-2 ma-0">
@@ -583,6 +747,15 @@ function rankColor({ rank, total }) {
           />
         </v-tabs-window-item>
       </v-tabs-window>
+
+      <PlayerExportModal
+        v-model="showRankExport"
+        mode="ratings"
+        :player="playerCard"
+        :label="rankTitle"
+        :range-label="rankMetricLabel"
+        :ranks="seasonRanks"
+      />
     </template>
   </div>
 </template>

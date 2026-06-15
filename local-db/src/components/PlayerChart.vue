@@ -11,9 +11,12 @@ Chart.register(
   PointElement, LineElement, BarElement, Tooltip, Legend, Filler,
 )
 
+import PlayerExportModal from '@/components/PlayerExportModal.vue'
+
 const props = defineProps({
   matchHistory: { type: Array, default: () => [] },
   seasonStats:  { type: Array, default: () => [] },
+  player:       { type: Object, default: () => ({}) },
 })
 
 const theme = useTheme()
@@ -148,6 +151,20 @@ function buildConfig() {
   const tc   = tickColor()
   const gc   = gridColor()
 
+  // Matching y-axes so vertical labels appear on both ends. The right axis (y1)
+  // carries no data, so we pin both to the same range to keep their ticks in sync.
+  const yAxes = vals => {
+    const nums = vals.filter(v => typeof v === 'number' && isFinite(v))
+    const lo = Math.min(0, ...nums)
+    const hi = nums.length ? Math.max(...nums) : 1
+    const min = Math.floor(lo)
+    const max = Math.ceil(hi + (hi - lo) * 0.08) || 1
+    return {
+      y:  { grid: { color: gc }, ticks: { color: tc }, min, max },
+      y1: { position: 'right', grid: { color: gc, drawOnChartArea: false }, ticks: { color: tc }, min, max },
+    }
+  }
+
   const baseOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -164,26 +181,39 @@ function buildConfig() {
         grid: { color: gc },
         ticks: { color: tc, maxRotation: 45, font: { size: 11 } },
       },
-      y: {
-        grid: { color: gc },
-        ticks: { color: tc },
-        beginAtZero: true,
-      },
     },
   }
 
   if (activeTab.value === 'form') {
     const data   = formData.value
     const count  = data.length
-    // Career view can be hundreds of games, so prefix the season to orient the (thinned) axis.
-    const labels = data.map(m =>
-      selectedRange.value === 'career'
-        ? `${m.year} R${m.round_number} ${m.opponent ?? ''}`.trim()
-        : `Rd${m.round_number} ${m.opponent ?? ''}`
-    )
+    // Labels read "R14"; the first round of each year on the graph also shows the year.
+    let prevYear = null
+    const labels = data.map(m => {
+      const showYear = m.year !== prevYear
+      prevYear = m.year
+      return showYear ? `${m.year} R${m.round_number}` : `R${m.round_number}`
+    })
     const values = data.map(m => m[stat.matchKey] ?? null)
     const nonNull = values.filter(v => v !== null)
     const avg = nonNull.length ? nonNull.reduce((s, v) => s + v, 0) / nonNull.length : 0
+
+    // Least-squares linear regression trend over the non-null points (x = game index).
+    const pts = values.map((v, i) => [i, v]).filter(([, v]) => v !== null)
+    let trend = null
+    if (pts.length >= 2) {
+      const n = pts.length
+      const sx  = pts.reduce((s, [x]) => s + x, 0)
+      const sy  = pts.reduce((s, [, y]) => s + y, 0)
+      const sxx = pts.reduce((s, [x]) => s + x * x, 0)
+      const sxy = pts.reduce((s, [x, y]) => s + x * y, 0)
+      const denom = n * sxx - sx * sx
+      if (denom !== 0) {
+        const slope = (n * sxy - sx * sy) / denom
+        const intercept = (sy - slope * sx) / n
+        trend = values.map((_, i) => +(slope * i + intercept).toFixed(2))
+      }
+    }
 
     // Scale point size and axis-label density to the number of games on screen.
     const pointRadius      = count > 80 ? 0 : count > 40 ? 2 : count > 20 ? 4 : 6
@@ -199,10 +229,24 @@ function buildConfig() {
     const formOptions = {
       ...baseOptions,
       scales: {
-        ...baseOptions.scales,
         x: {
           ...baseOptions.scales.x,
           ticks: { ...baseOptions.scales.x.ticks, autoSkip: true, maxTicksLimit },
+        },
+        ...yAxes([...nonNull, avg, ...(trend ?? [])]),
+      },
+      plugins: {
+        ...baseOptions.plugins,
+        tooltip: {
+          ...baseOptions.plugins.tooltip,
+          callbacks: {
+            title: items => {
+              const m = data[items[0]?.dataIndex]
+              if (!m) return ''
+              const oppo = m.opponent ? ` ${m.venue === 'A' ? '@' : 'vs'} ${m.opponent}` : ''
+              return `${m.year} R${m.round_number}${oppo}`
+            },
+          },
         },
       },
     }
@@ -234,6 +278,16 @@ function buildConfig() {
             pointRadius: 0,
             fill: false,
           },
+          ...(trend ? [{
+            label: 'Trend',
+            data: trend,
+            borderColor: 'rgba(34,197,94,0.9)',
+            borderDash: [2, 3],
+            borderWidth: 2,
+            pointRadius: 0,
+            fill: false,
+            tension: 0,
+          }] : []),
         ],
       },
       options: formOptions,
@@ -258,6 +312,10 @@ function buildConfig() {
       },
       options: {
         ...baseOptions,
+        scales: {
+          x: baseOptions.scales.x,
+          ...yAxes(values),
+        },
         plugins: {
           ...baseOptions.plugins,
           tooltip: { mode: 'index', intersect: false },
@@ -281,6 +339,32 @@ watch(
 
 onMounted(() => nextTick(renderChart))
 onUnmounted(() => { if (chart) { chart.destroy(); chart = null } })
+
+// ── Image export ───────────────────────────────────────────────────────────────
+
+const showExport    = ref(false)
+const exportPayload = ref(null)
+
+const exportRangeLabel = computed(() => {
+  if (activeTab.value === 'trend') return 'Season Trend'
+  if (selectedRange.value === 'season') return 'Season'
+  if (selectedRange.value === 'career') return 'Career'
+  return `Last ${selectedRange.value} Games`
+})
+
+function openExport() {
+  if (!chart) return
+  const xTicks = chart.config.options.scales.x.ticks
+  exportPayload.value = {
+    type: chart.config.type,
+    data: chart.config.data,
+    yMin: chart.scales.y.min,
+    yMax: chart.scales.y.max,
+    xAutoSkip: xTicks.autoSkip,
+    xMaxTicks: xTicks.maxTicksLimit,
+  }
+  showExport.value = true
+}
 </script>
 
 <template>
@@ -331,6 +415,15 @@ onUnmounted(() => { if (chart) { chart.destroy(); chart = null } })
           variant="outlined"
           style="max-width: 220px; min-width: 160px"
         />
+
+        <!-- Export -->
+        <v-btn
+          icon="mdi-image-outline"
+          variant="tonal"
+          size="small"
+          title="Export as image"
+          @click="openExport"
+        />
       </div>
 
       <!-- No data state -->
@@ -348,4 +441,13 @@ onUnmounted(() => { if (chart) { chart.destroy(); chart = null } })
       </div>
     </v-card-text>
   </v-card>
+
+  <PlayerExportModal
+    v-model="showExport"
+    mode="chart"
+    :player="player"
+    :label="selectedStat.label"
+    :range-label="exportRangeLabel"
+    :chart="exportPayload"
+  />
 </template>

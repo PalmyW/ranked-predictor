@@ -2,6 +2,7 @@
 import { ref, computed, nextTick, watch, onMounted } from 'vue'
 import { toPng } from 'html-to-image'
 import { fmt } from '@/constants/stats.js'
+import BrandLogo from '@/components/BrandLogo.vue'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -302,217 +303,7 @@ function close() {
             }"
           >
             <!-- Palmy Data tile logo -->
-            <svg
-              width="73"
-              height="28"
-              viewBox="0 0 73 28"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <!-- Row 1 tiles -->
-              <rect
-                x="0"
-                y="0"
-                width="13"
-                height="13"
-                fill="#1e293b"
-                rx="1.5"
-              />
-              <rect
-                x="15"
-                y="0"
-                width="13"
-                height="13"
-                fill="#1e293b"
-                rx="1.5"
-              />
-              <rect
-                x="30"
-                y="0"
-                width="13"
-                height="13"
-                fill="#1e293b"
-                rx="1.5"
-              />
-              <rect
-                x="45"
-                y="0"
-                width="13"
-                height="13"
-                fill="#1e293b"
-                rx="1.5"
-              />
-              <rect
-                x="60"
-                y="0"
-                width="13"
-                height="13"
-                fill="#1e293b"
-                rx="1.5"
-              />
-              <!-- Row 2 tiles -->
-              <rect
-                x="0"
-                y="15"
-                width="13"
-                height="13"
-                fill="#1e293b"
-                rx="1.5"
-              />
-              <rect
-                x="15"
-                y="15"
-                width="13"
-                height="13"
-                fill="#1e293b"
-                rx="1.5"
-              />
-              <rect
-                x="30"
-                y="15"
-                width="13"
-                height="13"
-                fill="#1e293b"
-                rx="1.5"
-              />
-              <rect
-                x="45"
-                y="15"
-                width="13"
-                height="13"
-                fill="#1e293b"
-                rx="1.5"
-              />
-              <rect
-                x="60"
-                y="15"
-                width="13"
-                height="13"
-                fill="#1e293b"
-                rx="1.5"
-              />
-              <!-- Row 1 letters: P A L M Y -->
-              <text
-                x="6.5"
-                y="6.5"
-                dominant-baseline="central"
-                text-anchor="middle"
-                font-family="'Arial Black', Arial, sans-serif"
-                font-size="7.5"
-                font-weight="900"
-                fill="white"
-              >
-                P
-              </text>
-              <text
-                x="21.5"
-                y="6.5"
-                dominant-baseline="central"
-                text-anchor="middle"
-                font-family="'Arial Black', Arial, sans-serif"
-                font-size="7.5"
-                font-weight="900"
-                fill="white"
-              >
-                A
-              </text>
-              <text
-                x="36.5"
-                y="6.5"
-                dominant-baseline="central"
-                text-anchor="middle"
-                font-family="'Arial Black', Arial, sans-serif"
-                font-size="7.5"
-                font-weight="900"
-                fill="white"
-              >
-                L
-              </text>
-              <text
-                x="51.5"
-                y="6.5"
-                dominant-baseline="central"
-                text-anchor="middle"
-                font-family="'Arial Black', Arial, sans-serif"
-                font-size="7.5"
-                font-weight="900"
-                fill="white"
-              >
-                M
-              </text>
-              <text
-                x="66.5"
-                y="6.5"
-                dominant-baseline="central"
-                text-anchor="middle"
-                font-family="'Arial Black', Arial, sans-serif"
-                font-size="7.5"
-                font-weight="900"
-                fill="white"
-              >
-                Y
-              </text>
-              <!-- Row 2 letters: D A T A / -->
-              <text
-                x="6.5"
-                y="21.5"
-                dominant-baseline="central"
-                text-anchor="middle"
-                font-family="'Arial Black', Arial, sans-serif"
-                font-size="7.5"
-                font-weight="900"
-                fill="white"
-              >
-                D
-              </text>
-              <text
-                x="21.5"
-                y="21.5"
-                dominant-baseline="central"
-                text-anchor="middle"
-                font-family="'Arial Black', Arial, sans-serif"
-                font-size="7.5"
-                font-weight="900"
-                fill="white"
-              >
-                A
-              </text>
-              <text
-                x="36.5"
-                y="21.5"
-                dominant-baseline="central"
-                text-anchor="middle"
-                font-family="'Arial Black', Arial, sans-serif"
-                font-size="7.5"
-                font-weight="900"
-                fill="white"
-              >
-                T
-              </text>
-              <text
-                x="51.5"
-                y="21.5"
-                dominant-baseline="central"
-                text-anchor="middle"
-                font-family="'Arial Black', Arial, sans-serif"
-                font-size="7.5"
-                font-weight="900"
-                fill="white"
-              >
-                A
-              </text>
-              <text
-                x="66.5"
-                y="21.5"
-                dominant-baseline="central"
-                text-anchor="middle"
-                font-family="'Arial Black', Arial, sans-serif"
-                font-size="7.5"
-                font-weight="900"
-                fill="#64748b"
-              >
-                /
-              </text>
-            </svg>
+            <BrandLogo />
             <span>
               {{
                 visibleRows.length +
@@ -531,7 +322,7 @@ function close() {
         <v-btn variant="tonal" @click="close">Cancel</v-btn>
         <v-btn
           color="primary"
-          variant="filled"
+          variant="flat"
           prepend-icon="mdi-download"
           :loading="downloading"
           @click="downloadImage"
