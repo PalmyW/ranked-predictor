@@ -1,9 +1,10 @@
 <script setup>
-import { ref, computed, onActivated } from 'vue'
+import { ref, computed, watch, onActivated } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi.js'
 import DataTable from '@/components/DataTable.vue'
-import { numCol, fmt } from '@/constants/stats.js'
+import PlayerChart from '@/components/PlayerChart.vue'
+import { numCol, fmt, STAT_BASES, statLabel, STAR_SIGN_EMOJI } from '@/constants/stats.js'
 
 const route  = useRoute()
 const router = useRouter()
@@ -45,10 +46,50 @@ const matchHistory = ref([])
 const loadingData  = ref(false)
 const activeTab    = ref('seasons')
 
-const STAR_SIGN_EMOJI = {
-  Aries: '♈', Taurus: '♉', Gemini: '♊', Cancer: '♋',
-  Leo: '♌', Virgo: '♍', Libra: '♎', Scorpio: '♏',
-  Sagittarius: '♐', Capricorn: '♑', Aquarius: '♒', Pisces: '♓',
+// Where the player ranks for each stat's average this (latest) season,
+// among all players with more than 5 games.
+const seasonRanks  = ref([])     // [{ base, label, value, rank, total }]
+const rankSeason   = ref(null)   // year the rankings are computed for
+
+// SQL fragment: avg of every stat base, e.g. "ROUND(AVG(p.stat_disposals), 2) AS avg_disposals, ..."
+// Goal accuracy is only meaningful in matches where the player had a shot, so we
+// average it over those rows only (AVG ignores the NULLs from goalless games).
+const RANK_AVG_SELECT = STAT_BASES
+  .map(b => b === 'goal_accuracy'
+    ? `ROUND(AVG(CASE WHEN p.stat_shots_at_goal >= 1 THEN p.stat_goal_accuracy END), 2) AS avg_goal_accuracy`
+    : `ROUND(AVG(p.stat_${b}), 2) AS avg_${b}`)
+  .join(',\n           ')
+
+// Stats where a lower value is better — rank ascending for these.
+const LOWER_IS_BETTER = new Set([
+  'clangers', 'turnovers', 'frees_against',
+  'contest_def_losses', 'contest_def_loss_percentage',
+])
+
+function computeSeasonRanks(allRows, id) {
+  const me = allRows.find(r => String(r.player_id) === String(id))
+  if (!me) return { season: null, ranks: [] }
+
+  const ranks = []
+  for (const base of STAT_BASES) {
+    const field = `avg_${base}`
+    const myVal = me[field]
+    if (myVal === null || myVal === undefined) continue
+    const vals = allRows.map(r => r[field]).filter(v => v !== null && v !== undefined)
+    const ahead = LOWER_IS_BETTER.has(base)
+      ? vals.filter(v => v < myVal).length
+      : vals.filter(v => v > myVal).length
+    ranks.push({
+      base,
+      label: statLabel(base),
+      value: myVal,
+      rank: ahead + 1,
+      total: vals.length,
+    })
+  }
+  // Best rankings first (use percentile so differing totals compare fairly).
+  ranks.sort((a, b) => (a.rank / a.total) - (b.rank / b.total))
+  return { season: me.year, ranks }
 }
 
 const playerAge = computed(() => {
@@ -108,20 +149,93 @@ async function loadPlayer(id) {
   matchHistory.value = []
   playerInfo.value = null
   playerDetails.value = null
+  seasonRanks.value = []
+  rankSeason.value = null
 
   try {
-    const [seasons, matches, detailsRows] = await Promise.all([
+    const [seasons, matches, detailsRows, rankRows] = await Promise.all([
       runSQL(
-        `SELECT year, team_name, position, games_played,
-           avg_disposals, avg_kicks, avg_handballs, avg_marks, avg_tackles,
-           avg_goals, avg_behinds, avg_inside50s, avg_contested_possessions,
-           avg_total_clearances, avg_dream_team_points,
-           tot_disposals, tot_kicks, tot_handballs, tot_marks, tot_tackles,
-           tot_goals, tot_behinds, tot_inside50s,
-           given_name, surname
-         FROM v_player_season_stats
-         WHERE player_id = ?
-         ORDER BY year DESC`,
+        `SELECT
+           p.year,
+           t.name AS team_name,
+           MIN(p.position) AS position,
+           COUNT(*) AS games_played,
+           ROUND(AVG(p.stat_disposals), 2) AS avg_disposals,
+           ROUND(AVG(p.stat_kicks), 2) AS avg_kicks,
+           ROUND(AVG(p.stat_handballs), 2) AS avg_handballs,
+           ROUND(AVG(p.stat_marks), 2) AS avg_marks,
+           ROUND(AVG(p.stat_tackles), 2) AS avg_tackles,
+           ROUND(AVG(p.stat_goals), 2) AS avg_goals,
+           ROUND(AVG(p.stat_behinds), 2) AS avg_behinds,
+           ROUND(AVG(p.stat_inside50s), 2) AS avg_inside50s,
+           ROUND(AVG(p.stat_contested_possessions), 2) AS avg_contested_possessions,
+           ROUND(AVG(p.stat_total_clearances), 2) AS avg_total_clearances,
+           ROUND(AVG(p.stat_centre_clearances), 2) AS avg_centre_clearances,
+           ROUND(AVG(p.stat_stoppage_clearances), 2) AS avg_stoppage_clearances,
+           ROUND(AVG(p.stat_dream_team_points), 2) AS avg_dream_team_points,
+           ROUND(AVG(p.stat_rebound50s), 2) AS avg_rebound50s,
+           ROUND(AVG(p.stat_score_involvements), 2) AS avg_score_involvements,
+           ROUND(AVG(p.stat_goal_assists), 2) AS avg_goal_assists,
+           ROUND(AVG(p.stat_hitouts), 2) AS avg_hitouts,
+           ROUND(AVG(p.stat_one_percenters), 2) AS avg_one_percenters,
+           ROUND(AVG(p.stat_metres_gained), 2) AS avg_metres_gained,
+           ROUND(AVG(p.stat_intercepts), 2) AS avg_intercepts,
+           ROUND(AVG(p.stat_turnovers), 2) AS avg_turnovers,
+           ROUND(AVG(p.stat_effective_kicks), 2) AS avg_effective_kicks,
+           ROUND(AVG(p.stat_effective_disposals), 2) AS avg_effective_disposals,
+           ROUND(AVG(p.stat_pressure_acts), 2) AS avg_pressure_acts,
+           ROUND(AVG(p.stat_ground_ball_gets), 2) AS avg_ground_ball_gets,
+           ROUND(AVG(p.stat_spoils), 2) AS avg_spoils,
+           ROUND(AVG(p.stat_clangers), 2) AS avg_clangers,
+           ROUND(AVG(p.stat_frees_for), 2) AS avg_frees_for,
+           ROUND(AVG(p.stat_contested_marks), 2) AS avg_contested_marks,
+           ROUND(AVG(p.stat_marks_inside50), 2) AS avg_marks_inside50,
+           ROUND(AVG(p.stat_shots_at_goal), 2) AS avg_shots_at_goal,
+           ROUND(AVG(p.stat_bounces), 2) AS avg_bounces,
+           ROUND(AVG(p.stat_centre_bounce_attendances), 2) AS avg_centre_bounce_attendances,
+           ROUND(AVG(p.stat_contest_def_loss_percentage), 2) AS avg_contest_def_loss_percentage,
+           ROUND(AVG(p.stat_contest_def_losses), 2) AS avg_contest_def_losses,
+           ROUND(AVG(p.stat_contest_def_one_on_ones), 2) AS avg_contest_def_one_on_ones,
+           ROUND(AVG(p.stat_contest_off_one_on_ones), 2) AS avg_contest_off_one_on_ones,
+           ROUND(AVG(p.stat_contest_off_wins), 2) AS avg_contest_off_wins,
+           ROUND(AVG(p.stat_contest_off_wins_percentage), 2) AS avg_contest_off_wins_percentage,
+           ROUND(AVG(p.stat_contested_possession_rate), 2) AS avg_contested_possession_rate,
+           ROUND(AVG(p.stat_def_half_pressure_acts), 2) AS avg_def_half_pressure_acts,
+           ROUND(AVG(p.stat_disposal_efficiency), 2) AS avg_disposal_efficiency,
+           ROUND(AVG(p.stat_f50_ground_ball_gets), 2) AS avg_f50_ground_ball_gets,
+           ROUND(AVG(p.stat_frees_against), 2) AS avg_frees_against,
+           ROUND(AVG(p.stat_goal_accuracy), 2) AS avg_goal_accuracy,
+           ROUND(AVG(p.stat_hitout_to_advantage_rate), 2) AS avg_hitout_to_advantage_rate,
+           ROUND(AVG(p.stat_hitout_win_percentage), 2) AS avg_hitout_win_percentage,
+           ROUND(AVG(p.stat_hitouts_to_advantage), 2) AS avg_hitouts_to_advantage,
+           ROUND(AVG(p.stat_intercept_marks), 2) AS avg_intercept_marks,
+           ROUND(AVG(p.stat_kick_efficiency), 2) AS avg_kick_efficiency,
+           ROUND(AVG(p.stat_kick_to_handball_ratio), 2) AS avg_kick_to_handball_ratio,
+           ROUND(AVG(p.stat_kickins), 2) AS avg_kickins,
+           ROUND(AVG(p.stat_kickins_playon), 2) AS avg_kickins_playon,
+           ROUND(AVG(p.stat_marks_on_lead), 2) AS avg_marks_on_lead,
+           ROUND(AVG(p.stat_rating_points), 2) AS avg_rating_points,
+           ROUND(AVG(p.stat_ruck_contests), 2) AS avg_ruck_contests,
+           ROUND(AVG(p.stat_score_launches), 2) AS avg_score_launches,
+           ROUND(AVG(p.stat_tackles_inside50), 2) AS avg_tackles_inside50,
+           ROUND(AVG(p.stat_time_on_ground_percentage), 2) AS avg_time_on_ground_percentage,
+           ROUND(AVG(p.stat_total_possessions), 2) AS avg_total_possessions,
+           ROUND(AVG(p.stat_uncontested_possessions), 2) AS avg_uncontested_possessions,
+           SUM(p.stat_disposals) AS tot_disposals,
+           SUM(p.stat_kicks) AS tot_kicks,
+           SUM(p.stat_handballs) AS tot_handballs,
+           SUM(p.stat_marks) AS tot_marks,
+           SUM(p.stat_tackles) AS tot_tackles,
+           SUM(p.stat_goals) AS tot_goals,
+           SUM(p.stat_behinds) AS tot_behinds,
+           SUM(p.stat_inside50s) AS tot_inside50s,
+           MIN(p.given_name) AS given_name,
+           MIN(p.surname) AS surname
+         FROM player_match_stats p
+         JOIN teams t ON p.team_id = t.team_id
+         WHERE p.player_id = ?
+         GROUP BY p.year, p.team_id
+         ORDER BY p.year DESC`,
         [id]
       ),
       runSQL(
@@ -142,7 +256,57 @@ async function loadPlayer(id) {
            p.stat_behinds AS behinds, p.stat_inside50s AS inside50s,
            p.stat_contested_possessions AS cont_poss,
            p.stat_total_clearances AS clearances,
+           p.stat_centre_clearances AS centre_clr,
+           p.stat_stoppage_clearances AS stoppage_clr,
            p.stat_dream_team_points AS dtp,
+           p.stat_rebound50s AS rebound50s,
+           p.stat_score_involvements AS score_inv,
+           p.stat_goal_assists AS goal_assists,
+           p.stat_hitouts AS hitouts,
+           p.stat_one_percenters AS one_pct,
+           p.stat_metres_gained AS metres_gained,
+           p.stat_intercepts AS intercepts,
+           p.stat_turnovers AS turnovers,
+           p.stat_effective_kicks AS eff_kicks,
+           p.stat_effective_disposals AS eff_dis,
+           p.stat_pressure_acts AS pressure_acts,
+           p.stat_ground_ball_gets AS gbg,
+           p.stat_spoils AS spoils,
+           p.stat_clangers AS clangers,
+           p.stat_frees_for AS frees_for,
+           p.stat_contested_marks AS cont_marks,
+           p.stat_marks_inside50 AS marks_i50,
+           p.stat_shots_at_goal AS shots_at_goal,
+           p.stat_bounces AS bounces,
+           p.stat_centre_bounce_attendances AS cba,
+           p.stat_contest_def_loss_percentage AS cdlp,
+           p.stat_contest_def_losses AS cdl,
+           p.stat_contest_def_one_on_ones AS cdo1,
+           p.stat_contest_off_one_on_ones AS coo1,
+           p.stat_contest_off_wins AS cow,
+           p.stat_contest_off_wins_percentage AS cowp,
+           p.stat_contested_possession_rate AS cont_poss_rate,
+           p.stat_def_half_pressure_acts AS dhpa,
+           p.stat_disposal_efficiency AS dis_eff,
+           p.stat_f50_ground_ball_gets AS f50_gbg,
+           p.stat_frees_against AS frees_against,
+           p.stat_goal_accuracy AS goal_acc,
+           p.stat_hitout_to_advantage_rate AS htar,
+           p.stat_hitout_win_percentage AS hwp,
+           p.stat_hitouts_to_advantage AS hta,
+           p.stat_intercept_marks AS int_marks,
+           p.stat_kick_efficiency AS kick_eff,
+           p.stat_kick_to_handball_ratio AS k2hb,
+           p.stat_kickins AS kickins,
+           p.stat_kickins_playon AS kickins_po,
+           p.stat_marks_on_lead AS mol,
+           p.stat_rating_points AS rating_pts,
+           p.stat_ruck_contests AS ruck_cont,
+           p.stat_score_launches AS score_launches,
+           p.stat_tackles_inside50 AS tackles_i50,
+           p.stat_time_on_ground_percentage AS tog,
+           p.stat_total_possessions AS total_poss,
+           p.stat_uncontested_possessions AS uncont_poss,
            m.match_id
          FROM v_player_match_stats p
          JOIN v_matches m ON p.match_id = m.match_id
@@ -157,11 +321,26 @@ async function loadPlayer(id) {
          FROM players WHERE player_id = ?`,
         [id]
       ),
+      runSQL(
+        `SELECT
+           p.player_id,
+           MAX(p.year) AS year,
+           COUNT(*) AS games_played,
+           ${RANK_AVG_SELECT}
+         FROM player_match_stats p
+         WHERE p.year = (SELECT MAX(year) FROM player_match_stats)
+         GROUP BY p.player_id
+         HAVING COUNT(*) > 5`
+      ),
     ])
 
     seasonStats.value   = seasons
     matchHistory.value  = matches
     playerDetails.value = detailsRows[0] ?? null
+
+    const { season, ranks } = computeSeasonRanks(rankRows, id)
+    seasonRanks.value = ranks
+    rankSeason.value  = season
     if (seasons.length) {
       const s = seasons[0]
       playerInfo.value = { given_name: s.given_name, surname: s.surname, position: s.position, team_name: s.team_name }
@@ -171,10 +350,8 @@ async function loadPlayer(id) {
   }
 }
 
-onActivated(() => {
-  const id = route.query.id
-  if (id) loadPlayer(id)
-})
+watch(() => route.query.id, id => { if (id) loadPlayer(id) }, { immediate: true })
+onActivated(() => { if (route.query.id) loadPlayer(route.query.id) })
 
 // ── Column definitions ────────────────────────────────────────────────────────
 
@@ -239,6 +416,21 @@ const matchCols = [
 function onMatchClick({ data }) {
   if (data.match_id) router.push({ name: 'match-stats', query: { match: data.match_id } })
 }
+
+function fmtPosition(pos) {
+  if (!pos) return ''
+  return pos.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
+}
+
+// Colour a rank by how high it sits in the field (top 1 → gold, top 10% → success, etc.)
+function rankColor({ rank, total }) {
+  if (rank === 1) return 'amber'
+  const pct = rank / total
+  if (pct <= 0.1) return 'success'
+  if (pct <= 0.25) return 'primary'
+  if (pct >= 0.9) return 'error'
+  return 'surface-variant'
+}
 </script>
 
 <template>
@@ -264,7 +456,7 @@ function onMatchClick({ data }) {
       @update:model-value="onPlayerSelect"
     >
       <template #item="{ item, props: itemProps }">
-        <v-list-item v-bind="itemProps" :subtitle="`${item.raw.team_name} · ${item.raw.position}`" />
+        <v-list-item v-bind="itemProps" :subtitle="`${item.raw.team_name} · ${fmtPosition(item.raw.position)}`" />
       </template>
     </v-autocomplete>
 
@@ -294,7 +486,7 @@ function onMatchClick({ data }) {
           <h1 class="text-h5 font-weight-bold mb-1">{{ playerName }}</h1>
           <div class="d-flex align-center gap-2 flex-wrap mb-2">
             <v-chip size="small" color="primary" variant="tonal">{{ playerInfo.team_name }}</v-chip>
-            <v-chip v-if="playerInfo.position" size="small" variant="outlined">{{ playerInfo.position }}</v-chip>
+            <v-chip v-if="playerDetails?.position || playerInfo.position" size="small" variant="outlined">{{ fmtPosition(playerDetails?.position || playerInfo.position) }}</v-chip>
           </div>
 
           <!-- Bio details -->
@@ -336,6 +528,33 @@ function onMatchClick({ data }) {
         </div>
       </div>
 
+      <!-- Chart -->
+      <PlayerChart :match-history="matchHistory" :season-stats="seasonStats" />
+
+      <!-- Season stat rankings -->
+      <v-card v-if="seasonRanks.length" variant="tonal" rounded="lg" class="mb-5">
+        <v-card-title class="text-subtitle-1 d-flex align-center flex-wrap gap-2 py-3">
+          <v-icon size="small" color="primary">mdi-trophy-outline</v-icon>
+          {{ rankSeason }} Season Rankings
+          <span class="text-caption text-medium-emphasis font-weight-regular">
+            average per stat vs. all players with 6+ games · best first
+          </span>
+        </v-card-title>
+        <v-card-text class="pt-0">
+          <dl class="rank-grid">
+            <div v-for="r in seasonRanks" :key="r.base" class="rank-item">
+              <dt class="text-body-2 text-medium-emphasis text-truncate" :title="r.label">{{ r.label }}</dt>
+              <dd class="d-flex align-center justify-space-between gap-2 ma-0">
+                <span class="text-body-1 font-weight-bold">{{ fmt(r.value) }}</span>
+                <v-chip :color="rankColor(r)" size="small" variant="flat" label class="font-weight-bold">
+                  #{{ r.rank }}<span class="ml-1" style="opacity:0.75">/ {{ r.total }}</span>
+                </v-chip>
+              </dd>
+            </div>
+          </dl>
+        </v-card-text>
+      </v-card>
+
       <!-- Tabs -->
       <v-tabs v-model="activeTab" color="primary" density="compact" class="mb-4">
         <v-tab value="seasons" prepend-icon="mdi-chart-bar">Season Stats</v-tab>
@@ -367,3 +586,18 @@ function onMatchClick({ data }) {
     </template>
   </div>
 </template>
+
+<style scoped>
+.rank-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 6px 20px;
+}
+.rank-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.08);
+}
+</style>

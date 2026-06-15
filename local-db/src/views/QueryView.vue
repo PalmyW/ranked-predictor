@@ -9,7 +9,7 @@ import AiPrompt from '@/components/AiPrompt.vue'
 import SchemaPanel from '@/components/SchemaPanel.vue'
 import QueryHistory from '@/components/QueryHistory.vue'
 import ExportImageModal from '@/components/ExportImageModal.vue'
-import { SAMPLE_QUERY, fmt } from '@/constants/stats.js'
+import { SAMPLE_QUERY, fmt, fmtStarSign } from '@/constants/stats.js'
 
 const router  = useRouter()
 const { api } = useApi()
@@ -78,6 +78,7 @@ async function runQuery() {
     const toLabel = s => { const w = s.replace(/_/g, ' '); return w.charAt(0).toUpperCase() + w.slice(1) }
     columns.value = result.columns.map(c => {
       const isTeamId = /team_id$/i.test(c)
+      const isStarSign = /star_sign$/i.test(c)
       const firstVal = result.rows[0]?.[c]
       const isNum = typeof firstVal === 'number'
       return {
@@ -86,6 +87,7 @@ async function runQuery() {
         formatter: cell => {
           const v = cell.getValue()
           if (isTeamId && v != null) return tmap[v] ?? v
+          if (isStarSign) return fmtStarSign(v)
           return fmt(v)
         },
         sorter: isNum ? 'number' : 'string',

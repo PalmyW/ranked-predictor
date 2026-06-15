@@ -211,8 +211,10 @@ app.get('/api/player-season-stats/career/:playerId', (req, res) => {
 
 function buildAISystemPrompt(db) {
   const teams = db.prepare('SELECT team_id, name FROM teams ORDER BY name').all();
-  const statBases = STAT_COLS.map(([, base]) => base).join(', ');
   const teamLines = teams.map(t => `  ${t.team_id}: ${t.name}`).join('\n');
+
+  const countableBases = STAT_COLS.filter(([, b]) => !isPct(b)).map(([, b]) => b);
+  const pctBases       = STAT_COLS.filter(([, b]) =>  isPct(b)).map(([, b]) => b);
 
   return `You are a SQLite query generator for an AFL (Australian Football League) statistics database.
 Start your response with a TITLE: line (3–6 words summarising the query result), then provide the SQL wrapped in a \`\`\`sql … \`\`\` code block. No trailing semicolon. No other explanation.
@@ -224,8 +226,8 @@ seasons: year, comp_season_id, comp_season_name
 teams: team_id, name, abbreviation, nickname
 venues: venue_id, name, abbreviation, location, state, timezone, land_owner
 matches: match_id, year, comp_season_id, round_number, round_name, round_abbreviation, home_team_id, away_team_id, venue_id, utc_start_time, status, home_goals, home_behinds, home_score, away_goals, away_behinds, away_score
-player_match_stats: id, match_id, year, round_number, player_id, given_name, surname, team_id, position, jumper_number, [stat_{base} × 62 — see stat bases below]
-players: player_id (PK, join to player_match_stats/v_player_season_stats), given_name, surname, date_of_birth (TEXT "DD/MM/YYYY"), height_cm, weight_kg, kicking_foot ("LEFT"|"RIGHT"), state_of_origin, position, draft_year, draft_position, draft_type, debut_year, recruited_from, photo_url, bio, star_sign
+player_match_stats: id, match_id, year, round_number, player_id, given_name, surname, team_id, position, jumper_number, [stat_{base} for each base listed below]
+players: player_id (PK, join to player_match_stats), given_name, surname, date_of_birth (TEXT "DD/MM/YYYY"), height_cm, weight_kg, kicking_foot ("LEFT"|"RIGHT"), state_of_origin, position, draft_year, draft_position, draft_type, debut_year, recruited_from, photo_url, bio, star_sign
   — age is NOT stored; compute it as: CAST((julianday('now') - julianday(substr(date_of_birth,7,4)||'-'||substr(date_of_birth,4,2)||'-'||substr(date_of_birth,1,2))) / 365.25 AS INTEGER)
 
 ## Views — use these in preference to base tables
@@ -235,22 +237,31 @@ Columns: match_id, year, comp_season_id, round_number, round_name, round_abbrevi
 Note: home_team_name / away_team_name ONLY exist here.
 
 ### v_player_match_stats
-Columns: id, match_id, year, round_number, player_id, given_name, surname, team_id, team_name, team_abbr, position, jumper_number, [stat_{base} × 62]
+Columns: id, match_id, year, round_number, player_id, given_name, surname, team_id, team_name, team_abbr, position, jumper_number, [stat_{base} for each base listed below]
 Note: has team_name for the player's own team only. Does NOT have home_team_name or away_team_name.
 To get home/away context, JOIN ON match_id with v_matches.
 
-### v_player_season_stats
-Columns: year, player_id, team_id, team_name, team_abbr, given_name, surname, position, jumper_number, games_played, [tot_{base} for countable stats], [avg_{base} for all stats]
-Note: aggregated per player per year per team. Does NOT have match_id or round_number.
-IMPORTANT: percentage/rate/efficiency/accuracy/ratio columns do NOT have a tot_{base} column — only avg_{base}. Examples: disposal_efficiency, goal_accuracy, kick_efficiency, kick_to_handball_ratio, contested_possession_rate, hitout_win_percentage, hitout_to_advantage_rate, contest_def_loss_percentage, contest_off_wins_percentage, time_on_ground_percentage.
-Never reference tot_disposal_efficiency, tot_time_on_ground_percentage, etc. — those columns do not exist.
+## Season stats — no pre-built view, compute via GROUP BY
 
-## Stat column bases (62 total)
+There is no season stats table or view. To get per-player per-season aggregates, query player_match_stats with GROUP BY:
 
-${statBases}
+  SELECT p.year, p.player_id, p.team_id, t.name AS team_name,
+    MIN(p.given_name) AS given_name, MIN(p.surname) AS surname,
+    MIN(p.position) AS position, COUNT(*) AS games_played,
+    SUM(p.stat_disposals) AS tot_disposals, ROUND(AVG(p.stat_disposals), 2) AS avg_disposals,
+    ROUND(AVG(p.stat_disposal_efficiency), 2) AS avg_disposal_efficiency
+  FROM player_match_stats p
+  JOIN teams t ON p.team_id = t.team_id
+  GROUP BY p.year, p.player_id, p.team_id
 
-- In player_match_stats / v_player_match_stats: stat_{base}  (e.g. stat_disposals)
-- In v_player_season_stats: tot_{base} (season total, countable stats only) or avg_{base} (season average, all stats)
+### Countable stat bases — use SUM for totals, AVG for averages (both valid)
+${countableBases.join(', ')}
+
+### Percentage / rate stat bases — AVG only, NEVER SUM these
+${pctBases.join(', ')}
+
+Column naming in player_match_stats / v_player_match_stats: stat_{base}  (e.g. stat_disposals)
+Column naming in season aggregates: tot_{base} for countable totals, avg_{base} for all averages
 
 ## Teams
 
@@ -314,7 +325,7 @@ app.post('/api/ai/query', async (req, res) => {
     const client = new Anthropic();
     const { data: msg, response: httpRes } = await client.messages.create({
       model: aiStats.model,
-      max_tokens: 1024,
+      max_tokens: 4096,
       system: AI_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: prompt.trim() }],
     }).withResponse();
@@ -336,17 +347,19 @@ app.post('/api/ai/query', async (req, res) => {
     const raw = msg.content[0].text.trim();
     const titleMatch = raw.match(/^TITLE:\s*(.+)/mi);
     const title = titleMatch?.[1]?.trim();
-    const codeMatch = raw.match(/```(?:sql)?\s*([\s\S]+?)```/i);
+    const body = raw.replace(/^TITLE:.*$/mi, '').trim();
+
     let sql, note;
+    const codeMatch = body.match(/```(?:sql)?\s*([\s\S]+?)```/i);
     if (codeMatch) {
       sql = codeMatch[1].replace(/;$/, '').trim();
-      const stripped = raw
-        .replace(/^TITLE:.*$/mi, '')
-        .replace(/```(?:sql)?[\s\S]+?```/gi, '')
-        .trim();
-      note = stripped || undefined;
+      note = body.replace(/```(?:sql)?[\s\S]+?```/gi, '').trim() || undefined;
+    } else if (body.includes('```')) {
+      // Unclosed fence (e.g. response truncated before the closing ```): strip the
+      // opening fence and any trailing one so we don't leak ```sql into the output.
+      sql = body.replace(/^[\s\S]*?```(?:sql)?\s*/i, '').replace(/```\s*$/, '').replace(/;$/, '').trim();
     } else {
-      sql = raw.replace(/^TITLE:.*$/mi, '').replace(/;$/, '').trim();
+      sql = body.replace(/;$/, '').trim();
     }
     res.json({ sql, ...(title && { title }), ...(note && { note }) });
   } catch (err) {
@@ -392,16 +405,22 @@ app.get('/api/players/search', (req, res) => {
   if (q.length < 2) return res.json([])
   const like = `%${q}%`
   const rows = db.prepare(`
-    WITH latest AS (
-      SELECT player_id, given_name, surname, team_name, position,
-             ROW_NUMBER() OVER (PARTITION BY player_id ORDER BY year DESC) AS rn
-      FROM v_player_season_stats
-      WHERE given_name || ' ' || surname LIKE ? OR surname LIKE ?
+    WITH seasons AS (
+      SELECT p.player_id, MIN(p.given_name) AS given_name, MIN(p.surname) AS surname,
+             t.name AS team_name,
+             ROW_NUMBER() OVER (PARTITION BY p.player_id ORDER BY p.year DESC) AS rn
+      FROM player_match_stats p
+      JOIN teams t ON p.team_id = t.team_id
+      WHERE p.given_name || ' ' || p.surname LIKE ? OR p.surname LIKE ?
+      GROUP BY p.player_id, p.year, p.team_id
     )
-    SELECT player_id, given_name, surname, team_name, position,
-           given_name || ' ' || surname AS name
-    FROM latest WHERE rn = 1
-    ORDER BY surname, given_name
+    SELECT s.player_id, s.given_name, s.surname, s.team_name,
+           COALESCE(pl.position, '') AS position,
+           s.given_name || ' ' || s.surname AS name
+    FROM seasons s
+    LEFT JOIN players pl ON pl.player_id = s.player_id
+    WHERE s.rn = 1
+    ORDER BY s.surname, s.given_name
     LIMIT 25
   `).all(like, like)
   res.json(rows)

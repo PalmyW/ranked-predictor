@@ -57,21 +57,6 @@ export function openDb() {
   db.exec('PRAGMA foreign_keys = ON');
   const schema = readFileSync(SCHEMA_PATH, 'utf8');
   db.exec(schema);
-  // Build the computed season-stats view from STAT_COLS so it stays in sync
-  const aggCols = STAT_COLS.map(([, base]) =>
-    `  SUM(p.stat_${base}) AS tot_${base}, ROUND(AVG(p.stat_${base}), 2) AS avg_${base}`
-  ).join(',\n');
-  db.exec(`CREATE VIEW IF NOT EXISTS v_player_season_stats AS
-    SELECT
-      p.year, p.player_id, p.team_id,
-      t.name AS team_name, t.abbreviation AS team_abbr,
-      MIN(p.given_name) AS given_name, MIN(p.surname) AS surname,
-      MIN(p.position) AS position, MIN(p.jumper_number) AS jumper_number,
-      COUNT(*) AS games_played,
-${aggCols}
-    FROM player_match_stats p
-    JOIN teams t ON p.team_id = t.team_id
-    GROUP BY p.year, p.player_id, p.team_id`);
   return db;
 }
 

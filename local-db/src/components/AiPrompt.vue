@@ -8,10 +8,21 @@ const prompt      = ref('')
 const loading     = ref(false)
 const textareaRef = ref(null)
 
-// Terminal-style prompt history
-const promptHistory = ref([])  // oldest → newest
-const historyIdx    = ref(-1)  // -1 = editing draft; 0 = newest; n-1 = oldest
-const draft         = ref('')  // saved in-progress text while browsing history
+// Terminal-style prompt history (persisted to localStorage)
+const HISTORY_KEY = 'afl_ai_prompt_history'
+const MAX_HISTORY = 100
+
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) ?? '[]') } catch { return [] }
+}
+
+function saveHistory(h) {
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(h)) } catch {}
+}
+
+const promptHistory = ref(loadHistory())  // oldest → newest
+const historyIdx    = ref(-1)             // -1 = editing draft; 0 = newest; n-1 = oldest
+const draft         = ref('')             // saved in-progress text while browsing history
 const inHistory     = ref(false)
 
 function ta() {
@@ -77,6 +88,8 @@ async function ask() {
   // Push to history if different from last entry
   if (promptHistory.value[promptHistory.value.length - 1] !== text) {
     promptHistory.value.push(text)
+    if (promptHistory.value.length > MAX_HISTORY) promptHistory.value.shift()
+    saveHistory(promptHistory.value)
   }
   historyIdx.value = -1
   draft.value = ''

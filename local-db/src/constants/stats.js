@@ -1,54 +1,19 @@
 export const STAT_BASES = [
-  'goals','behinds','kicks','handballs','disposals','marks',
-  'bounces','tackles','contested_possessions','uncontested_possessions',
-  'total_possessions','inside50s','marks_inside50','contested_marks','hitouts',
-  'one_percenters','disposal_efficiency','clangers','frees_for','frees_against',
-  'dream_team_points','rebound50s','goal_assists','goal_accuracy','rating_points',
-  'turnovers','intercepts','tackles_inside50','shots_at_goal','score_involvements',
-  'metres_gained','centre_clearances','stoppage_clearances','total_clearances',
-  'effective_kicks','kick_efficiency','kick_to_handball_ratio','effective_disposals',
-  'marks_on_lead','intercept_marks','contested_possession_rate','hitouts_to_advantage',
-  'hitout_win_percentage','hitout_to_advantage_rate','ground_ball_gets',
-  'f50_ground_ball_gets','score_launches','pressure_acts','def_half_pressure_acts',
-  'spoils','ruck_contests','contest_def_one_on_ones','contest_def_losses',
-  'contest_def_loss_percentage','contest_off_one_on_ones','contest_off_wins',
-  'contest_off_wins_percentage','centre_bounce_attendances','kickins','kickins_playon',
-  'time_on_ground_percentage',
-]
-
-export const STAT_GROUPS = [
-  {
-    title: 'Core',
-    fields: [
-      'goals','behinds','kicks','handballs','disposals','marks',
-      'bounces','tackles','contested_possessions','uncontested_possessions',
-      'total_possessions','inside50s','marks_inside50','contested_marks','hitouts',
-      'one_percenters','disposal_efficiency','clangers','frees_for','frees_against',
-      'dream_team_points','rebound50s','goal_assists','goal_accuracy','rating_points',
-      'turnovers','intercepts','tackles_inside50','shots_at_goal','score_involvements',
-      'metres_gained',
-    ],
-  },
-  {
-    title: 'Clearances',
-    fields: ['centre_clearances','stoppage_clearances','total_clearances'],
-  },
-  {
-    title: 'Extended',
-    fields: [
-      'effective_kicks','kick_efficiency','kick_to_handball_ratio','effective_disposals',
-      'marks_on_lead','intercept_marks','contested_possession_rate','hitouts_to_advantage',
-      'hitout_win_percentage','hitout_to_advantage_rate','ground_ball_gets',
-      'f50_ground_ball_gets','score_launches','pressure_acts','def_half_pressure_acts',
-      'spoils','ruck_contests','contest_def_one_on_ones','contest_def_losses',
-      'contest_def_loss_percentage','contest_off_one_on_ones','contest_off_wins',
-      'contest_off_wins_percentage','centre_bounce_attendances','kickins','kickins_playon',
-    ],
-  },
-  {
-    title: 'TOG',
-    fields: ['time_on_ground_percentage'],
-  },
+  'behinds','bounces','centre_bounce_attendances','centre_clearances',
+  'clangers','contest_def_loss_percentage','contest_def_losses','contest_def_one_on_ones',
+  'contest_off_one_on_ones','contest_off_wins','contest_off_wins_percentage',
+  'contested_marks','contested_possession_rate','contested_possessions',
+  'def_half_pressure_acts','disposal_efficiency','disposals','dream_team_points',
+  'effective_disposals','effective_kicks','f50_ground_ball_gets',
+  'frees_against','frees_for','goal_accuracy','goal_assists','goals',
+  'ground_ball_gets','handballs','hitout_to_advantage_rate','hitout_win_percentage',
+  'hitouts','hitouts_to_advantage','inside50s','intercept_marks','intercepts',
+  'kick_efficiency','kick_to_handball_ratio','kickins','kickins_playon','kicks',
+  'marks','marks_inside50','marks_on_lead','metres_gained','one_percenters',
+  'pressure_acts','rating_points','rebound50s','ruck_contests',
+  'score_involvements','score_launches','shots_at_goal','spoils',
+  'stoppage_clearances','tackles','tackles_inside50','time_on_ground_percentage',
+  'total_clearances','total_possessions','turnovers','uncontested_possessions',
 ]
 
 // Bases that represent rates / percentages — should never be summed into a season total
@@ -56,14 +21,10 @@ const PCT_KW = ['percentage', 'efficiency', 'accuracy', 'rate', 'ratio']
 export const isPct = base => PCT_KW.some(k => base.includes(k))
 
 export function makeStatSections(filterPct = false) {
-  return STAT_GROUPS
-    .map(g => ({
-      title: g.title,
-      cols: g.fields
-        .filter(f => !filterPct || !isPct(f))
-        .map(f => ({ key: f, label: statLabel(f) })),
-    }))
-    .filter(g => g.cols.length > 0)
+  const cols = STAT_BASES
+    .filter(f => !filterPct || !isPct(f))
+    .map(f => ({ key: f, label: statLabel(f) }))
+  return [{ flat: true, cols }]
 }
 
 export const STAT_SECTIONS = makeStatSections()
@@ -80,6 +41,19 @@ export const MATCH_SECTIONS = [{ flat: true, cols: [
 
 export function statLabel(base) {
   return base.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
+export const STAR_SIGN_EMOJI = {
+  Aries: '♈', Taurus: '♉', Gemini: '♊', Cancer: '♋',
+  Leo: '♌', Virgo: '♍', Libra: '♎', Scorpio: '♏',
+  Sagittarius: '♐', Capricorn: '♑', Aquarius: '♒', Pisces: '♓',
+}
+
+// "Leo" → "♌ Leo" (emoji prefix when the sign is recognised)
+export function fmtStarSign(sign) {
+  if (sign === null || sign === undefined || sign === '') return '—'
+  const emoji = STAR_SIGN_EMOJI[sign]
+  return emoji ? `${emoji} ${sign}` : String(sign)
 }
 
 export function fmt(v) {
@@ -102,14 +76,9 @@ export function numCol(field, title, width = 80) {
 
 export function makeStatCols(prefix) {
   const totMode = prefix === 'tot_'
-  return STAT_GROUPS
-    .map(g => ({
-      title: g.title,
-      columns: g.fields
-        .filter(f => !totMode || !isPct(f))
-        .map(f => numCol(`${prefix}${f}`, statLabel(f), 90)),
-    }))
-    .filter(g => g.columns.length > 0)
+  return STAT_BASES
+    .filter(f => !totMode || !isPct(f))
+    .map(f => numCol(`${prefix}${f}`, statLabel(f), 90))
 }
 
 export const ROUND_OPTIONS = [
@@ -124,10 +93,17 @@ export const SORT_DIR_OPTIONS = [
 ]
 
 export const SAMPLE_QUERY =
-  `SELECT given_name || ' ' || surname AS player, team_name, games_played,\n` +
-  `  avg_disposals, avg_kicks, avg_handballs, avg_marks, avg_tackles\n` +
-  `FROM v_player_season_stats\n` +
-  `WHERE year = (SELECT MAX(year) FROM v_player_season_stats)\n` +
-  `  AND games_played >= 10\n` +
+  `SELECT MIN(p.given_name) || ' ' || MIN(p.surname) AS player,\n` +
+  `  t.name AS team_name, COUNT(*) AS games_played,\n` +
+  `  ROUND(AVG(p.stat_disposals), 2) AS avg_disposals,\n` +
+  `  ROUND(AVG(p.stat_kicks), 2) AS avg_kicks,\n` +
+  `  ROUND(AVG(p.stat_handballs), 2) AS avg_handballs,\n` +
+  `  ROUND(AVG(p.stat_marks), 2) AS avg_marks,\n` +
+  `  ROUND(AVG(p.stat_tackles), 2) AS avg_tackles\n` +
+  `FROM player_match_stats p\n` +
+  `JOIN teams t ON p.team_id = t.team_id\n` +
+  `WHERE p.year = (SELECT MAX(year) FROM player_match_stats)\n` +
+  `GROUP BY p.player_id, p.team_id\n` +
+  `HAVING COUNT(*) >= 10\n` +
   `ORDER BY avg_disposals DESC\n` +
   `LIMIT 20`
