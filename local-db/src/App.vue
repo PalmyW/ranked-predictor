@@ -16,7 +16,7 @@ const route = useRoute()
 
 const TABS = [
   { name: 'matches',      label: 'Matches',           icon: 'mdi-calendar-month-outline' },
-  { name: 'match-stats',  label: 'Player Match Stats', icon: 'mdi-account-group-outline' },
+  { name: 'match-stats',  label: 'Match Stats',         icon: 'mdi-account-group-outline' },
   { name: 'season-stats', label: 'Season Stats',       icon: 'mdi-chart-bar' },
   { name: 'player',       label: 'Players',            icon: 'mdi-account-outline' },
   { name: 'query',        label: 'SQL Query',           icon: 'mdi-database-search-outline' },

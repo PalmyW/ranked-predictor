@@ -17,9 +17,9 @@ const year   = ref('')
 const round  = ref('')
 const team   = ref('')
 const status = ref('CONCLUDED')
-const rows   = ref([])
-const loading = ref(false)
-const tableRef = ref(null)
+const rows            = ref([])
+const loading         = ref(false)
+const tableRef        = ref(null)
 
 const COL_VIS_KEY = 'afl_col_vis_matches'
 const visibility = ref((() => {
@@ -120,7 +120,7 @@ function onColChange({ key, visible }) {
   try { visible ? tab.showColumn(key) : tab.hideColumn(key) } catch {}
 }
 
-function onRowClick({ event, data }) {
+function onRowClick({ data }) {
   if (!data.match_id) return
   router.push({ name: 'match-stats', query: { match: data.match_id } })
 }

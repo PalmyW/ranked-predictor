@@ -2,12 +2,14 @@
 import { ref, computed, watch, onMounted } from 'vue'
 
 const props = defineProps({
-  columns:   { type: Array,   required: true },
-  data:      { type: Array,   default: () => [] },
-  layout:    { type: String,  default: 'fitDataStretch' },
-  height:    { type: String,  default: 'calc(100vh - 180px)' },
-  pageSize:  { type: Number,  default: 50 },
-  clickable: { type: Boolean, default: false },
+  columns:      { type: Array,   required: true },
+  data:         { type: Array,   default: () => [] },
+  layout:       { type: String,  default: 'fitDataStretch' },
+  height:       { type: String,  default: 'calc(100vh - 180px)' },
+  pageSize:     { type: Number,  default: 50 },
+  clickable:    { type: Boolean, default: false },
+  selectedKey:  { type: String,  default: null },
+  selectedVal:  { default: null },
 })
 
 const emit = defineEmits(['row-click', 'table-ready'])
@@ -214,7 +216,7 @@ onMounted(() => emit('table-ready', api))
           <tr
             v-for="(row, i) in pagedData"
             :key="i"
-            :class="['dt-row', i % 2 === 1 && 'dt-row--even', clickable && 'dt-row--click']"
+            :class="['dt-row', i % 2 === 1 && 'dt-row--even', clickable && 'dt-row--click', selectedKey && row[selectedKey] === selectedVal && 'dt-row--selected']"
             @click="emit('row-click', { event: $event, data: row })"
           >
             <td
@@ -355,6 +357,11 @@ onMounted(() => emit('table-ready', api))
 
 .dt-row--click:hover {
   background: rgba(var(--v-theme-primary), 0.1) !important;
+}
+
+.dt-row--selected {
+  background: rgba(var(--v-theme-primary), 0.14) !important;
+  box-shadow: inset 3px 0 0 rgb(var(--v-theme-primary));
 }
 
 /* ── Cells ───────────────────────────────────────────────────────────────── */

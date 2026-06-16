@@ -18,11 +18,7 @@ const db = openDb();
 const app = express();
 app.use(express.json());
 
-const isProd = process.env.NODE_ENV === 'production';
-app.use(express.static(join(__dirname, isProd ? '../dist' : '../public')));
-if (isProd) {
-  app.get('*', (_, res) => res.sendFile(join(__dirname, '../dist/index.html')));
-}
+app.use(express.static(join(__dirname, '../dist')));
 
 // Percentage/rate/efficiency/ratio columns — avg only, never totaled
 const PCT_KW = ['percentage', 'efficiency', 'accuracy', 'rate', 'ratio']
@@ -130,6 +126,42 @@ app.get('/api/matches/:matchId', (req, res) => {
   res.json(row);
 });
 
+app.get('/api/match-details/:matchId', (req, res) => {
+  const row = db.prepare(`
+    SELECT md.*,
+      m.home_goals, m.home_behinds, m.home_score,
+      m.away_goals, m.away_behinds, m.away_score,
+      m.utc_start_time, m.round_number, m.round_name,
+      ht.name AS home_team_name, ht.abbreviation AS home_abbr,
+      at.name AS away_team_name, at.abbreviation AS away_abbr,
+      v.name AS venue_name
+    FROM match_details md
+    JOIN matches m ON md.match_id = m.match_id
+    JOIN teams ht ON m.home_team_id = ht.team_id
+    JOIN teams at ON m.away_team_id = at.team_id
+    LEFT JOIN venues v ON m.venue_id = v.venue_id
+    WHERE md.match_id = ?
+  `).get(req.params.matchId);
+  if (!row) return res.status(404).json({ error: 'Not found' });
+  res.json(row);
+});
+
+app.get('/api/score-events/:matchId', (req, res) => {
+  const rows = db.prepare(`
+    SELECT se.seq, se.period_number, se.period_seconds,
+           se.score_type, se.score_value, se.home_or_away,
+           se.aggregate_home, se.aggregate_away,
+           se.player_id, p.given_name, p.surname,
+           t.abbreviation AS team_abbr
+    FROM score_events se
+    LEFT JOIN players p ON se.player_id = p.player_id
+    JOIN  teams t       ON se.team_id   = t.team_id
+    WHERE se.match_id = ?
+    ORDER BY se.seq
+  `).all(req.params.matchId);
+  res.json(rows);
+});
+
 // ── Player Match Stats ────────────────────────────────────────────────────────
 
 app.get('/api/player-match-stats', (req, res) => {
@@ -226,6 +258,28 @@ seasons: year, comp_season_id, comp_season_name
 teams: team_id, name, abbreviation, nickname
 venues: venue_id, name, abbreviation, location, state, timezone, land_owner
 matches: match_id, year, comp_season_id, round_number, round_name, round_abbreviation, home_team_id, away_team_id, venue_id, utc_start_time, status, home_goals, home_behinds, home_score, away_goals, away_behinds, away_score
+match_details: match_id (FK→matches), weather_description, weather_temp_celsius, weather_type,
+  home_q1_goals, home_q1_behinds, home_q1_score, home_q2_goals, home_q2_behinds, home_q2_score,
+  home_q3_goals, home_q3_behinds, home_q3_score, home_q4_goals, home_q4_behinds, home_q4_score,
+  away_q1_goals, away_q1_behinds, away_q1_score, away_q2_goals, away_q2_behinds, away_q2_score,
+  away_q3_goals, away_q3_behinds, away_q3_score, away_q4_goals, away_q4_behinds, away_q4_score,
+  home_rushed_behinds, away_rushed_behinds, home_minutes_in_front, away_minutes_in_front,
+  final_margin (home_score - away_score; positive = home won, negative = away won),
+  halftime_margin (home - away at end of Q2; positive = home leading),
+  three_quarter_margin (home - away at end of Q3; positive = home leading),
+  max_margin_q1, max_margin_q1_team ('H'=home/'A'=away), max_margin_q1_secs (periodSeconds when it occurred),
+  max_margin_q2, max_margin_q2_team, max_margin_q2_secs,
+  max_margin_q3, max_margin_q3_team, max_margin_q3_secs,
+  max_margin_q4, max_margin_q4_team, max_margin_q4_secs,
+  max_margin (biggest absolute margin in whole game), max_margin_team ('H'/'A'), max_margin_secs, max_margin_period (quarter it occurred in),
+  lead_changes (integer: how many times the lead changed hands),
+  largest_deficit_recovered (integer: biggest points deficit the eventual winner had to overcome; 0 if they led all game)
+  — score_worm_json is raw JSON, do NOT query it directly; use the columns above instead
+score_events: match_id (FK→matches), seq (0-based order within match), player_id (FK→players; NULL for RUSHED_BEHIND),
+  team_id (FK→teams), period_number (1–4), period_seconds (seconds into that quarter),
+  score_type ('GOAL'|'BEHIND'|'RUSHED_BEHIND'), score_value (6 for goal, 1 for behind/rushed),
+  home_or_away ('HOME'|'AWAY'), aggregate_home, aggregate_away (running totals after this score)
+  — indexes on player_id and team_id; use for queries like "all goals by X", "most scores in Q4", etc.
 player_match_stats: id, match_id, year, round_number, player_id, given_name, surname, team_id, position, jumper_number, [stat_{base} for each base listed below]
 players: player_id (PK, join to player_match_stats), given_name, surname, date_of_birth (TEXT "DD/MM/YYYY"), height_cm, weight_kg, kicking_foot ("LEFT"|"RIGHT"), state_of_origin, position, draft_year, draft_position, draft_type, debut_year, recruited_from, photo_url, bio, star_sign
   — age is NOT stored; compute it as: CAST((julianday('now') - julianday(substr(date_of_birth,7,4)||'-'||substr(date_of_birth,4,2)||'-'||substr(date_of_birth,1,2))) / 365.25 AS INTEGER)
@@ -460,6 +514,15 @@ app.get('/api/schema', (req, res) => {
     }
   }
   res.json(schema);
+});
+
+app.get('*', (_, res) => {
+  const distIndex = join(__dirname, '../dist/index.html');
+  if (existsSync(distIndex)) {
+    res.sendFile(distIndex);
+  } else {
+    res.status(503).send('Run `npm run build` first, or use `npm run dev` to launch the Vite frontend.');
+  }
 });
 
 const server = app.listen(PORT, '127.0.0.1', () => {

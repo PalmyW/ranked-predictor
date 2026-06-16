@@ -1,0 +1,9 @@
+services:
+  local-db:
+    build: .
+    ports:
+      - "3737:3737"
+    volumes:
+      - ./afl-stats.db:/app/afl-stats.db:ro
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}

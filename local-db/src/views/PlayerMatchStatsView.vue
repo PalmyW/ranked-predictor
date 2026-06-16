@@ -1,45 +1,27 @@
 <script setup>
-import { ref, computed, inject, onMounted, onActivated, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi.js'
 import DataTable from '@/components/DataTable.vue'
 import ColToggle from '@/components/ColToggle.vue'
-import { STAT_SECTIONS, makeStatCols, ROUND_OPTIONS, SORT_DIR_OPTIONS, STAT_BASES, statLabel } from '@/constants/stats.js'
+import MatchDetailsPanel from '@/components/MatchDetailsPanel.vue'
+import { STAT_SECTIONS, makeStatCols } from '@/constants/stats.js'
 
 const route  = useRoute()
 const router = useRouter()
 const { api } = useApi()
 
-const seasons = inject('seasons')
-const teams   = inject('teams')
+const rows        = ref([])
+const scoreEvents = ref([])
+const loading     = ref(false)
+const tableRef    = ref(null)
 
-const year     = ref('')
-const round    = ref('')
-const team     = ref('')
-const match    = ref('')
-const sortBase = ref('disposals')
-const dir      = ref('desc')
-const rows     = ref([])
-const loading  = ref(false)
-const tableRef = ref(null)
-const lastCrossTabMatch = ref('')
+const matchId = computed(() => route.query.match?.trim() ?? '')
 
 const COL_VIS_KEY = 'afl_col_vis_pms'
 const visibility = ref((() => {
   try { return JSON.parse(localStorage.getItem(COL_VIS_KEY) ?? '{}') } catch { return {} }
 })())
-
-const seasonOptions = computed(() => [
-  { value: '', title: 'All seasons' },
-  ...(seasons?.value ?? []).map(s => ({ value: String(s.year), title: String(s.year) })),
-])
-
-const teamOptions = computed(() => [
-  { value: '', title: 'All teams' },
-  ...(teams?.value ?? []).map(t => ({ value: t.team_id, title: t.name })),
-])
-
-const sortOptions = STAT_BASES.map(b => ({ value: b, title: statLabel(b) }))
 
 const columns = [
   {
@@ -49,12 +31,9 @@ const columns = [
       return `${r.given_name} ${r.surname}`
     },
   },
-  { title: 'Team',  field: 'team_name',     minWidth: 130 },
-  { title: 'Pos',   field: 'position',      width: 55 },
-  { title: '#',     field: 'jumper_number', width: 45, hozAlign: 'center' },
-  { title: 'Yr',    field: 'year',          width: 55 },
-  { title: 'Rd',    field: 'round_number',  width: 50, hozAlign: 'center' },
-  { title: 'Match', field: 'match_id',      width: 170 },
+  { title: 'Team', field: 'team_name', minWidth: 130 },
+  { title: 'Pos',  field: 'position',  width: 55 },
+  { title: '#',    field: 'jumper_number', width: 45, hozAlign: 'center' },
   ...makeStatCols('stat_'),
 ]
 
@@ -65,37 +44,22 @@ function applyVisToTable(tab) {
   }
 }
 
-async function loadPMS() {
+async function load(id) {
+  if (!id) { rows.value = []; scoreEvents.value = []; return }
   loading.value = true
   try {
-    const params = new URLSearchParams()
-    if (year.value)        params.set('year', year.value)
-    if (round.value)       params.set('round', round.value)
-    if (team.value)        params.set('team', team.value)
-    if (match.value.trim()) params.set('match', match.value.trim())
-    params.set('sort', `stat_${sortBase.value}`)
-    params.set('dir', dir.value)
-    params.set('limit', 1000)
-    rows.value = await api(`/api/player-match-stats?${params}`)
-    router.replace({
-      query: {
-        ...(year.value         && { year:  year.value }),
-        ...(round.value        && { round: round.value }),
-        ...(team.value         && { team:  team.value }),
-        ...(match.value.trim() && { match: match.value.trim() }),
-        sort: sortBase.value,
-        dir: dir.value,
-      },
-    })
+    const params = new URLSearchParams({ match: id, sort: 'stat_disposals', dir: 'desc', limit: 100 })
+    ;[rows.value, scoreEvents.value] = await Promise.all([
+      api(`/api/player-match-stats?${params}`),
+      api(`/api/score-events/${id}`),
+    ])
     applyVisToTable(tableRef.value?.getTable())
   } finally {
     loading.value = false
   }
 }
 
-function onTableReady(tab) {
-  applyVisToTable(tab)
-}
+function onTableReady(tab) { applyVisToTable(tab) }
 
 function onColChange({ key, visible }) {
   localStorage.setItem(COL_VIS_KEY, JSON.stringify(visibility.value))
@@ -105,95 +69,42 @@ function onColChange({ key, visible }) {
 }
 
 function exportCsv() {
-  tableRef.value?.getTable()?.download('csv', 'afl-player-match-stats.csv')
+  tableRef.value?.getTable()?.download('csv', `afl-${matchId.value}.csv`)
 }
 
 function onRowClick({ data }) {
   if (data.player_id) router.push({ name: 'player', query: { id: data.player_id } })
 }
 
-onMounted(() => {
-  const q = route.query
-  if (q.year)  year.value     = q.year
-  if (q.round) round.value    = q.round
-  if (q.team)  team.value     = q.team
-  if (q.match) { match.value  = q.match; lastCrossTabMatch.value = q.match }
-  if (q.sort)  sortBase.value = q.sort
-  if (q.dir)   dir.value      = q.dir
+function secsToMin(secs) {
+  const m = Math.floor(secs / 60)
+  const s = String(Math.round(secs % 60)).padStart(2, '0')
+  return `${m}:${s}`
+}
 
-  function doLoad() {
-    if (!year.value && !match.value && seasons?.value?.length) {
-      year.value = String(seasons.value[0].year)
-    }
-    loadPMS()
+// Group score events by quarter for display
+const eventsByQuarter = computed(() => {
+  const groups = {}
+  for (const ev of scoreEvents.value) {
+    const q = ev.period_number
+    if (!groups[q]) groups[q] = []
+    groups[q].push(ev)
   }
-
-  if (seasons?.value?.length || Object.keys(q).length > 0) {
-    doLoad()
-  } else {
-    const stop = watch(seasons, newVal => {
-      if (newVal?.length) { stop(); doLoad() }
-    })
-  }
+  return Object.entries(groups).map(([q, events]) => ({ quarter: Number(q), events }))
 })
 
-onActivated(() => {
-  const newMatch = route.query.match
-  if (newMatch && newMatch !== lastCrossTabMatch.value) {
-    year.value  = ''
-    round.value = ''
-    team.value  = ''
-    match.value = newMatch
-    lastCrossTabMatch.value = newMatch
-    loadPMS()
-  }
-})
+watch(matchId, id => load(id))
+onMounted(() => load(matchId.value))
 </script>
 
 <template>
   <div>
     <v-row align="center" dense class="mb-4">
       <v-col cols="auto">
-        <v-select
-          v-model="year" :items="seasonOptions" label="Season"
-          density="comfortable" variant="outlined" hide-details style="min-width:130px"
-        />
-      </v-col>
-      <v-col cols="auto">
-        <v-select
-          v-model="round" :items="ROUND_OPTIONS" label="Round"
-          density="comfortable" variant="outlined" hide-details style="min-width:130px"
-        />
-      </v-col>
-      <v-col cols="auto">
-        <v-select
-          v-model="team" :items="teamOptions" label="Team"
-          density="comfortable" variant="outlined" hide-details style="min-width:180px"
-        />
-      </v-col>
-      <v-col cols="auto">
-        <v-text-field
-          v-model="match" label="Match ID"
-          density="comfortable" variant="outlined" hide-details style="min-width:190px"
-          clearable @keydown.enter="loadPMS"
-        />
-      </v-col>
-      <v-col cols="auto">
-        <v-select
-          v-model="sortBase" :items="sortOptions" label="Sort by"
-          density="comfortable" variant="outlined" hide-details style="min-width:160px"
-        />
-      </v-col>
-      <v-col cols="auto">
-        <v-select
-          v-model="dir" :items="SORT_DIR_OPTIONS" label="Direction"
-          density="comfortable" variant="outlined" hide-details style="min-width:140px"
-        />
-      </v-col>
-      <v-col cols="auto">
-        <v-btn @click="loadPMS" :loading="loading" color="primary" variant="filled" size="small">
-          Load
-        </v-btn>
+        <v-btn
+          variant="tonal" size="small" prepend-icon="mdi-arrow-left"
+          @click="router.push({ name: 'matches' })"
+        >Matches</v-btn>
       </v-col>
       <v-spacer />
       <v-col cols="auto">
@@ -205,18 +116,103 @@ onActivated(() => {
         </v-btn>
       </v-col>
       <v-col cols="auto">
-        <span class="text-caption text-medium-emphasis">{{ rows.length.toLocaleString() }} rows</span>
+        <span class="text-caption text-medium-emphasis">{{ rows.length }} players</span>
       </v-col>
     </v-row>
 
-    <DataTable
-      ref="tableRef"
-      :columns="columns"
-      :data="rows"
-      layout="fitDataStretch"
-      :clickable="true"
-      @table-ready="onTableReady"
-      @row-click="onRowClick"
-    />
+    <div v-if="!matchId" class="text-center text-medium-emphasis py-12">
+      Select a match from the <a href="#/matches" class="text-primary">Matches</a> page.
+    </div>
+
+    <template v-else>
+      <MatchDetailsPanel :match-id="matchId" class="mb-4" />
+
+      <DataTable
+        ref="tableRef"
+        :columns="columns"
+        :data="rows"
+        layout="fitDataStretch"
+        :clickable="true"
+        @table-ready="onTableReady"
+        @row-click="onRowClick"
+      />
+
+      <!-- Score events -->
+      <v-card v-if="scoreEvents.length" color="surface" rounded="lg" elevation="2" class="mt-4">
+        <v-card-text class="pa-4">
+          <div class="text-caption text-medium-emphasis mb-3" style="font-weight:600; letter-spacing:0.06em; text-transform:uppercase">Scoring</div>
+
+          <div v-for="group in eventsByQuarter" :key="group.quarter" class="se-quarter">
+            <div class="se-q-label">Q{{ group.quarter }}</div>
+            <table class="se-table">
+              <tbody>
+                <tr v-for="ev in group.events" :key="ev.seq"
+                  :class="['se-row', ev.home_or_away === 'HOME' ? 'se-home' : 'se-away']"
+                >
+                  <td class="se-time">{{ secsToMin(ev.period_seconds) }}</td>
+                  <td class="se-team">{{ ev.team_abbr }}</td>
+                  <td class="se-player">
+                    <span v-if="ev.given_name">{{ ev.given_name }} {{ ev.surname }}</span>
+                    <span v-else class="se-rushed">Rushed</span>
+                  </td>
+                  <td class="se-type">
+                    <span :class="['se-badge', ev.score_type === 'GOAL' ? 'se-badge--goal' : 'se-badge--behind']">
+                      {{ ev.score_type === 'GOAL' ? 'GOAL' : ev.score_type === 'RUSHED_BEHIND' ? 'RB' : 'BHD' }}
+                    </span>
+                  </td>
+                  <td class="se-score">{{ ev.aggregate_home }} – {{ ev.aggregate_away }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </v-card-text>
+      </v-card>
+    </template>
   </div>
 </template>
+
+<style scoped>
+.se-quarter { margin-bottom: 16px; }
+.se-quarter:last-child { margin-bottom: 0; }
+
+.se-q-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), 0.35);
+  margin-bottom: 4px;
+}
+
+.se-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.se-row {
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  font-size: 12px;
+}
+.se-row:last-child { border-bottom: none; }
+
+.se-home { border-left: 2px solid #4fc3f7; }
+.se-away { border-left: 2px solid #ff8a65; }
+
+.se-time   { width: 42px; padding: 5px 8px; color: rgba(var(--v-theme-on-surface), 0.45); font-variant-numeric: tabular-nums; }
+.se-team   { width: 42px; padding: 5px 4px; font-weight: 700; font-size: 11px; }
+.se-player { padding: 5px 8px; color: rgba(var(--v-theme-on-surface), 0.85); }
+.se-rushed { color: rgba(var(--v-theme-on-surface), 0.35); font-style: italic; }
+.se-type   { width: 48px; padding: 5px 4px; }
+.se-score  { width: 60px; padding: 5px 8px; text-align: right; font-variant-numeric: tabular-nums; color: rgba(var(--v-theme-on-surface), 0.55); }
+
+.se-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.se-badge--goal   { background: rgba(79, 195, 247, 0.18); color: #4fc3f7; }
+.se-badge--behind { background: rgba(var(--v-theme-on-surface), 0.08); color: rgba(var(--v-theme-on-surface), 0.5); }
+</style>

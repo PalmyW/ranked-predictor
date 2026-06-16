@@ -158,6 +158,83 @@ CREATE TABLE IF NOT EXISTS players (
   star_sign       TEXT
 );
 
+CREATE TABLE IF NOT EXISTS match_details (
+  match_id              TEXT PRIMARY KEY REFERENCES matches(match_id),
+  weather_description   TEXT,
+  weather_temp_celsius  REAL,
+  weather_type          TEXT,
+  home_q1_goals         INTEGER,
+  home_q1_behinds       INTEGER,
+  home_q1_score         INTEGER,
+  home_q2_goals         INTEGER,
+  home_q2_behinds       INTEGER,
+  home_q2_score         INTEGER,
+  home_q3_goals         INTEGER,
+  home_q3_behinds       INTEGER,
+  home_q3_score         INTEGER,
+  home_q4_goals         INTEGER,
+  home_q4_behinds       INTEGER,
+  home_q4_score         INTEGER,
+  away_q1_goals         INTEGER,
+  away_q1_behinds       INTEGER,
+  away_q1_score         INTEGER,
+  away_q2_goals         INTEGER,
+  away_q2_behinds       INTEGER,
+  away_q2_score         INTEGER,
+  away_q3_goals         INTEGER,
+  away_q3_behinds       INTEGER,
+  away_q3_score         INTEGER,
+  away_q4_goals         INTEGER,
+  away_q4_behinds       INTEGER,
+  away_q4_score         INTEGER,
+  home_rushed_behinds   INTEGER,
+  away_rushed_behinds   INTEGER,
+  home_minutes_in_front REAL,
+  away_minutes_in_front REAL,
+  score_worm_json       TEXT,
+  last_updated          TEXT,
+  -- Worm-derived metrics (computed at import time)
+  final_margin              INTEGER,  -- home_score - away_score (positive = home won)
+  halftime_margin           INTEGER,  -- home - away at end of Q2 (positive = home leading)
+  three_quarter_margin      INTEGER,  -- home - away at end of Q3 (positive = home leading)
+  max_margin_q1             INTEGER,  -- max |margin| at any point during Q1
+  max_margin_q1_team        TEXT,     -- 'H' or 'A' — who held that lead
+  max_margin_q1_secs        INTEGER,  -- periodSeconds when it happened
+  max_margin_q2             INTEGER,
+  max_margin_q2_team        TEXT,
+  max_margin_q2_secs        INTEGER,
+  max_margin_q3             INTEGER,
+  max_margin_q3_team        TEXT,
+  max_margin_q3_secs        INTEGER,
+  max_margin_q4             INTEGER,
+  max_margin_q4_team        TEXT,
+  max_margin_q4_secs        INTEGER,
+  max_margin                INTEGER,  -- max |margin| at any point in the game
+  max_margin_team           TEXT,     -- 'H' or 'A' — who held the overall biggest lead
+  max_margin_secs           INTEGER,  -- periodSeconds within max_margin_period
+  max_margin_period         INTEGER,  -- quarter in which the overall biggest lead occurred
+  lead_changes              INTEGER,  -- number of times the lead changed hands
+  largest_deficit_recovered INTEGER   -- biggest deficit the eventual winner had to overcome
+);
+
+CREATE TABLE IF NOT EXISTS score_events (
+  match_id       TEXT    NOT NULL REFERENCES matches(match_id),
+  seq            INTEGER NOT NULL,  -- 0-based position in scoringEvents array
+  player_id      TEXT,              -- NULL for RUSHED_BEHIND
+  team_id        TEXT    NOT NULL,
+  period_number  INTEGER NOT NULL,
+  period_seconds INTEGER NOT NULL,
+  score_type     TEXT    NOT NULL,  -- 'GOAL', 'BEHIND', 'RUSHED_BEHIND'
+  score_value    INTEGER NOT NULL,
+  home_or_away   TEXT    NOT NULL,  -- 'HOME' or 'AWAY'
+  aggregate_home INTEGER NOT NULL,
+  aggregate_away INTEGER NOT NULL,
+  PRIMARY KEY (match_id, seq)
+);
+
+CREATE INDEX IF NOT EXISTS idx_score_events_player ON score_events (player_id);
+CREATE INDEX IF NOT EXISTS idx_score_events_team   ON score_events (team_id);
+
 CREATE TABLE IF NOT EXISTS import_log (
   file_path   TEXT PRIMARY KEY,
   file_size   INTEGER NOT NULL,

@@ -54,6 +54,29 @@ export function openDb() {
       draft_position, draft_type, debut_year, recruited_from, photo_url, bio FROM players_old`);
     db.exec('DROP TABLE players_old');
   }
+  // Migration: add worm metric columns to match_details
+  const hasMatchDetails = db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='match_details'").get();
+  if (hasMatchDetails) {
+    const intCols = [
+      'final_margin', 'halftime_margin', 'three_quarter_margin',
+      'max_margin_q1', 'max_margin_q2', 'max_margin_q3', 'max_margin_q4',
+      'max_margin', 'lead_changes', 'largest_deficit_recovered',
+      'max_margin_q1_secs', 'max_margin_q2_secs', 'max_margin_q3_secs', 'max_margin_q4_secs',
+      'max_margin_secs', 'max_margin_period',
+    ];
+    const textCols = [
+      'max_margin_q1_team', 'max_margin_q2_team', 'max_margin_q3_team', 'max_margin_q4_team',
+      'max_margin_team',
+    ];
+    for (const col of intCols) {
+      if (!db.prepare(`SELECT 1 FROM pragma_table_info('match_details') WHERE name='${col}'`).get())
+        db.exec(`ALTER TABLE match_details ADD COLUMN ${col} INTEGER`);
+    }
+    for (const col of textCols) {
+      if (!db.prepare(`SELECT 1 FROM pragma_table_info('match_details') WHERE name='${col}'`).get())
+        db.exec(`ALTER TABLE match_details ADD COLUMN ${col} TEXT`);
+    }
+  }
   db.exec('PRAGMA foreign_keys = ON');
   const schema = readFileSync(SCHEMA_PATH, 'utf8');
   db.exec(schema);

@@ -710,7 +710,7 @@ function rankColor({ rank, total }) {
               <dt class="text-body-2 text-medium-emphasis text-truncate" :title="r.label">{{ r.label }}</dt>
               <dd class="d-flex align-center justify-space-between gap-2 ma-0">
                 <span class="text-body-1 font-weight-bold">{{ fmt(r.value) }}</span>
-                <v-chip :color="rankColor(r)" size="small" variant="flat" label class="font-weight-bold">
+                <v-chip :color="rankColor(r)" size="small" variant="outlined" label class="font-weight-semibold" style="border-width:2px">
                   #{{ r.rank }}<span class="ml-1" style="opacity:0.75">/ {{ r.total }}</span>
                 </v-chip>
               </dd>

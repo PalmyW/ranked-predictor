@@ -5,6 +5,7 @@ import { openDb } from './lib/db.js';
 import { importFixtures } from './lib/import-fixtures.js';
 import { importMatchStats } from './lib/import-match-stats.js';
 import { importPlayers } from './lib/import-players.js';
+import { importMatchDetails } from './lib/import-match-details.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, '../../public/data');
@@ -55,6 +56,14 @@ for (const year of years) {
   } else {
     process.stdout.write(`${ms.files} files, ${ms.rows} rows (${ms.skippedFiles ?? 0} unchanged)\n`);
     totalStatRows += ms.rows;
+  }
+
+  process.stdout.write(`[${year}] match details... `);
+  const md = importMatchDetails(db, year, DATA_DIR);
+  if (md.skipped) {
+    process.stdout.write('no match-details directory\n');
+  } else {
+    process.stdout.write(`${md.files} files, ${md.rows} rows (${md.skippedFiles ?? 0} unchanged)\n`);
   }
 
   console.log('');
