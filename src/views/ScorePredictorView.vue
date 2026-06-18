@@ -445,6 +445,14 @@
         <span>Negative = strong defence</span>
       </div>
     </div>
+
+    <!-- Tipping accuracy (retrospective backtest) -->
+    <TippingAccuracy
+      :round-results="roundResults"
+      :tally="tally"
+      :loading="tipsLoading"
+      :venue-adjusted="venueAdjusted"
+    />
   </main>
 </template>
 
@@ -453,6 +461,9 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAFLData } from '../composables/useAFLData'
 import { useScorePredictor } from '../composables/useScorePredictor'
 import type { StrengthSortKey, TeamStrengthRow } from '../composables/useScorePredictor'
+import { useTipsBacktest } from '../composables/useTipsBacktest'
+import { getActiveSeasonYear } from '../config/seasons'
+import TippingAccuracy from '../components/TippingAccuracy.vue'
 
 const BASE_URL = import.meta.env.BASE_URL
 
@@ -467,6 +478,12 @@ const {
   nextRoundPredictions,
   allUpcomingPredictions,
 } = useScorePredictor(matches, venueAdjusted)
+
+const { roundResults, tally, loading: tipsLoading } = useTipsBacktest(
+  matches,
+  getActiveSeasonYear(),
+  venueAdjusted,
+)
 
 const showAllUpcoming = ref(false)
 const sortKey = ref<StrengthSortKey>('attackRank')

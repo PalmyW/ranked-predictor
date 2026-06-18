@@ -29,7 +29,7 @@ const VALID_STATUSES = new Set<MatchStatus>([
   'CONCLUDED', 'LIVE', 'SCHEDULED', 'PLACEHOLDER', 'UNCONFIRMED_TEAMS', 'CONFIRMED_TEAMS',
 ])
 
-function parseMatch(raw: Record<string, unknown>): AflMatch | null {
+export function parseMatch(raw: Record<string, unknown>): AflMatch | null {
   const home = raw.home as Record<string, unknown> | undefined
   const away = raw.away as Record<string, unknown> | undefined
   const homeTeam = home?.team as Record<string, unknown> | undefined
@@ -71,6 +71,22 @@ function parseMatch(raw: Record<string, unknown>): AflMatch | null {
     status: resolvedStatus,
     utcStartTime,
     byeTeamIds,
+  }
+}
+
+// One-shot loader for an arbitrary season's fixture — used to pull previous-season
+// matches as "form" for the tipping backtest. Returns [] if the season isn't on disk.
+export async function fetchSeasonMatches(year: string): Promise<AflMatch[]> {
+  const url = `${import.meta.env.BASE_URL}data/${year}/fixture.json`
+  try {
+    const res = await fetch(url, { cache: 'no-store' })
+    if (!res.ok) return []
+    const data = (await res.json()) as { matches?: unknown[] }
+    return (data.matches as Record<string, unknown>[] ?? [])
+      .map(parseMatch)
+      .filter((m): m is AflMatch => m !== null)
+  } catch {
+    return []
   }
 }
 
