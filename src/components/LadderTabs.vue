@@ -23,9 +23,34 @@
         <div class="flex items-center justify-between mb-3">
           <div>
             <h2 class="text-lg font-bold text-gray-800 dark:text-gray-100">PalmyScore™ Predicted Ladder</h2>
-            <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Match winners determined by PalmyScore™ predicted scores</p>
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+              Match winners determined by {{ palmyVenueAdjusted ? 'home/away' : 'all-games' }} PalmyScore™ predicted scores
+            </p>
           </div>
-          <ScreenshotButton v-if="!capturing" @click="screenshot(palmyCaptureEl, 'palmyscore-predicted-ladder.png')" />
+          <div v-if="!capturing" class="flex items-center gap-2">
+            <!-- All-games / Home-away PalmyScore toggle -->
+            <div class="flex overflow-hidden rounded border border-gray-300 text-xs font-semibold dark:border-gray-600">
+              <button
+                @click="emit('update:palmyVenueAdjusted', false)"
+                class="px-3 py-1 transition-colors"
+                :class="
+                  !palmyVenueAdjusted
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+                "
+              >All Games</button>
+              <button
+                @click="emit('update:palmyVenueAdjusted', true)"
+                class="px-3 py-1 transition-colors"
+                :class="
+                  palmyVenueAdjusted
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+                "
+              >Home/Away</button>
+            </div>
+            <ScreenshotButton @click="screenshot(palmyCaptureEl, 'palmyscore-predicted-ladder.png')" />
+          </div>
         </div>
         <LadderTable :ladder="palmyPredictedLadder" :isLoading="isLoading" :baselineRanking="actualLadder.map(r => r.teamId)" />
       </div>
@@ -215,6 +240,11 @@ const props = defineProps<{
   simStats: SimulationStats | null
   isRunningRange: boolean
   viewOnly?: boolean
+  palmyVenueAdjusted: boolean
+}>()
+
+const emit = defineEmits<{
+  (e: 'update:palmyVenueAdjusted', value: boolean): void
 }>()
 
 const RANGE_COUNTS = [100, 500, 1000, 5000]

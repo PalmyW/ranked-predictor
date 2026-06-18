@@ -93,6 +93,7 @@
             :simStats="simStats"
             :isRunningRange="isRunningRange"
             :viewOnly="!isCurrentSeason"
+            v-model:palmyVenueAdjusted="palmyVenueAdjusted"
           />
 
           <!-- Share (current season only) -->
