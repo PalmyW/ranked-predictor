@@ -20,6 +20,7 @@ const TABS = [
   { name: 'season-stats', label: 'Season Stats',       icon: 'mdi-chart-bar' },
   { name: 'player',       label: 'Players',            icon: 'mdi-account-outline' },
   { name: 'query',        label: 'SQL Query',           icon: 'mdi-database-search-outline' },
+  { name: 'browse',       label: 'DB Browser',          icon: 'mdi-table-search' },
 ]
 
 const currentTab = computed(() => route.name)

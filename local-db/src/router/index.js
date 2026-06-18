@@ -4,6 +4,7 @@ import PlayerMatchStatsView from '@/views/PlayerMatchStatsView.vue'
 import SeasonStatsView      from '@/views/SeasonStatsView.vue'
 import QueryView            from '@/views/QueryView.vue'
 import PlayerView           from '@/views/PlayerView.vue'
+import BrowseView           from '@/views/BrowseView.vue'
 
 export default createRouter({
   history: createWebHashHistory(),
@@ -14,5 +15,6 @@ export default createRouter({
     { path: '/season-stats', name: 'season-stats', component: SeasonStatsView },
     { path: '/query',        name: 'query',        component: QueryView },
     { path: '/player',       name: 'player',       component: PlayerView },
+    { path: '/browse',       name: 'browse',       component: BrowseView },
   ],
 })

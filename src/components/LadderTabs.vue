@@ -19,29 +19,32 @@
     <!-- Tab content -->
     <div class="p-4">
       <!-- PalmyScore Predicted -->
-      <div v-if="activeTab === 'palmy-predicted'">
+      <div v-if="activeTab === 'palmy-predicted'" ref="palmyCaptureEl">
         <div class="flex items-center justify-between mb-3">
           <div>
             <h2 class="text-lg font-bold text-gray-800 dark:text-gray-100">PalmyScore™ Predicted Ladder</h2>
             <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Match winners determined by PalmyScore™ predicted scores</p>
           </div>
+          <ScreenshotButton v-if="!capturing" @click="screenshot(palmyCaptureEl, 'palmyscore-predicted-ladder.png')" />
         </div>
         <LadderTable :ladder="palmyPredictedLadder" :isLoading="isLoading" :baselineRanking="actualLadder.map(r => r.teamId)" />
       </div>
 
       <!-- Predicted -->
-      <div v-if="activeTab === 'predicted'">
+      <div v-if="activeTab === 'predicted'" ref="predictedCaptureEl">
         <div class="flex items-center justify-between mb-3">
           <div>
             <h2 class="text-lg font-bold text-gray-800 dark:text-gray-100">Predicted Final Ladder</h2>
             <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Higher-ranked team wins every remaining game</p>
           </div>
+          <ScreenshotButton v-if="!capturing" @click="screenshot(predictedCaptureEl, 'predicted-final-ladder.png')" />
         </div>
         <LadderTable :ladder="predictedLadder" :isLoading="isLoading" :baselineRanking="actualLadder.map(r => r.teamId)" :secondaryBaselineRanking="ranking" />
       </div>
 
       <!-- Simulated -->
       <div v-else-if="activeTab === 'simulated'">
+       <div ref="simulatedCaptureEl">
         <div class="flex items-center justify-between mb-3">
           <div>
             <div class="flex items-center gap-1">
@@ -69,13 +72,19 @@
               <template v-else>Win chance scales 60–95% by rank gap, home team +5%</template>
             </p>
           </div>
-          <button
-            @click="handleSimulate"
-            :disabled="simulating || isLoading || !hasMatches"
-            class="px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-w-[90px]"
-          >
-            {{ simulating ? 'Running...' : 'Simulate' }}
-          </button>
+          <div v-if="!capturing" class="flex items-center gap-2">
+            <ScreenshotButton
+              v-if="simulatedLadder && !simulating"
+              @click="screenshot(simulatedCaptureEl, 'simulated-ladder.png')"
+            />
+            <button
+              @click="handleSimulate"
+              :disabled="simulating || isLoading || !hasMatches"
+              class="px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-w-[90px]"
+            >
+              {{ simulating ? 'Running...' : 'Simulate' }}
+            </button>
+          </div>
         </div>
 
         <div v-if="!simulatedLadder && !simulating" class="text-center py-8 text-gray-400 dark:text-gray-500 text-sm">
@@ -92,6 +101,7 @@
           :simulatedMatchWinners="simulating ? undefined : simulatedMatchWinners"
           :animated="simulating"
         />
+       </div>
 
         <!-- Simulation Range -->
         <div class="mt-5 pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -131,12 +141,13 @@
       </div>
 
       <!-- Current -->
-      <div v-else-if="activeTab === 'current'">
+      <div v-else-if="activeTab === 'current'" ref="currentCaptureEl">
         <div class="flex items-center justify-between mb-3">
           <div>
             <h2 class="text-lg font-bold text-gray-800 dark:text-gray-100">Current Ladder</h2>
             <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Based on concluded matches this season</p>
           </div>
+          <ScreenshotButton v-if="!capturing" @click="screenshot(currentCaptureEl, 'current-ladder.png')" />
         </div>
         <LadderTable :ladder="actualLadder" :isLoading="isLoading" />
       </div>
@@ -181,6 +192,8 @@ import HtmlTooltip from './HtmlTooltip.vue'
 import PowerRankings from './PowerRankings.vue'
 import CircleOfParity from './CircleOfParity.vue'
 import SimulationRange from './SimulationRange.vue'
+import ScreenshotButton from './ScreenshotButton.vue'
+import { useScreenshot } from '../composables/useScreenshot'
 import { useAnalytics } from '../composables/useAnalytics'
 import { powerRankingsTitle, firstMeaningfulWord } from '../composables/usePowerRankingsTitle'
 
@@ -207,6 +220,12 @@ const props = defineProps<{
 const RANGE_COUNTS = [100, 500, 1000, 5000]
 const rangeCount = ref(1000)
 const runBtnEl = ref<HTMLElement | null>(null)
+
+const { capturing, screenshot } = useScreenshot()
+const palmyCaptureEl = ref<HTMLElement | null>(null)
+const predictedCaptureEl = ref<HTMLElement | null>(null)
+const simulatedCaptureEl = ref<HTMLElement | null>(null)
+const currentCaptureEl = ref<HTMLElement | null>(null)
 
 interface SmokeParticle { x: number; y: number; dx: number; dy: number; size: number; delay: number }
 const smokeParticles = ref<SmokeParticle[]>([])

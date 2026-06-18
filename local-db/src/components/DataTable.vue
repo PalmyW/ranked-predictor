@@ -181,7 +181,7 @@ onMounted(() => emit('table-ready', api))
               :key="col.field ?? `g${i}`"
               :colspan="col._colspan"
               :rowspan="col._rowspan"
-              :class="['dt-th', !col._isGroup && 'dt-th--sort']"
+              :class="['dt-th', !col._isGroup && 'dt-th--sort', i === 0 && 'text-left!']"
               :style="colStyle(col)"
               @click="!col._isGroup && toggleSort(col.field)"
             >
@@ -196,9 +196,9 @@ onMounted(() => emit('table-ready', api))
           <!-- Row 2: individual cols inside groups -->
           <tr v-if="headerMeta.row2.length">
             <th
-              v-for="col in headerMeta.row2"
+              v-for="(col, i) in headerMeta.row2"
               :key="col.field"
-              class="dt-th dt-th--sort dt-th--sub"
+              :class="['dt-th', 'dt-th--sort', 'dt-th--sub', i === 0 && 'text-left!']"
               :style="colStyle(col)"
               @click="toggleSort(col.field)"
             >
@@ -220,9 +220,9 @@ onMounted(() => emit('table-ready', api))
             @click="emit('row-click', { event: $event, data: row })"
           >
             <td
-              v-for="col in visibleCols"
+              v-for="(col, i) in visibleCols"
               :key="col.field"
-              class="dt-td"
+              :class="['dt-td', i === 0 && 'text-left!']"
               :style="colStyle(col)"
             >
               <span v-if="col.formatter" v-html="renderCell(row, col)" />
@@ -369,6 +369,7 @@ onMounted(() => emit('table-ready', api))
   padding: 7px 12px;
   color: rgb(var(--v-theme-on-surface));
 }
+
 
 .dt-empty {
   padding: 40px 12px;

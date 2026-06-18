@@ -516,6 +516,48 @@ app.get('/api/schema', (req, res) => {
   res.json(schema);
 });
 
+// ── DB Browser (navigate raw tables/views) ────────────────────────────────────
+
+// Tables & views that may be browsed — rebuilt per request so it always
+// reflects the live schema, and used as an allowlist to keep the table name
+// (which is interpolated into SQL) safe.
+function browsableEntries() {
+  return db.prepare(
+    "SELECT type, name FROM sqlite_master WHERE (type='table' OR type='view') AND name NOT LIKE 'sqlite_%' ORDER BY type DESC, name"
+  ).all();
+}
+
+app.get('/api/browse/tables', (req, res) => {
+  const out = browsableEntries().map(({ type, name }) => {
+    let rowCount = null;
+    try { rowCount = db.prepare(`SELECT COUNT(*) AS n FROM "${name}"`).get().n; } catch {}
+    return { name, type, rowCount };
+  });
+  res.json(out);
+});
+
+app.get('/api/browse/:table', (req, res) => {
+  const { table } = req.params;
+  if (!browsableEntries().some(e => e.name === table)) {
+    return res.status(404).json({ error: 'Unknown table' });
+  }
+
+  const columns = db.prepare(`SELECT * FROM "${table}" LIMIT 0`).columns().map(c => c.name);
+  const limit  = Math.min(parseInt(req.query.limit) || 100, 1000);
+  const offset = Math.max(parseInt(req.query.offset) || 0, 0);
+  const sort   = columns.includes(req.query.sort) ? req.query.sort : null;
+  const dir    = req.query.dir === 'desc' ? 'DESC' : 'ASC';
+  const orderSQL = sort ? `ORDER BY "${sort}" ${dir} NULLS LAST` : '';
+
+  try {
+    const total = db.prepare(`SELECT COUNT(*) AS n FROM "${table}"`).get().n;
+    const rows  = db.prepare(`SELECT * FROM "${table}" ${orderSQL} LIMIT ? OFFSET ?`).all(limit, offset);
+    res.json({ columns, rows, total, limit, offset, sort, dir: dir.toLowerCase() });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 app.get('*', (_, res) => {
   const distIndex = join(__dirname, '../dist/index.html');
   if (existsSync(distIndex)) {
