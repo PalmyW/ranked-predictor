@@ -250,7 +250,7 @@ function close() {
             <thead>
               <tr>
                 <th
-                  v-for="col in columns"
+                  v-for="(col, ci) in columns"
                   :key="col.field"
                   :style="{
                     background: theme.head,
@@ -260,7 +260,7 @@ function close() {
                     letterSpacing: '0.06em',
                     textTransform: 'uppercase',
                     padding: '9px 14px',
-                    textAlign: isNum(col) ? 'right' : 'left',
+                    textAlign: ci === 0 ? 'left' : isNum(col) ? 'right' : 'left',
                     borderBottom: `2px solid ${theme.border}`,
                     whiteSpace: 'nowrap',
                   }"
@@ -272,11 +272,11 @@ function close() {
             <tbody>
               <tr v-for="(row, ri) in visibleRows" :key="ri">
                 <td
-                  v-for="col in columns"
+                  v-for="(col, ci) in columns"
                   :key="col.field"
                   :style="{
                     padding: '8px 14px',
-                    textAlign: isNum(col) ? 'right' : 'left',
+                    textAlign: ci === 0 ? 'left' : isNum(col) ? 'right' : 'left',
                     background: ri % 2 === 0 ? 'transparent' : theme.alt,
                     borderBottom: `1px solid ${theme.border}`,
                     fontVariantNumeric: 'tabular-nums',
