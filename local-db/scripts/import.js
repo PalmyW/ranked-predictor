@@ -6,6 +6,7 @@ import { importFixtures } from './lib/import-fixtures.js';
 import { importMatchStats } from './lib/import-match-stats.js';
 import { importPlayers } from './lib/import-players.js';
 import { importMatchDetails } from './lib/import-match-details.js';
+import { computePredictions } from './lib/compute-predictions.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, '../../public/data');
@@ -78,9 +79,17 @@ if (pp.skipped) {
 }
 console.log('');
 
+// Recompute PalmyScore predictions across all seasons (cheap; depends on every
+// match being present so previous-season form is available for early rounds).
+process.stdout.write('[predictions] PalmyScore walk-forward... ');
+const pred = computePredictions(db);
+process.stdout.write(`${pred.withPred} predicted / ${pred.total} matches\n`);
+console.log('');
+
 console.log('Done.');
 console.log(`  Matches imported/updated: ${totalMatches}`);
 console.log(`  Player match stat rows:   ${totalStatRows}`);
 console.log(`  Player profiles:          ${pp.rows ?? 0}`);
+console.log(`  Match predictions:        ${pred.withPred}`);
 
 db.close();

@@ -235,6 +235,19 @@ CREATE TABLE IF NOT EXISTS score_events (
 CREATE INDEX IF NOT EXISTS idx_score_events_player ON score_events (player_id);
 CREATE INDEX IF NOT EXISTS idx_score_events_team   ON score_events (team_id);
 
+-- Retrospective PalmyScore predicted scores, attached per match.
+-- Each match is predicted from data available BEFORE its round (walk-forward),
+-- with team ratings supplemented by previous-season form so every team has ≥5 games.
+-- Two variants: all-games ratings, and home/away (venue-adjusted) ratings.
+-- Scores are NULL when there wasn't enough form to predict (e.g. start of 2012).
+CREATE TABLE IF NOT EXISTS match_predictions (
+  match_id      TEXT PRIMARY KEY REFERENCES matches(match_id),
+  pred_home_all INTEGER,
+  pred_away_all INTEGER,
+  pred_home_ha  INTEGER,
+  pred_away_ha  INTEGER
+);
+
 CREATE TABLE IF NOT EXISTS import_log (
   file_path   TEXT PRIMARY KEY,
   file_size   INTEGER NOT NULL,
@@ -261,4 +274,23 @@ CREATE VIEW IF NOT EXISTS v_player_match_stats AS
 SELECT p.*, t.name AS team_name, t.abbreviation AS team_abbr
 FROM player_match_stats p
 JOIN teams t ON p.team_id = t.team_id;
+
+-- PalmyScore predictions joined to match context + actual result, with margins
+-- pre-computed for easy "win % by predicted point difference" queries.
+CREATE VIEW IF NOT EXISTS v_match_predictions AS
+SELECT
+  m.match_id, m.year, m.round_number, m.round_name, m.status,
+  m.home_team_id, m.away_team_id,
+  ht.name AS home_team_name, ht.abbreviation AS home_abbr,
+  at.name AS away_team_name, at.abbreviation AS away_abbr,
+  m.home_score, m.away_score,
+  (m.home_score - m.away_score) AS actual_margin,
+  p.pred_home_all, p.pred_away_all,
+  (p.pred_home_all - p.pred_away_all) AS pred_margin_all,
+  p.pred_home_ha, p.pred_away_ha,
+  (p.pred_home_ha - p.pred_away_ha)  AS pred_margin_ha
+FROM matches m
+JOIN match_predictions p ON p.match_id = m.match_id
+JOIN teams ht ON m.home_team_id = ht.team_id
+JOIN teams at ON m.away_team_id = at.team_id;
 

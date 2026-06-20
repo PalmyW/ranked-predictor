@@ -280,6 +280,10 @@ score_events: match_id (FK→matches), seq (0-based order within match), player_
   score_type ('GOAL'|'BEHIND'|'RUSHED_BEHIND'), score_value (6 for goal, 1 for behind/rushed),
   home_or_away ('HOME'|'AWAY'), aggregate_home, aggregate_away (running totals after this score)
   — indexes on player_id and team_id; use for queries like "all goals by X", "most scores in Q4", etc.
+match_predictions: match_id (FK→matches), pred_home_all, pred_away_all (PalmyScore predicted scores from all-games team ratings),
+  pred_home_ha, pred_away_ha (predicted scores from home/away venue-adjusted ratings). NULL when there wasn't enough form to predict.
+  Retrospective walk-forward: each match predicted from data available before its round, supplemented with previous-season form so every team has ≥5 games.
+  Prefer the v_match_predictions view, which also exposes the actual result and pre-computed margins.
 player_match_stats: id, match_id, year, round_number, player_id, given_name, surname, team_id, position, jumper_number, [stat_{base} for each base listed below]
 players: player_id (PK, join to player_match_stats), given_name, surname, date_of_birth (TEXT "DD/MM/YYYY"), height_cm, weight_kg, kicking_foot ("LEFT"|"RIGHT"), state_of_origin, position, draft_year, draft_position, draft_type, debut_year, recruited_from, photo_url, bio, star_sign
   — age is NOT stored; compute it as: CAST((julianday('now') - julianday(substr(date_of_birth,7,4)||'-'||substr(date_of_birth,4,2)||'-'||substr(date_of_birth,1,2))) / 365.25 AS INTEGER)
@@ -294,6 +298,19 @@ Note: home_team_name / away_team_name ONLY exist here.
 Columns: id, match_id, year, round_number, player_id, given_name, surname, team_id, team_name, team_abbr, position, jumper_number, [stat_{base} for each base listed below]
 Note: has team_name for the player's own team only. Does NOT have home_team_name or away_team_name.
 To get home/away context, JOIN ON match_id with v_matches.
+
+### v_match_predictions
+Columns: match_id, year, round_number, round_name, status, home_team_id, away_team_id, home_team_name, home_abbr, away_team_name, away_abbr,
+  home_score, away_score, actual_margin (home_score - away_score),
+  pred_home_all, pred_away_all, pred_margin_all (pred_home_all - pred_away_all),
+  pred_home_ha, pred_away_ha, pred_margin_ha (pred_home_ha - pred_away_ha)
+Use for prediction-accuracy questions. A predicted margin > 0 favours the home team; the prediction is "correct" when SIGN(pred_margin) = SIGN(actual_margin).
+Example "win % by predicted point difference":
+  SELECT ROUND(pred_margin_ha) AS predicted_margin, COUNT(*) AS games,
+    ROUND(100.0 * AVG(CASE WHEN (pred_margin_ha > 0) = (actual_margin > 0) THEN 1 ELSE 0 END), 1) AS favourite_win_pct
+  FROM v_match_predictions
+  WHERE status = 'CONCLUDED' AND pred_margin_ha IS NOT NULL
+  GROUP BY predicted_margin ORDER BY predicted_margin
 
 ## Season stats — no pre-built view, compute via GROUP BY
 
