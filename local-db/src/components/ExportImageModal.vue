@@ -16,18 +16,26 @@ const previewRef = ref(null)
 const titleRef   = ref(null)
 const downloading = ref(false)
 const exportTitle = ref('')
+const highlighted = ref(new Set())
 
 watch(
   () => props.modelValue,
   (open) => {
     if (open) {
       exportTitle.value = props.title
+      highlighted.value = new Set()
       nextTick(() => {
         if (titleRef.value) titleRef.value.innerText = props.title
       })
     }
   },
 )
+
+function toggleHighlight(ri) {
+  const next = new Set(highlighted.value)
+  next.has(ri) ? next.delete(ri) : next.add(ri)
+  highlighted.value = next
+}
 
 function onTitleInput(e) {
   exportTitle.value = e.target.innerText.replace(/\n/g, ' ').trim()
@@ -71,6 +79,8 @@ const THEMES = [
 ]
 const themeIdx = ref(0)
 const theme = computed(() => THEMES[themeIdx.value])
+// Highlighted-row background: accent tint (~25% alpha via 8-digit hex)
+const highlightBg = computed(() => theme.value.accent + '40')
 
 const rowLimitOpts = computed(() => {
   const opts = [10, 20, 50, 100].filter((n) => n < props.rows.length)
@@ -178,6 +188,10 @@ function close() {
           hide-details
           style="min-width: 100px; max-width: 130px"
         />
+
+        <span class="text-caption text-medium-emphasis ml-auto" style="white-space: nowrap">
+          Click rows to highlight
+        </span>
       </div>
 
       <v-divider />
@@ -270,14 +284,19 @@ function close() {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(row, ri) in visibleRows" :key="ri">
+              <tr
+                v-for="(row, ri) in visibleRows"
+                :key="ri"
+                style="cursor: pointer"
+                @click="toggleHighlight(ri)"
+              >
                 <td
                   v-for="(col, ci) in columns"
                   :key="col.field"
                   :style="{
                     padding: '8px 14px',
                     textAlign: ci === 0 ? 'left' : isNum(col) ? 'right' : 'left',
-                    background: ri % 2 === 0 ? 'transparent' : theme.alt,
+                    background: highlighted.has(ri) ? highlightBg : ri % 2 === 0 ? 'transparent' : theme.alt,
                     borderBottom: `1px solid ${theme.border}`,
                     fontVariantNumeric: 'tabular-nums',
                     whiteSpace: 'nowrap',
