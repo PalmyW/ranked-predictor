@@ -462,6 +462,34 @@
       :loading="tipsLoading"
       :venue-adjusted="venueAdjusted"
     />
+
+    <!-- Nerd stuff: win-probability calibration curve -->
+    <div class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
+      <button
+        class="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/40"
+        @click="showNerd = !showNerd"
+      >
+        <span class="flex items-center gap-2 text-sm font-bold text-gray-800 dark:text-gray-100">
+          🤓 Nerd stuff
+          <span class="font-normal text-xs text-gray-400 dark:text-gray-500">Win % by predicted margin</span>
+        </span>
+        <svg
+          class="size-4 shrink-0 text-gray-400 transition-transform"
+          :class="showNerd ? 'rotate-90' : ''"
+          viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round"
+        >
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+      </button>
+      <div v-if="showNerd" class="border-t border-gray-100 px-3 py-3 dark:border-gray-800">
+        <p class="mb-2 px-1 text-xs text-gray-500 dark:text-gray-400">
+          Across every past match, how often the PalmyScore favourite actually won at each predicted margin.
+          Small margins are near coin-flips; the edge only becomes reliable past ~20 points.
+        </p>
+        <WinProbChart :variant="venueAdjusted ? 'ha' : 'all'" />
+      </div>
+    </div>
   </main>
 </template>
 
@@ -474,6 +502,7 @@ import { favouriteWinProb } from '../utils/palmyWinProb'
 import { useTipsBacktest } from '../composables/useTipsBacktest'
 import { getActiveSeasonYear } from '../config/seasons'
 import TippingAccuracy from '../components/TippingAccuracy.vue'
+import WinProbChart from '../components/WinProbChart.vue'
 
 const BASE_URL = import.meta.env.BASE_URL
 
@@ -497,6 +526,7 @@ const { roundResults, tally, loading: tipsLoading } = useTipsBacktest(
 
 const showAllUpcoming = ref(false)
 const sortKey = ref<StrengthSortKey>('attackRank')
+const showNerd = ref(false)
 
 const activePredictions = computed(() =>
   showAllUpcoming.value ? allUpcomingPredictions.value : nextRoundPredictions.value,
