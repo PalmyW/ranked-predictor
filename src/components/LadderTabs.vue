@@ -81,12 +81,22 @@
                 <template #content>
                   <div class="p-3 max-w-[240px]">
                     <p class="font-semibold mb-1 text-gray-800 dark:text-gray-100">Simulated Ladder</p>
-                    <p class="text-gray-600 dark:text-gray-300 leading-relaxed">Each unplayed game is decided by probability based on your team ranking, with a home ground advantage.</p>
-                    <ul class="mt-2 space-y-1 text-gray-600 dark:text-gray-300">
-                      <li>· Higher-ranked team wins <span class="font-semibold">60–95%</span> of the time</li>
-                      <li>· Home team gets a <span class="font-semibold">+5% boost</span></li>
-                      <li>· Equal teams: home wins <span class="font-semibold">55%</span></li>
-                    </ul>
+                    <template v-if="usePalmyProb">
+                      <p class="text-gray-600 dark:text-gray-300 leading-relaxed">Each unplayed game is decided by PalmyScore's predicted scoreline.</p>
+                      <ul class="mt-2 space-y-1 text-gray-600 dark:text-gray-300">
+                        <li>· Win chance = the historical % that a PalmyScore favourite by that predicted margin actually won</li>
+                        <li>· Bigger predicted margin → higher win chance</li>
+                        <li>· Matches PalmyScore can't rate fall back to team ranking</li>
+                      </ul>
+                    </template>
+                    <template v-else>
+                      <p class="text-gray-600 dark:text-gray-300 leading-relaxed">Each unplayed game is decided by probability based on your team ranking, with a home ground advantage.</p>
+                      <ul class="mt-2 space-y-1 text-gray-600 dark:text-gray-300">
+                        <li>· Higher-ranked team wins <span class="font-semibold">60–95%</span> of the time</li>
+                        <li>· Home team gets a <span class="font-semibold">+5% boost</span></li>
+                        <li>· Equal teams: home wins <span class="font-semibold">55%</span></li>
+                      </ul>
+                    </template>
                     <p class="mt-2 text-gray-400 dark:text-gray-500">Click Simulate to run a new randomised season.</p>
                   </div>
                 </template>
@@ -94,10 +104,28 @@
             </div>
             <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
               <template v-if="simulating">{{ simStage }}</template>
+              <template v-else-if="usePalmyProb">Win chance from PalmyScore's predicted margin (historical calibration)</template>
               <template v-else>Win chance scales 60–95% by rank gap, home team +5%</template>
             </p>
           </div>
           <div v-if="!capturing" class="flex items-center gap-2">
+            <!-- Win model: team ranking vs PalmyScore predicted-margin calibration -->
+            <div class="flex overflow-hidden rounded border border-gray-300 text-xs font-semibold dark:border-gray-600">
+              <button
+                @click="emit('update:usePalmyProb', false)"
+                class="px-2.5 py-1 transition-colors"
+                :class="!usePalmyProb
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'"
+              >Ranking</button>
+              <button
+                @click="emit('update:usePalmyProb', true)"
+                class="px-2.5 py-1 transition-colors"
+                :class="usePalmyProb
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'"
+              >PalmyScore</button>
+            </div>
             <ScreenshotButton
               v-if="simulatedLadder && !simulating"
               @click="screenshot(simulatedCaptureEl, 'simulated-ladder.png')"
@@ -241,10 +269,12 @@ const props = defineProps<{
   isRunningRange: boolean
   viewOnly?: boolean
   palmyVenueAdjusted: boolean
+  usePalmyProb: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'update:palmyVenueAdjusted', value: boolean): void
+  (e: 'update:usePalmyProb', value: boolean): void
 }>()
 
 const RANGE_COUNTS = [100, 500, 1000, 5000]

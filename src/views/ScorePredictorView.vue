@@ -247,29 +247,38 @@
             </svg>
           </div>
 
-          <!-- Scores -->
-          <div class="flex shrink-0 items-center gap-1 tabular-nums">
-            <span
-              class="w-9 text-right text-xl font-bold"
-              :class="
-                m.hasStrengthData
-                  ? 'text-gray-900 dark:text-gray-100'
-                  : 'text-gray-300 dark:text-gray-600'
-              "
+          <!-- Scores + win % -->
+          <div class="flex shrink-0 flex-col items-center">
+            <div class="flex items-center gap-1 tabular-nums">
+              <span
+                class="w-9 text-right text-xl font-bold"
+                :class="
+                  m.hasStrengthData
+                    ? 'text-gray-900 dark:text-gray-100'
+                    : 'text-gray-300 dark:text-gray-600'
+                "
+              >
+                {{ m.hasStrengthData ? m.predictedHomeScore : '–' }}
+              </span>
+              <span class="text-xs text-gray-400 dark:text-gray-500">vs</span>
+              <span
+                class="w-9 text-left text-xl font-bold"
+                :class="
+                  m.hasStrengthData
+                    ? 'text-gray-900 dark:text-gray-100'
+                    : 'text-gray-300 dark:text-gray-600'
+                "
+              >
+                {{ m.hasStrengthData ? m.predictedAwayScore : '–' }}
+              </span>
+            </div>
+            <div
+              v-if="winInfoById[m.matchId]"
+              class="mt-0.5 whitespace-nowrap text-[11px] font-semibold text-gray-500 dark:text-gray-400"
+              title="Historical win rate for this predicted margin"
             >
-              {{ m.hasStrengthData ? m.predictedHomeScore : '–' }}
-            </span>
-            <span class="text-xs text-gray-400 dark:text-gray-500">vs</span>
-            <span
-              class="w-9 text-left text-xl font-bold"
-              :class="
-                m.hasStrengthData
-                  ? 'text-gray-900 dark:text-gray-100'
-                  : 'text-gray-300 dark:text-gray-600'
-              "
-            >
-              {{ m.hasStrengthData ? m.predictedAwayScore : '–' }}
-            </span>
+              {{ winInfoById[m.matchId].abbr }} {{ winInfoById[m.matchId].pct }}%
+            </div>
           </div>
 
           <!-- Away side -->
@@ -461,6 +470,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAFLData } from '../composables/useAFLData'
 import { useScorePredictor } from '../composables/useScorePredictor'
 import type { StrengthSortKey, TeamStrengthRow } from '../composables/useScorePredictor'
+import { favouriteWinProb } from '../utils/palmyWinProb'
 import { useTipsBacktest } from '../composables/useTipsBacktest'
 import { getActiveSeasonYear } from '../config/seasons'
 import TippingAccuracy from '../components/TippingAccuracy.vue'
@@ -491,6 +501,22 @@ const sortKey = ref<StrengthSortKey>('attackRank')
 const activePredictions = computed(() =>
   showAllUpcoming.value ? allUpcomingPredictions.value : nextRoundPredictions.value,
 )
+
+// Predicted winner + historical win % for each match, from the calibration curve
+// matching the active ratings variant (all-games vs home/away).
+const winInfoById = computed<Record<number, { abbr: string; pct: number }>>(() => {
+  const variant = venueAdjusted.value ? 'ha' : 'all'
+  const map: Record<number, { abbr: string; pct: number }> = {}
+  for (const m of activePredictions.value) {
+    if (!m.hasStrengthData || m.predictedHomeScore === m.predictedAwayScore) continue
+    const homeFav = m.predictedHomeScore > m.predictedAwayScore
+    map[m.matchId] = {
+      abbr: homeFav ? m.homeTeamAbbreviation : m.awayTeamAbbreviation,
+      pct: Math.round(favouriteWinProb(m.predictedHomeScore, m.predictedAwayScore, variant) * 100),
+    }
+  }
+  return map
+})
 
 const sortedStrengthRows = computed(() =>
   [...strengthRows.value].sort((a, b) => a[sortKey.value] - b[sortKey.value]),

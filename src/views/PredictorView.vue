@@ -94,6 +94,7 @@
             :isRunningRange="isRunningRange"
             :viewOnly="!isCurrentSeason"
             v-model:palmyVenueAdjusted="palmyVenueAdjusted"
+            v-model:usePalmyProb="usePalmyProb"
           />
 
           <!-- Share (current season only) -->
@@ -147,10 +148,20 @@ const algoRankingMap = computed<Record<string, { teamId: number }[]>>(() => ({
   palmy: palmyRanking.value,
   xpalmy: xpalmyRanking.value,
 }))
-const { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate, getSimulationFrames, rangeResults, rangeTotal, simStats, isRunningRange, runMany } = useSimulation(ranking, matches)
-
 const palmyVenueAdjusted = ref(false)
 const { allUpcomingPredictions } = useScorePredictor(matches, palmyVenueAdjusted)
+
+// Simulator can optionally derive each match's win chance from PalmyScore's
+// predicted margin (home/away ratings) via the historical calibration curve.
+const usePalmyProb = ref(false)
+const simVenueAdjusted = ref(true)
+const { allUpcomingPredictions: simPalmyPredictions } = useScorePredictor(matches, simVenueAdjusted)
+
+const { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate, getSimulationFrames, rangeResults, rangeTotal, simStats, isRunningRange, runMany } = useSimulation(
+  ranking,
+  matches,
+  { palmyPredictions: simPalmyPredictions, usePalmyProb },
+)
 
 const actualLadderRankMap = computed<Record<number, number>>(() => {
   const map: Record<number, number> = {}
