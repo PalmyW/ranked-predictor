@@ -1,6 +1,6 @@
 <script setup>
-import { ref, computed, inject, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, inject, nextTick, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi.js'
 import { useQueryHistory } from '@/composables/useQueryHistory.js'
 import DataTable from '@/components/DataTable.vue'
@@ -12,6 +12,7 @@ import ExportImageModal from '@/components/ExportImageModal.vue'
 import { SAMPLE_QUERY, fmt, fmtStarSign } from '@/constants/stats.js'
 
 const router  = useRouter()
+const route   = useRoute()
 const { api } = useApi()
 const teamMap = inject('teamMap')
 const refreshAiStats = inject('refreshAiStats', () => {})
@@ -211,6 +212,19 @@ function onKeydown(e) {
 function exportCsv() {
   tableRef.value?.getTable()?.download('csv', 'afl-query-results.csv')
 }
+
+// Load + run a query passed in via the route (e.g. a stat leaderboard opened from
+// the player page). Clears the param afterwards so the same stat can be reopened.
+watch(
+  () => route.query.sql,
+  (sql) => {
+    if (!sql) return
+    sqlText.value = String(sql)
+    runQuery()
+    router.replace({ query: {} })
+  },
+  { immediate: true },
+)
 </script>
 
 <template>

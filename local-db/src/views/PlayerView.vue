@@ -116,7 +116,7 @@ function buildRankSql(range, metric, useMin) {
          WHERE p.year = (SELECT MAX(year) FROM player_match_stats)
            AND p.round_number IN (SELECT round_number FROM latest_rounds)
          GROUP BY p.player_id
-         ${useMin ? `HAVING COUNT(*) >= ${n}` : ''}`
+         ${useMin ? `HAVING COUNT(*) >= ${Math.ceil(n / 2)}` : ''}`
   }
   // season (default): the latest season
   return `SELECT p.player_id, MAX(p.year) AS year, COUNT(*) AS games_played,
@@ -127,11 +127,73 @@ function buildRankSql(range, metric, useMin) {
          ${useMin ? 'HAVING COUNT(*) > 5' : ''}`
 }
 
+// ── Leaderboard for the query page ────────────────────────────────────────────
+// Aggregate expression for a single stat: totals where it makes sense, else avg.
+function metricExpr(base, metric) {
+  if (base === 'goal_accuracy')
+    return `ROUND(AVG(CASE WHEN p.stat_shots_at_goal >= 1 THEN p.stat_goal_accuracy END), 2)`
+  if (metric === 'tot' && !isPct(base)) return `ROUND(SUM(p.stat_${base}), 2)`
+  return `ROUND(AVG(p.stat_${base}), 2)`
+}
+
+function metricAlias(base, metric) {
+  const m = metric === 'tot' && !isPct(base) && base !== 'goal_accuracy' ? 'tot' : 'avg'
+  return `${m}_${base}`
+}
+
+// A readable single-stat leaderboard mirroring the player page's range/metric/min
+// and sort direction, so clicking a rank chip lands on that exact leaderboard.
+function buildLeaderboardSql(base, range, metric, useMin) {
+  const alias = metricAlias(base, metric)
+  const dir = LOWER_IS_BETTER.has(base) ? 'ASC' : 'DESC'
+  const select = `p.player_id,
+       MIN(p.given_name) || ' ' || MIN(p.surname) AS player,
+       MIN(t.name) AS team_name,
+       COUNT(*) AS games_played,
+       ${metricExpr(base, metric)} AS ${alias}`
+
+  if (range === 'last4' || range === 'last8') {
+    const n = range === 'last4' ? 4 : 8
+    return `WITH latest_rounds AS (
+  SELECT DISTINCT round_number
+  FROM player_match_stats
+  WHERE year = (SELECT MAX(year) FROM player_match_stats)
+  ORDER BY round_number DESC
+  LIMIT ${n}
+)
+SELECT ${select}
+FROM player_match_stats p
+JOIN teams t ON p.team_id = t.team_id
+WHERE p.year = (SELECT MAX(year) FROM player_match_stats)
+  AND p.round_number IN (SELECT round_number FROM latest_rounds)
+GROUP BY p.player_id
+${useMin ? `HAVING COUNT(*) >= ${Math.ceil(n / 2)}\n` : ''}ORDER BY ${alias} ${dir}
+LIMIT 100`
+  }
+
+  const where = range === 'alltime' ? '' : 'WHERE p.year = (SELECT MAX(year) FROM player_match_stats)\n'
+  return `SELECT ${select}
+FROM player_match_stats p
+JOIN teams t ON p.team_id = t.team_id
+${where}GROUP BY p.player_id
+${useMin ? 'HAVING COUNT(*) > 5\n' : ''}ORDER BY ${alias} ${dir}
+LIMIT 100`
+}
+
+function openLeaderboard(r) {
+  const sql = buildLeaderboardSql(r.base, rankRange.value, rankMetric.value, applyMin.value)
+  router.push({ name: 'query', query: { sql } })
+}
+
 // Stats where a lower value is better — rank ascending for these.
 const LOWER_IS_BETTER = new Set([
   'clangers', 'turnovers', 'frees_against',
   'contest_def_losses', 'contest_def_loss_percentage',
 ])
+
+// Defensive one-on-one outcome stats are only meaningful when the player actually
+// contested defensive one-on-ones — hide them otherwise.
+const NEEDS_DEF_CONTESTS = new Set(['contest_def_losses', 'contest_def_loss_percentage'])
 
 function computeSeasonRanks(allRows, id) {
   const me = allRows.find(r => String(r.player_id) === String(id))
@@ -142,6 +204,7 @@ function computeSeasonRanks(allRows, id) {
     const field = `val_${base}`
     const myVal = me[field]
     if (myVal === null || myVal === undefined) continue
+    if (NEEDS_DEF_CONTESTS.has(base) && !(me.val_contest_def_one_on_ones > 0)) continue
     const vals = allRows.map(r => r[field]).filter(v => v !== null && v !== undefined)
     const ahead = LOWER_IS_BETTER.has(base)
       ? vals.filter(v => v < myVal).length
@@ -197,7 +260,7 @@ const rankSubtitle = computed(() => {
   const parts = [`${metricWord} per stat vs. all players`]
   if (rankRange.value === 'last4' || rankRange.value === 'last8') {
     const n = rankRange.value === 'last4' ? 4 : 8
-    parts.push(applyMin.value ? `who played all of the last ${n} rounds` : `over the last ${n} rounds this season`)
+    parts.push(applyMin.value ? `who played ${Math.ceil(n / 2)}+ of the last ${n} rounds` : `over the last ${n} rounds this season`)
   } else if (applyMin.value) {
     parts.push(isCareer ? 'with 6+ career games' : 'with 6+ games this season')
   } else if (rankRange.value === 'season') {
@@ -710,7 +773,12 @@ function rankColor({ rank, total }) {
               <dt class="text-body-2 text-medium-emphasis text-truncate" :title="r.label">{{ r.label }}</dt>
               <dd class="d-flex align-center justify-space-between gap-2 ma-0">
                 <span class="text-body-1 font-weight-bold">{{ fmt(r.value) }}</span>
-                <v-chip :color="rankColor(r)" size="small" variant="outlined" label class="font-weight-semibold" style="border-width:2px">
+                <v-chip
+                  :color="rankColor(r)" size="small" variant="outlined" label
+                  class="font-weight-semibold" style="border-width:2px; cursor:pointer"
+                  :title="`View ${r.label} leaderboard`"
+                  @click="openLeaderboard(r)"
+                >
                   #{{ r.rank }}<span class="ml-1" style="opacity:0.75">/ {{ r.total }}</span>
                 </v-chip>
               </dd>
