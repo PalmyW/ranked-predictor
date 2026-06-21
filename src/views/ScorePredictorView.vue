@@ -247,34 +247,52 @@
             </svg>
           </div>
 
-          <!-- Scores + win % -->
+          <!-- Scores (large) + calculation + win % -->
           <div class="flex shrink-0 flex-col items-center">
-            <div class="flex items-center gap-1 tabular-nums">
-              <span
-                class="w-9 text-right text-xl font-bold"
-                :class="
-                  m.hasStrengthData
-                    ? 'text-gray-900 dark:text-gray-100'
-                    : 'text-gray-300 dark:text-gray-600'
-                "
-              >
-                {{ m.hasStrengthData ? m.predictedHomeScore : '–' }}
-              </span>
-              <span class="text-xs text-gray-400 dark:text-gray-500">vs</span>
-              <span
-                class="w-9 text-left text-xl font-bold"
-                :class="
-                  m.hasStrengthData
-                    ? 'text-gray-900 dark:text-gray-100'
-                    : 'text-gray-300 dark:text-gray-600'
-                "
-              >
-                {{ m.hasStrengthData ? m.predictedAwayScore : '–' }}
-              </span>
+            <div class="flex items-start gap-1.5 tabular-nums">
+              <!-- Home -->
+              <div class="flex flex-col items-end">
+                <span
+                  class="text-xl font-bold leading-none"
+                  :class="
+                    m.hasStrengthData
+                      ? 'text-gray-900 dark:text-gray-100'
+                      : 'text-gray-300 dark:text-gray-600'
+                  "
+                >
+                  {{ m.hasStrengthData ? m.predictedHomeScore : '–' }}
+                </span>
+                <span
+                  v-if="scoreBreakdownById[m.matchId]"
+                  class="mt-1 whitespace-nowrap text-[10px]"
+                  :class="adjClass(scoreBreakdownById[m.matchId].home.adj)"
+                  title="Home team average ± opponent's defence adjustment"
+                >{{ scoreBreakdownById[m.matchId].home.eq }}</span>
+              </div>
+              <span class="mt-1.5 text-xs text-gray-400 dark:text-gray-500">vs</span>
+              <!-- Away -->
+              <div class="flex flex-col items-start">
+                <span
+                  class="text-xl font-bold leading-none"
+                  :class="
+                    m.hasStrengthData
+                      ? 'text-gray-900 dark:text-gray-100'
+                      : 'text-gray-300 dark:text-gray-600'
+                  "
+                >
+                  {{ m.hasStrengthData ? m.predictedAwayScore : '–' }}
+                </span>
+                <span
+                  v-if="scoreBreakdownById[m.matchId]"
+                  class="mt-1 whitespace-nowrap text-[10px]"
+                  :class="adjClass(scoreBreakdownById[m.matchId].away.adj)"
+                  title="Away team average ± opponent's defence adjustment"
+                >{{ scoreBreakdownById[m.matchId].away.eq }}</span>
+              </div>
             </div>
             <div
               v-if="winInfoById[m.matchId]"
-              class="mt-0.5 whitespace-nowrap text-[11px] font-semibold text-gray-500 dark:text-gray-400"
+              class="mt-1 whitespace-nowrap text-[11px] font-semibold text-gray-500 dark:text-gray-400"
               title="Historical win rate for this predicted margin"
             >
               {{ winInfoById[m.matchId].abbr }} {{ winInfoById[m.matchId].pct }}%
@@ -295,35 +313,6 @@
             </span>
             <span class="text-sm font-medium text-gray-800 dark:text-gray-200 sm:hidden">
               {{ m.awayTeamAbbreviation }}
-            </span>
-          </div>
-
-          <!-- vs-avg adjustments -->
-          <div
-            v-if="m.hasStrengthData"
-            class="hidden w-40 shrink-0 justify-end gap-3 text-xs md:flex"
-          >
-            <span
-              :class="
-                m.homeVsAvg > 0
-                  ? 'text-green-600 dark:text-green-400'
-                  : m.homeVsAvg < 0
-                    ? 'text-red-500 dark:text-red-400'
-                    : 'text-gray-400 dark:text-gray-500'
-              "
-            >
-              {{ m.homeVsAvg > 0 ? '+' : '' }}{{ m.homeVsAvg }} vs {{ venueAdjusted ? 'home' : '' }}avg
-            </span>
-            <span
-              :class="
-                m.awayVsAvg > 0
-                  ? 'text-green-600 dark:text-green-400'
-                  : m.awayVsAvg < 0
-                    ? 'text-red-500 dark:text-red-400'
-                    : 'text-gray-400 dark:text-gray-500'
-              "
-            >
-              {{ m.awayVsAvg > 0 ? '+' : '' }}{{ m.awayVsAvg }} vs {{ venueAdjusted ? 'away' : '' }}avg
             </span>
           </div>
         </div>
@@ -547,6 +536,36 @@ const winInfoById = computed<Record<number, { abbr: string; pct: number }>>(() =
   }
   return map
 })
+
+// "avg ± adjustment" equation behind each predicted score, e.g. "82.3 − 4.1".
+function eqStr(avg: number, adj: number): string {
+  return `${avg.toFixed(1)} ${adj >= 0 ? '+' : '−'} ${Math.abs(adj).toFixed(1)}`
+}
+
+type ScoreBreakdown = { eq: string; adj: number }
+const scoreBreakdownById = computed<Record<number, { home: ScoreBreakdown; away: ScoreBreakdown }>>(() => {
+  const venue = venueAdjusted.value
+  const map: Record<number, { home: ScoreBreakdown; away: ScoreBreakdown }> = {}
+  for (const m of activePredictions.value) {
+    if (!m.hasStrengthData) continue
+    const home = strengthRowMap.value.get(m.homeTeamId)
+    const away = strengthRowMap.value.get(m.awayTeamId)
+    if (!home || !away) continue
+    const homeAdj = venue ? away.defenceAdjAway : away.defenceAdjustment
+    const awayAdj = venue ? home.defenceAdjHome : home.defenceAdjustment
+    map[m.matchId] = {
+      home: { eq: eqStr(venue ? home.avgForHome : home.avgFor, homeAdj), adj: homeAdj },
+      away: { eq: eqStr(venue ? away.avgForAway : away.avgFor, awayAdj), adj: awayAdj },
+    }
+  }
+  return map
+})
+
+function adjClass(adj: number): string {
+  if (adj > 0) return 'text-green-600 dark:text-green-400'
+  if (adj < 0) return 'text-red-500 dark:text-red-400'
+  return 'text-gray-400 dark:text-gray-500'
+}
 
 const sortedStrengthRows = computed(() =>
   [...strengthRows.value].sort((a, b) => a[sortKey.value] - b[sortKey.value]),
