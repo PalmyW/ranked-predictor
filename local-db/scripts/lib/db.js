@@ -11,6 +11,13 @@ export function openDb() {
   const db = new DatabaseSync(DB_PATH);
   db.exec('PRAGMA journal_mode = WAL');
   db.exec('PRAGMA foreign_keys = OFF');
+
+  // Create the base schema first so a fresh database has all its tables before
+  // the migrations below run (they ALTER existing tables and would otherwise
+  // fail on an empty DB). All statements are CREATE ... IF NOT EXISTS, so this is
+  // a no-op for an already-populated database.
+  db.exec(readFileSync(SCHEMA_PATH, 'utf8'));
+
   // Migration: player_season_stats is now computed from player_match_stats
   db.exec('DROP TABLE IF EXISTS player_season_stats');
   db.exec('DROP VIEW IF EXISTS v_player_season_stats');
@@ -78,8 +85,6 @@ export function openDb() {
     }
   }
   db.exec('PRAGMA foreign_keys = ON');
-  const schema = readFileSync(SCHEMA_PATH, 'utf8');
-  db.exec(schema);
   return db;
 }
 
