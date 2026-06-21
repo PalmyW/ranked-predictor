@@ -1,0 +1,35 @@
+# Self-contained image for the AFL Stats local-db, built from the repo ROOT so the
+# season data under public/data is available to seed the SQLite database at build
+# time (afl-stats.db itself is git-ignored, so it must be generated here).
+#
+# Build context must be the repository root, e.g. in compose:
+#   build:
+#     context: "https://github.com/PalmyW/ranked-predictor.git#main"
+#     dockerfile: local-db/Dockerfile.standalone
+
+# ── Stage 1: build the frontend and seed the database ─────────────────────────
+FROM node:24-alpine AS builder
+WORKDIR /app
+COPY local-db/package*.json ./
+RUN npm ci
+COPY local-db/ ./
+# Season data lives at the repo root; import.js reads ../../public/data
+COPY public/data/ /public/data/
+RUN npm run build && node scripts/import.js
+
+# ── Stage 2: lean production server ───────────────────────────────────────────
+FROM node:24-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+# Expose the server outside the container (the app defaults to 127.0.0.1)
+ENV HOST=0.0.0.0
+COPY local-db/package*.json ./
+RUN npm ci --omit=dev
+COPY local-db/server/ ./server/
+COPY local-db/scripts/ ./scripts/
+COPY local-db/db/ ./db/
+COPY --from=builder /app/dist ./dist
+# Seeded database (include WAL/SHM siblings if present)
+COPY --from=builder /app/afl-stats.db* ./
+EXPOSE 3737
+CMD ["node", "server/index.js"]

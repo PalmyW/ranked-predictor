@@ -1,0 +1,20 @@
+# AFL Stats local-db — OpenMediaVault (Compose plugin) stack.
+# Builds the image straight from GitHub (no local checkout needed) and seeds the
+# database from the committed season data. Put your Claude key in ANTHROPIC_API_KEY
+# below to enable the natural-language query feature (the app runs fine without it).
+#
+# To refresh the data, recreate the stack with "build, no cache" (rebuilds the DB
+# from the latest committed public/data).
+services:
+  local-db:
+    container_name: afl-local-db
+    build:
+      context: "https://github.com/PalmyW/ranked-predictor.git#main"
+      dockerfile: local-db/Dockerfile.standalone
+    image: afl-local-db:latest
+    ports:
+      - "3737:3737"
+    environment:
+      - HOST=0.0.0.0
+      - ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    restart: unless-stopped

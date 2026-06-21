@@ -584,8 +584,10 @@ app.get('*', (_, res) => {
   }
 });
 
-const server = app.listen(PORT, '127.0.0.1', () => {
-  console.log(`AFL Stats DB running at http://localhost:${PORT}`);
+// Bind to loopback by default; set HOST=0.0.0.0 (e.g. in Docker) to expose it.
+const HOST = process.env.HOST ?? '127.0.0.1';
+const server = app.listen(PORT, HOST, () => {
+  console.log(`AFL Stats DB running at http://${HOST}:${PORT}`);
 });
 
 server.on('error', err => {
