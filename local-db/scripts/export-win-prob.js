@@ -14,9 +14,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const DB_PATH = join(__dirname, '../afl-stats.db');
 const OUT_PATH = join(__dirname, '../../src/data/palmyWinProb.json');
 
-const MAX_MARGIN = 80;   // cap the curve; predicted margins above this clamp to the last value
-const CLAMP_LO = 0.05;
-const CLAMP_HI = 0.95;
+const MAX_MARGIN = 80;   // cap the curve; predicted margins above this reuse the last value
 
 const db = new DatabaseSync(DB_PATH);
 
@@ -47,7 +45,7 @@ function curveFor(marginCol) {
       continue;
     }
     if (row && row.games > 0) {
-      last = Math.min(CLAMP_HI, Math.max(CLAMP_LO, row.fav));
+      last = row.fav;   // true per-point rate, no clamping
     }
     probs.push(Number(last.toFixed(3)));
     games.push(row?.games ?? 0);
