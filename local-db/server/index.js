@@ -4,8 +4,16 @@ import { join, dirname } from 'path';
 import { existsSync } from 'fs';
 import { openDb, STAT_COLS } from '../scripts/lib/db.js';
 import Anthropic from '@anthropic-ai/sdk';
+import { Agent, fetch as undiciFetch } from 'undici';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Force outbound HTTPS over IPv4. DNS returns an AAAA record for
+// api.anthropic.com, but some Docker networks (e.g. on the NAS) have no IPv6
+// route, so the default fetch tries IPv6 and hangs. family:4 pins IPv4.
+// Use undici's own fetch with the dispatcher: a dispatcher from the installed
+// undici is incompatible with Node's built-in fetch (different undici version).
+const ipv4Dispatcher = new Agent({ connect: { family: 4 } });
 const PORT = process.env.PORT ?? 3737;
 const DB_PATH = join(__dirname, '../afl-stats.db');
 
@@ -393,7 +401,15 @@ app.post('/api/ai/query', async (req, res) => {
   const { prompt } = req.body ?? {};
   if (!prompt?.trim()) return res.status(400).json({ error: 'Missing prompt' });
   try {
-    const client = new Anthropic();
+    // Cap the request so a blocked outbound connection (e.g. the container can't
+    // reach api.anthropic.com) surfaces as a fast error instead of hanging the UI
+    // for the SDK's 10-minute default timeout.
+    const client = new Anthropic({
+      timeout: 30_000,
+      maxRetries: 1,
+      fetch: undiciFetch,
+      fetchOptions: { dispatcher: ipv4Dispatcher },
+    });
     const { data: msg, response: httpRes } = await client.messages.create({
       model: aiStats.model,
       max_tokens: 4096,
