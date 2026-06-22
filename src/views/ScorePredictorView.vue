@@ -247,10 +247,10 @@
             :class="popupTeamId === m.homeTeamId ? 'bg-blue-50 dark:bg-blue-900/10' : ''"
             @click.stop="onRowClick(m.homeTeamId, $event)"
           >
-            <span class="hidden text-sm font-medium text-gray-800 dark:text-gray-200 sm:inline">
+            <span class="hidden text-sm text-gray-800 dark:text-gray-200 sm:inline" :class="nameWeight(m, true)">
               {{ m.homeTeamName }}
             </span>
-            <span class="text-sm font-medium text-gray-800 dark:text-gray-200 sm:hidden">
+            <span class="text-sm text-gray-800 dark:text-gray-200 sm:hidden" :class="nameWeight(m, true)">
               {{ m.homeTeamAbbreviation }}
             </span>
             <svg class="size-6 shrink-0">
@@ -319,10 +319,10 @@
             <svg class="size-6 shrink-0">
               <use :href="`${BASE_URL}icons.svg#${m.awayTeamIconId}`" />
             </svg>
-            <span class="hidden text-sm font-medium text-gray-800 dark:text-gray-200 sm:inline">
+            <span class="hidden text-sm text-gray-800 dark:text-gray-200 sm:inline" :class="nameWeight(m, false)">
               {{ m.awayTeamName }}
             </span>
-            <span class="text-sm font-medium text-gray-800 dark:text-gray-200 sm:hidden">
+            <span class="text-sm text-gray-800 dark:text-gray-200 sm:hidden" :class="nameWeight(m, false)">
               {{ m.awayTeamAbbreviation }}
             </span>
           </div>
@@ -497,7 +497,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAFLData } from '../composables/useAFLData'
 import { useScorePredictor } from '../composables/useScorePredictor'
-import type { StrengthSortKey, TeamStrengthRow } from '../composables/useScorePredictor'
+import type { StrengthSortKey, TeamStrengthRow, UpcomingMatchPrediction } from '../composables/useScorePredictor'
 import { favouriteWinProb } from '../utils/palmyWinProb'
 import { useTipsBacktest } from '../composables/useTipsBacktest'
 import { getActiveSeasonYear } from '../config/seasons'
@@ -568,6 +568,14 @@ const winInfoById = computed<Record<number, { abbr: string; pct: number }>>(() =
   }
   return map
 })
+
+// Bold the predicted winner's name; medium weight otherwise (including ties and
+// matches PalmyScore can't rate).
+function nameWeight(m: UpcomingMatchPrediction, home: boolean): string {
+  if (!m.hasStrengthData || m.predictedHomeScore === m.predictedAwayScore) return 'font-medium'
+  const homeFav = m.predictedHomeScore > m.predictedAwayScore
+  return home === homeFav ? 'font-bold' : 'font-medium'
+}
 
 // "avg ± adjustment" equation behind each predicted score, e.g. "82.3 − 4.1".
 function eqStr(avg: number, adj: number): string {
