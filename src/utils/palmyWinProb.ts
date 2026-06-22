@@ -38,15 +38,16 @@ export const palmyTrends: Record<PalmyVariant, PalmyTrend> = {
   all: fit(winProb.all as number[], (winProb._gamesAll ?? []) as number[]),
 }
 
-function table(variant: PalmyVariant): number[] {
-  return (variant === 'ha' ? winProb.ha : winProb.all) as number[]
-}
-
 // Favourite (higher predicted score) win probability for an absolute margin:
-// the per-point historical rate, recalculated for each point, with no clamping.
-// Margins beyond the curve reuse the last point.
+// evaluated on the sample-weighted trend line so the result is smooth and
+// monotonic, matching the calibration curve drawn in WinProbChart. Reading the
+// raw per-point table instead would surface noisy single-bucket values (e.g. a
+// 12-point favourite landing on exactly 50%). Margins beyond the curve are
+// clamped; probabilities never drop below 0.5 (the favourite, by definition).
 export function favouriteWinProbAtMargin(absMargin: number, variant: PalmyVariant = 'ha'): number {
-  return table(variant)[Math.min(Math.abs(Math.round(absMargin)), PALMY_MAX)] ?? 0.5
+  const t = palmyTrends[variant]
+  const m = Math.min(Math.abs(absMargin), PALMY_MAX)
+  return Math.min(1, Math.max(0.5, t.intercept + t.slope * m))
 }
 
 // Probability the HOME team wins given a PalmyScore predicted scoreline.

@@ -104,11 +104,21 @@
             </div>
             <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
               <template v-if="simulating">{{ simStage }}</template>
-              <template v-else-if="usePalmyProb">Win chance from PalmyScore's predicted margin (historical calibration)</template>
+              <template v-else-if="usePalmyProb">Win chance from {{ simVenueAdjusted ? 'home/away' : 'all-games' }} PalmyScore's predicted margin (historical calibration)</template>
               <template v-else>Win chance scales 60–95% by rank gap, home team +5%</template>
             </p>
           </div>
           <div v-if="!capturing" class="flex items-center gap-2">
+            <!-- Venue-adjust checkbox (only affects PalmyScore win model) -->
+            <label v-if="usePalmyProb" class="flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold text-gray-600 dark:text-gray-300 cursor-pointer">
+              <input
+                type="checkbox"
+                :checked="simVenueAdjusted"
+                @change="emit('update:simVenueAdjusted', !simVenueAdjusted)"
+                class="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800"
+              />
+              Venue adjust
+            </label>
             <!-- Win model: team ranking vs PalmyScore predicted-margin calibration -->
             <div class="flex overflow-hidden rounded border border-gray-300 text-xs font-semibold dark:border-gray-600">
               <button
@@ -269,11 +279,13 @@ const props = defineProps<{
   isRunningRange: boolean
   viewOnly?: boolean
   palmyVenueAdjusted: boolean
+  simVenueAdjusted: boolean
   usePalmyProb: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'update:palmyVenueAdjusted', value: boolean): void
+  (e: 'update:simVenueAdjusted', value: boolean): void
   (e: 'update:usePalmyProb', value: boolean): void
 }>()
 

@@ -94,6 +94,7 @@
             :isRunningRange="isRunningRange"
             :viewOnly="!isCurrentSeason"
             v-model:palmyVenueAdjusted="palmyVenueAdjusted"
+            v-model:simVenueAdjusted="simVenueAdjusted"
             v-model:usePalmyProb="usePalmyProb"
           />
 
@@ -160,7 +161,7 @@ const { allUpcomingPredictions: simPalmyPredictions } = useScorePredictor(matche
 const { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate, getSimulationFrames, rangeResults, rangeTotal, simStats, isRunningRange, runMany } = useSimulation(
   ranking,
   matches,
-  { palmyPredictions: simPalmyPredictions, usePalmyProb },
+  { palmyPredictions: simPalmyPredictions, usePalmyProb, venueAdjusted: simVenueAdjusted },
 )
 
 const actualLadderRankMap = computed<Record<number, number>>(() => {

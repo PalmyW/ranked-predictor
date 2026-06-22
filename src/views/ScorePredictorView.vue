@@ -196,6 +196,17 @@
               All Upcoming
             </button>
           </div>
+          <!-- Team filter (all upcoming only) -->
+          <select
+            v-if="showAllUpcoming && upcomingTeams.length > 0"
+            v-model="teamFilter"
+            class="rounded border border-gray-300 bg-white px-2 py-1 text-xs font-semibold text-gray-600 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
+          >
+            <option :value="null">All Teams</option>
+            <option v-for="t in upcomingTeams" :key="t.id" :value="t.id">
+              {{ t.name }}
+            </option>
+          </select>
         </div>
       </div>
 
@@ -516,10 +527,31 @@ const { roundResults, tally, loading: tipsLoading } = useTipsBacktest(
 const showAllUpcoming = ref(false)
 const sortKey = ref<StrengthSortKey>('attackRank')
 const showNerd = ref(false)
+const teamFilter = ref<number | null>(null)
 
-const activePredictions = computed(() =>
-  showAllUpcoming.value ? allUpcomingPredictions.value : nextRoundPredictions.value,
-)
+// Teams that appear in any upcoming match, sorted by name, for the filter dropdown.
+const upcomingTeams = computed(() => {
+  const seen = new Map<number, string>()
+  for (const m of allUpcomingPredictions.value) {
+    seen.set(m.homeTeamId, m.homeTeamName)
+    seen.set(m.awayTeamId, m.awayTeamName)
+  }
+  return [...seen.entries()]
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+})
+
+const activePredictions = computed(() => {
+  const list = showAllUpcoming.value
+    ? allUpcomingPredictions.value
+    : nextRoundPredictions.value
+  if (showAllUpcoming.value && teamFilter.value != null) {
+    return list.filter(
+      (m) => m.homeTeamId === teamFilter.value || m.awayTeamId === teamFilter.value,
+    )
+  }
+  return list
+})
 
 // Predicted winner + historical win % for each match, from the calibration curve
 // matching the active ratings variant (all-games vs home/away).

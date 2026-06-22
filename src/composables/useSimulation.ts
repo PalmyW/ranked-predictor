@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue'
 import type { AflMatch, LadderRow, TeamRanking } from '../types/afl'
 import { TEAMS } from './useAFLData'
-import { homeWinProbFromScore } from '../utils/palmyWinProb'
+import { homeWinProbFromScore, type PalmyVariant } from '../utils/palmyWinProb'
 
 export interface RangeEntry {
   teamId: number
@@ -27,6 +27,11 @@ interface SimulationOptions {
   // When true, the simulator derives each match's win chance from PalmyScore's
   // predicted margin via the historical calibration curve instead of team ranking
   usePalmyProb?: { readonly value: boolean }
+  // When true (default), PalmyScore win chances use the home/away venue-adjusted
+  // ratings and matching calibration curve; when false, the all-games variant.
+  // Must agree with how palmyPredictions were generated so the predicted margin
+  // is scored on the correct curve.
+  venueAdjusted?: { readonly value: boolean }
 }
 
 // Elo-style logistic win probability for the home team.
@@ -56,11 +61,12 @@ function matchHomeWinProb(
   rankMap: Record<number, number>,
   predMap: Map<number, MatchScorePrediction> | null,
   usePalmy: boolean,
+  variant: PalmyVariant,
 ): number {
   if (usePalmy && predMap) {
     const p = predMap.get(match.id)
     if (p?.hasStrengthData && p.predictedHomeScore !== p.predictedAwayScore) {
-      return homeWinProbFromScore(p.predictedHomeScore, p.predictedAwayScore, 'ha')
+      return homeWinProbFromScore(p.predictedHomeScore, p.predictedAwayScore, variant)
     }
   }
   const hRank = rankMap[match.homeTeamId] ?? 999
@@ -209,6 +215,7 @@ function runOneSim(
   rankMap: Record<number, number>,
   predMap: Map<number, MatchScorePrediction> | null,
   usePalmy: boolean,
+  variant: PalmyVariant,
 ): number[] {
   const simStats: Record<number, TeamStats> = {}
   for (const [id, s] of Object.entries(baseStats)) simStats[Number(id)] = { ...s }
@@ -218,7 +225,7 @@ function runOneSim(
     const hId = match.homeTeamId
     const aId = match.awayTeamId
     if (!hId || !aId || !simStats[hId] || !simStats[aId]) continue
-    const homeWins = Math.random() < matchHomeWinProb(match, rankMap, predMap, usePalmy)
+    const homeWins = Math.random() < matchHomeWinProb(match, rankMap, predMap, usePalmy, variant)
     const winnerId = homeWins ? hId : aId
     const loserId = homeWins ? aId : hId
     simStats[winnerId].wins++; simStats[winnerId].pts += 4; simStats[winnerId].played++
@@ -243,6 +250,7 @@ function runManySimulations(
   n: number,
   predMap: Map<number, MatchScorePrediction> | null,
   usePalmy: boolean,
+  variant: PalmyVariant,
 ): { results: RangeEntry[]; stats: SimulationStats } {
   const teamMap = Object.fromEntries(TEAMS.map((t) => [t.id, t]))
   const counts: Record<number, number[]> = {}
@@ -251,7 +259,7 @@ function runManySimulations(
   const ladderCounts = new Map<string, number>()
   const baseStats = buildStats(matches)
   for (let i = 0; i < n; i++) {
-    const order = runOneSim(baseStats, matches, rankMap, predMap, usePalmy)
+    const order = runOneSim(baseStats, matches, rankMap, predMap, usePalmy, variant)
     const key = order.join(',')
     ladderCounts.set(key, (ladderCounts.get(key) ?? 0) + 1)
     for (let pos = 0; pos < order.length; pos++) {
@@ -382,6 +390,7 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef, options?
     return arr && arr.length ? new Map(arr.map((p) => [p.matchId, p])) : null
   }
   const usePalmy = (): boolean => options?.usePalmyProb?.value ?? false
+  const variant = (): PalmyVariant => (options?.venueAdjusted?.value ?? true) ? 'ha' : 'all'
 
   const actualLadder = computed<LadderRow[]>(() => {
     const stats = buildStats(matches.value)
@@ -420,13 +429,14 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef, options?
     // Capture per-match results while simulating
     const predMap = palmyPredMap()
     const palmy = usePalmy()
+    const palmyVariant = variant()
     const winners: Record<number, number> = {}
     for (const match of matches.value) {
       if (match.status === 'CONCLUDED') continue
       const hId = match.homeTeamId
       const aId = match.awayTeamId
       if (!hId || !aId) continue
-      winners[match.id] = Math.random() < matchHomeWinProb(match, rankMap, predMap, palmy) ? hId : aId
+      winners[match.id] = Math.random() < matchHomeWinProb(match, rankMap, predMap, palmy, palmyVariant) ? hId : aId
       // Use same winners for the ladder calculation below
     }
     simulatedMatchWinners.value = winners
@@ -498,7 +508,7 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef, options?
     ranking.value.forEach((id, i) => { rankMap[id] = i + 1 })
     await new Promise<void>((resolve) => {
       setTimeout(() => {
-        const { results, stats } = runManySimulations(rankMap, matches.value, n, palmyPredMap(), usePalmy())
+        const { results, stats } = runManySimulations(rankMap, matches.value, n, palmyPredMap(), usePalmy(), variant())
         rangeResults.value = results
         simStats.value = stats
         rangeTotal.value = n
