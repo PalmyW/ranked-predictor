@@ -611,6 +611,31 @@ export function runXPalmy(
 
 // --- Public API ---
 
+/**
+ * Keep only each team's most recent `perTeam` concluded matches (a "form" window).
+ * A match is retained while either of its teams still has room in their window,
+ * so every team's last `perTeam` games are represented.
+ */
+export function filterRecentMatches(
+  matches: readonly AflMatch[],
+  perTeam: number,
+): AflMatch[] {
+  const concluded = matches
+    .filter((m) => m.status === 'CONCLUDED' && m.homeScore && m.awayScore)
+    .sort((a, b) => a.roundNumber - b.roundNumber)
+  const count: Record<number, number> = {}
+  const kept: AflMatch[] = []
+  for (let i = concluded.length - 1; i >= 0; i--) {
+    const m = concluded[i]
+    if ((count[m.homeTeamId] ?? 0) < perTeam || (count[m.awayTeamId] ?? 0) < perTeam) {
+      kept.push(m)
+      count[m.homeTeamId] = (count[m.homeTeamId] ?? 0) + 1
+      count[m.awayTeamId] = (count[m.awayTeamId] ?? 0) + 1
+    }
+  }
+  return kept
+}
+
 /** Compute a single algorithm's ranking for any arbitrary set of matches. */
 export function computeAlgorithmRanking(
   id: AlgorithmId,

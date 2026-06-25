@@ -52,7 +52,7 @@ export type StrengthSortKey = 'attackRank' | 'defenceRank'
 
 // PLACEHOLDER rounds (e.g. late-season fixtures) have confirmed teams and venue
 // but an unlocked date, so they can still be predicted.
-const UPCOMING_STATUSES = new Set(['SCHEDULED', 'CONFIRMED_TEAMS', 'UNCONFIRMED_TEAMS', 'PLACEHOLDER'])
+export const UPCOMING_STATUSES = new Set(['SCHEDULED', 'CONFIRMED_TEAMS', 'UNCONFIRMED_TEAMS', 'PLACEHOLDER'])
 
 // Build per-team attack/defence strength ratings from a set of matches.
 // Pure — operates on whatever match list it's given (current season, a subset for

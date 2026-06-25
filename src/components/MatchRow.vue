@@ -4,9 +4,9 @@
     :class="[
       index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800/50',
       match.status === 'LIVE' ? 'border-l-2 border-blue-400' : '',
-      match.status === 'CONCLUDED' ? 'cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950/20' : '',
+      match.status === 'CONCLUDED' || isUpcoming ? 'cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950/20' : '',
     ]"
-    @click="match.status === 'CONCLUDED' && router.push('/stats/' + match.providerId)"
+    @click="onRowClick"
   >
     <!-- Status dot -->
     <span class="shrink-0 mr-2">
@@ -97,6 +97,13 @@
     >
       {{ countdown }}
     </span>
+
+    <HeadToHeadModal
+      v-if="showH2H"
+      :home="{ id: match.homeTeamId, name: match.homeTeamName, iconId: homeIconId ?? '' }"
+      :away="{ id: match.awayTeamId, name: match.awayTeamName, iconId: awayIconId ?? '' }"
+      @close="showH2H = false"
+    />
   </div>
 </template>
 
@@ -106,6 +113,7 @@ import { useRouter } from 'vue-router'
 import type { AflMatch } from '../types/afl'
 import { TEAMS } from '../composables/useAFLData'
 import TeamFixtureSummaryPopup from './TeamFixtureSummaryPopup.vue'
+import HeadToHeadModal from './HeadToHeadModal.vue'
 
 const props = defineProps<{
   match: AflMatch
@@ -118,6 +126,18 @@ const router = useRouter()
 
 const homeIconId = computed(() => TEAMS.find(t => t.id === props.match.homeTeamId)?.iconId ?? null)
 const awayIconId = computed(() => TEAMS.find(t => t.id === props.match.awayTeamId)?.iconId ?? null)
+
+const isUpcoming = computed(() => props.match.status !== 'CONCLUDED' && props.match.status !== 'LIVE')
+
+const showH2H = ref(false)
+
+function onRowClick() {
+  if (props.match.status === 'CONCLUDED') {
+    router.push('/stats/' + props.match.providerId)
+  } else if (isUpcoming.value) {
+    showH2H.value = true
+  }
+}
 
 const predictedWinnerId = computed<number | null>(() => {
   const hRank = props.rankMap[props.match.homeTeamId] ?? 999

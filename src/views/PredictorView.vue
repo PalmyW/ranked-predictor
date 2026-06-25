@@ -119,12 +119,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, provide, onMounted } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
 import { useAFLData } from '../composables/useAFLData'
 import { useRanking } from '../composables/useRanking'
 import { useAlgorithmRankings, ALGORITHMS } from '../composables/useAlgorithmRankings'
 import { useSimulation, buildPalmyLadder } from '../composables/useSimulation'
-import { useScorePredictor } from '../composables/useScorePredictor'
+import { usePredictionsStore } from '../stores/predictions'
 import { useAnalytics } from '../composables/useAnalytics'
 import { useSeason } from '../composables/useSeason'
 import RoundBanner from '../components/RoundBanner.vue'
@@ -149,14 +149,17 @@ const algoRankingMap = computed<Record<string, { teamId: number }[]>>(() => ({
   palmy: palmyRanking.value,
   xpalmy: xpalmyRanking.value,
 }))
+// Both prediction lists share the store's single cached strengthRows/teamMap pass,
+// differing only by the venue-adjustment flag.
+const predictions = usePredictionsStore()
 const palmyVenueAdjusted = ref(false)
-const { allUpcomingPredictions } = useScorePredictor(matches, palmyVenueAdjusted)
+const allUpcomingPredictions = computed(() => predictions.upcomingPredictions(palmyVenueAdjusted.value))
 
 // Simulator can optionally derive each match's win chance from PalmyScore's
 // predicted margin (home/away ratings) via the historical calibration curve.
 const usePalmyProb = ref(false)
 const simVenueAdjusted = ref(true)
-const { allUpcomingPredictions: simPalmyPredictions } = useScorePredictor(matches, simVenueAdjusted)
+const simPalmyPredictions = computed(() => predictions.upcomingPredictions(simVenueAdjusted.value))
 
 const { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate, getSimulationFrames, rangeResults, rangeTotal, simStats, isRunningRange, runMany } = useSimulation(
   ranking,
@@ -175,9 +178,6 @@ const palmyPredictedLadder = computed(() =>
 )
 
 const analytics = useAnalytics()
-
-provide('matches', matches)
-provide('ranking', ranking)
 
 const currentRoundNumber = computed(() => {
   if (matches.value.length === 0) return null

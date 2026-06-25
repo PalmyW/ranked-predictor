@@ -299,8 +299,16 @@
           <span v-else>{{ selectedAlgo.creditName }}</span>
         </span>
       </div>
-      <!-- Table / Graph toggle + download -->
+      <!-- Last 8 + Table / Graph toggle + download -->
       <div class="shrink-0 flex items-center gap-2 self-center">
+        <button
+          @click="recentOnly = !recentOnly"
+          :title="recentOnly ? `Ranking each team on their last ${RECENT_LIMIT} games` : `Click to rank on each team's last ${RECENT_LIMIT} games only`"
+          class="rounded border px-3 py-1.5 text-xs font-semibold transition-colors"
+          :class="recentOnly
+            ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+            : 'bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-blue-400 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'"
+        >Last {{ RECENT_LIMIT }}</button>
         <button
           v-if="activeView === 'graph' && !graphCapturing"
           @click="screenshotGraph"
@@ -805,6 +813,7 @@
         <span class="inline-block w-4 border-b-2 border-blue-400"></span>
         Top 10 (wildcard)
       </span>
+      <span v-if="recentOnly" class="font-semibold text-blue-500 dark:text-blue-400">Form mode: each team's last {{ RECENT_LIMIT }} games only</span>
       <span v-if="activeView === 'table'">vs AFL = difference from the official points-based ladder position</span>
       <span v-if="selectedId === 'palmy' && activeView === 'table'">Hover a team to see their Palmy data</span>
       <span v-if="selectedId === 'xpalmy'">Click a team to see their X and Y ladders</span>
@@ -817,8 +826,9 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toPng } from 'html-to-image'
 import { useAFLData, TEAMS } from '../composables/useAFLData'
-import { useAlgorithmRankings, ALGORITHMS, computeAlgorithmRanking, runPalmy, runXPalmy, toRows, buildBasicStats, buildOfficialRankMap } from '../composables/useAlgorithmRankings'
+import { useAlgorithmRankings, ALGORITHMS, computeAlgorithmRanking, runPalmy, runXPalmy, toRows, buildBasicStats, buildOfficialRankMap, filterRecentMatches } from '../composables/useAlgorithmRankings'
 import type { AlgorithmId, AlgorithmRankRow, XPalmyLadderEntry, VenueFilter } from '../composables/useAlgorithmRankings'
+import type { AflMatch } from '../types/afl'
 import { titleToFilename } from '../composables/usePowerRankingsTitle'
 import { getActiveSeasonYear } from '../config/seasons'
 
@@ -828,14 +838,22 @@ const route = useRoute()
 const router = useRouter()
 
 const { matches, isLoading } = useAFLData()
-const { officialRankMap: compositeOfficialRankMap, winPctRanking, srsRanking, colleyRanking, masseyRanking, winFlowRanking } = useAlgorithmRankings(matches)
+
+// "Last 8" form toggle — restrict every ladder to each team's most recent 8 games.
+const RECENT_LIMIT = 8
+const recentOnly = ref(route.query.recent === '1')
+const rankingMatches = computed<readonly AflMatch[]>(() =>
+  recentOnly.value ? filterRecentMatches(matches.value, RECENT_LIMIT) : matches.value,
+)
+
+const { officialRankMap: compositeOfficialRankMap, winPctRanking, srsRanking, colleyRanking, masseyRanking, winFlowRanking } = useAlgorithmRankings(rankingMatches)
 
 const palmyVenueFilter = ref<VenueFilter>('both')
 
 const palmyConcluded = computed(() =>
-  matches.value.filter((m) => m.status === 'CONCLUDED' && m.homeScore && m.awayScore),
+  rankingMatches.value.filter((m) => m.status === 'CONCLUDED' && m.homeScore && m.awayScore),
 )
-const palmyBasicStats = computed(() => buildBasicStats(matches.value, palmyVenueFilter.value))
+const palmyBasicStats = computed(() => buildBasicStats(rankingMatches.value, palmyVenueFilter.value))
 
 const palmyData = computed(() =>
   runPalmy(palmyConcluded.value, palmyBasicStats.value, compositeOfficialRankMap.value, palmyVenueFilter.value),
@@ -867,8 +885,8 @@ const activeView = ref<'table' | 'graph'>(
 )
 const showNerdStuff = ref(false)
 
-watch([selectedId, activeView], ([algo, view]) => {
-  router.replace({ query: { algo, view } })
+watch([selectedId, activeView, recentOnly], ([algo, view, recent]) => {
+  router.replace({ query: { algo, view, ...(recent ? { recent: '1' } : {}) } })
 })
 const selectedAlgo = computed(() => ALGORITHMS.find((a) => a.id === selectedId.value)!)
 
@@ -978,7 +996,7 @@ function xScale(idx: number): number {
 
 const concludedRounds = computed<number[]>(() => {
   const rounds = new Set<number>()
-  for (const m of matches.value) {
+  for (const m of rankingMatches.value) {
     if (m.status === 'CONCLUDED' && m.homeScore && m.awayScore) rounds.add(m.roundNumber)
   }
   return [...rounds].sort((a, b) => a - b)
@@ -1004,7 +1022,7 @@ const roundHistory = computed<Map<number, AlgorithmRankRow[]>>(() => {
   if (activeView.value !== 'graph') return new Map()
   const result = new Map<number, AlgorithmRankRow[]>()
   for (const round of concludedRounds.value) {
-    const matchesForRound = matches.value.filter((m) => m.roundNumber <= round)
+    const matchesForRound = rankingMatches.value.filter((m) => m.roundNumber <= round)
     result.set(round, computeAlgorithmRanking(selectedId.value, matchesForRound))
   }
   return result
@@ -1278,7 +1296,7 @@ const xpalmyTrailHistory = computed(() => {
   if (selectedId.value !== 'xpalmy' || activeView.value !== 'graph') return result
   for (const t of TEAMS) result.set(t.id, [])
   for (const round of concludedRounds.value) {
-    const roundMatches = matches.value.filter((m) => m.roundNumber <= round)
+    const roundMatches = rankingMatches.value.filter((m) => m.roundNumber <= round)
     const roundConcluded = roundMatches.filter((m) => m.status === 'CONCLUDED' && m.homeScore && m.awayScore)
     const stats = buildBasicStats(roundMatches)
     const offMap = buildOfficialRankMap(stats)

@@ -62,9 +62,9 @@
           match.status === 'LIVE'
             ? 'border-l-2 border-blue-400 bg-blue-50/30 hover:bg-blue-50/50 dark:bg-blue-950/20 dark:hover:bg-blue-950/30'
             : '',
-          match.status === 'CONCLUDED' ? 'cursor-pointer' : 'cursor-default',
+          match.status === 'CONCLUDED' || isUpcoming(match) ? 'cursor-pointer' : 'cursor-default',
         ]"
-        @click="match.status === 'CONCLUDED' && router.push('/stats/' + match.providerId)"
+        @click="onCardClick(match)"
       >
         <!-- Status (LIVE / FT only) -->
         <div class="flex">
@@ -248,6 +248,13 @@
         </div>
       </div>
     </div>
+
+    <HeadToHeadModal
+      v-if="h2hMatch"
+      :home="{ id: h2hMatch.homeTeamId, name: h2hMatch.homeTeamName, iconId: iconId(h2hMatch.homeTeamId) ?? '' }"
+      :away="{ id: h2hMatch.awayTeamId, name: h2hMatch.awayTeamName, iconId: iconId(h2hMatch.awayTeamId) ?? '' }"
+      @close="h2hMatch = null"
+    />
   </div>
 </template>
 
@@ -257,6 +264,7 @@ import { useRouter } from 'vue-router'
 import type { AflMatch, TeamRanking } from '../types/afl'
 import { TEAMS } from '../composables/useAFLData'
 import TeamFixtureSummaryPopup from './TeamFixtureSummaryPopup.vue'
+import HeadToHeadModal from './HeadToHeadModal.vue'
 
 const props = defineProps<{
   matches: readonly AflMatch[]
@@ -265,6 +273,21 @@ const props = defineProps<{
 }>()
 
 const router = useRouter()
+
+// --- Head-to-head modal ---
+const h2hMatch = ref<AflMatch | null>(null)
+
+function isUpcoming(match: AflMatch): boolean {
+  return match.status !== 'CONCLUDED' && match.status !== 'LIVE'
+}
+
+function onCardClick(match: AflMatch) {
+  if (match.status === 'CONCLUDED') {
+    router.push('/stats/' + match.providerId)
+  } else if (isUpcoming(match)) {
+    h2hMatch.value = match
+  }
+}
 
 // --- Now ticker (for countdown) ---
 const now = ref(Date.now())

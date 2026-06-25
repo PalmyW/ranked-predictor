@@ -168,6 +168,17 @@
               "
             >Home/Away</button>
           </div>
+          <!-- Last 8 games toggle -->
+          <button
+            @click="recentOnly = !recentOnly"
+            :title="recentOnly ? `Rating each team on their last ${RECENT_LIMIT} games` : `Rate each team on their last ${RECENT_LIMIT} games only`"
+            class="rounded border px-3 py-1 text-xs font-semibold transition-colors"
+            :class="
+              recentOnly
+                ? 'border-blue-600 bg-blue-600 text-white'
+                : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+            "
+          >Last {{ RECENT_LIMIT }}</button>
           <!-- Round toggle -->
           <div
             v-if="allUpcomingPredictions.length > 0"
@@ -497,6 +508,8 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAFLData } from '../composables/useAFLData'
 import { useScorePredictor } from '../composables/useScorePredictor'
+import { filterRecentMatches } from '../composables/useAlgorithmRankings'
+import type { AflMatch } from '../types/afl'
 import type { StrengthSortKey, TeamStrengthRow, UpcomingMatchPrediction } from '../composables/useScorePredictor'
 import { favouriteWinProb } from '../utils/palmyWinProb'
 import { useTipsBacktest } from '../composables/useTipsBacktest'
@@ -510,13 +523,26 @@ const { matches, isLoading } = useAFLData()
 
 const venueAdjusted = ref(false)
 
+// "Last 8" form basis — rate each team on their most recent games only. Strength is
+// built from concluded matches, so keep the recent window plus all unplayed fixtures
+// (which the predictor needs to know what to predict).
+const RECENT_LIMIT = 8
+const recentOnly = ref(false)
+const predictorMatches = computed<readonly AflMatch[]>(() => {
+  if (!recentOnly.value) return matches.value
+  const upcoming = matches.value.filter(
+    (m) => !(m.status === 'CONCLUDED' && m.homeScore && m.awayScore),
+  )
+  return [...filterRecentMatches(matches.value, RECENT_LIMIT), ...upcoming]
+})
+
 const {
   strengthRows,
   hasEnoughData,
   nextRoundName,
   nextRoundPredictions,
   allUpcomingPredictions,
-} = useScorePredictor(matches, venueAdjusted)
+} = useScorePredictor(predictorMatches, venueAdjusted)
 
 const { roundResults, tally, loading: tipsLoading } = useTipsBacktest(
   matches,
