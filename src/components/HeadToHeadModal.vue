@@ -50,14 +50,14 @@
             </div>
           </div>
 
-          <!-- Last 6 form graphic -->
+          <!-- Last 8 form graphic -->
           <div class="border-b border-gray-100 px-4 py-3 dark:border-gray-800">
             <div class="mb-2 text-center text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500">
-              Last 6
+              Last 8
             </div>
             <div class="flex items-center justify-center gap-2">
               <!-- newest on the right; winning team's logo (grey dash for a draw) -->
-              <template v-for="m in [...h2h.lastSix].reverse()" :key="m.matchId">
+              <template v-for="m in [...h2h.lastEight].reverse()" :key="m.matchId">
                 <svg
                   v-if="winnerIconId(m.result)"
                   class="size-7 shrink-0"
@@ -74,10 +74,10 @@
             </div>
           </div>
 
-          <!-- Last 6 meeting list -->
+          <!-- Last 8 meeting list -->
           <div class="px-2 py-1">
             <div
-              v-for="m in h2h.lastSix"
+              v-for="m in h2h.lastEight"
               :key="m.matchId"
               class="flex items-center gap-2 border-b border-gray-50 px-2 py-1.5 text-xs last:border-0 dark:border-gray-800/60"
             >

@@ -27,8 +27,8 @@ export interface HeadToHead {
   draws: number
   /** Year of the earliest recorded meeting, or null when there are none */
   firstYear: number | null
-  /** Up to 6 most recent meetings, newest first, from team A's perspective */
-  lastSix: H2HMeeting[]
+  /** Up to 8 most recent meetings, newest first, from team A's perspective */
+  lastEight: H2HMeeting[]
 }
 
 /**
@@ -99,8 +99,8 @@ export const useFixturesStore = defineStore('fixtures', () => {
       else bWins++
     }
 
-    const lastSix: H2HMeeting[] = meetings
-      .slice(-6)
+    const lastEight: H2HMeeting[] = meetings
+      .slice(-8)
       .reverse()
       .map((m) => {
         const homeScore = m.homeScore!.totalScore
@@ -128,7 +128,7 @@ export const useFixturesStore = defineStore('fixtures', () => {
       ? new Date(meetings[0].utcStartTime).getFullYear()
       : null
 
-    return { total: meetings.length, aWins, bWins, draws, firstYear, lastSix }
+    return { total: meetings.length, aWins, bWins, draws, firstYear, lastEight }
   }
 
   return { seasonsByYear, loaded, isLoading, loadAllSeasons, allConcludedMatches, getHeadToHead }
