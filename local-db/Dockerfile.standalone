@@ -23,6 +23,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 # Expose the server outside the container (the app defaults to 127.0.0.1)
 ENV HOST=0.0.0.0
+# git is needed by the background refresh script (scripts/refresh-db.sh), which
+# periodically pulls the latest committed season data and re-imports the DB.
+RUN apk add --no-cache git
 COPY local-db/package*.json ./
 RUN npm ci --omit=dev
 COPY local-db/server/ ./server/
@@ -32,4 +35,6 @@ COPY --from=builder /app/dist ./dist
 # Seeded database (include WAL/SHM siblings if present)
 COPY --from=builder /app/afl-stats.db* ./
 EXPOSE 3737
-CMD ["node", "server/index.js"]
+# entrypoint.sh runs the periodic refresh loop in the background, then execs the
+# server as PID 1. Set REFRESH_DISABLED=1 to keep only the build-time data.
+CMD ["./scripts/entrypoint.sh"]

@@ -3,8 +3,10 @@
 # database from the committed season data. Put your Claude key in ANTHROPIC_API_KEY
 # below to enable the natural-language query feature (the app runs fine without it).
 #
-# To refresh the data, recreate the stack with "build, no cache" (rebuilds the DB
-# from the latest committed public/data).
+# The container refreshes itself: a background loop pulls the latest committed
+# public/data from git main and re-imports the DB every REFRESH_INTERVAL seconds
+# (default 6h). For a one-off rebuild you can still recreate the stack with
+# "build, no cache". Set REFRESH_DISABLED=1 to keep only the build-time data.
 services:
   local-db:
     container_name: afl-local-db
@@ -17,4 +19,6 @@ services:
     environment:
       - HOST=0.0.0.0
       - ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      # How often the background loop pulls git main + re-imports (seconds).
+      - REFRESH_INTERVAL=21600
     restart: unless-stopped

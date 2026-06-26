@@ -9,7 +9,9 @@ import { importMatchDetails } from './lib/import-match-details.js';
 import { computePredictions } from './lib/compute-predictions.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = join(__dirname, '../../public/data');
+// Defaults to the season data committed at the repo root. Override with DATA_DIR
+// (e.g. the in-container refresh script points this at a fresh git checkout).
+const DATA_DIR = process.env.DATA_DIR || join(__dirname, '../../public/data');
 
 function getAvailableYears() {
   return readdirSync(DATA_DIR)
