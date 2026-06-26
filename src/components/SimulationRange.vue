@@ -98,7 +98,7 @@
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       @click.self="selectedEntry = null"
     >
-      <div class="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-5 w-96 max-w-[90vw]">
+      <div class="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-5 w-[28rem] max-w-[90vw]">
         <!-- Header -->
         <div class="flex items-center justify-between mb-4">
           <div class="flex items-center gap-2">
@@ -111,13 +111,15 @@
           >&times;</button>
         </div>
 
-        <!-- Conditional sub-header: "if this team wins its next game" -->
+        <!-- Conditional sub-header: deltas vs baseline for next game outcome -->
         <p
           v-if="selectedEntry.nextMatchId !== null && selectedEntry.nextOpponentName"
           class="text-xs text-gray-500 dark:text-gray-400 mb-3 -mt-1"
         >
-          Faded → if {{ selectedEntry.teamName }} beats {{ selectedEntry.nextOpponentName }}
-          <span class="text-gray-400 dark:text-gray-500">({{ selectedEntry.nextIsHome ? 'H' : 'A' }})</span>
+          Next: {{ selectedEntry.nextIsHome ? 'vs' : '@' }} {{ selectedEntry.nextOpponentName }}.
+          <span class="font-semibold text-emerald-600 dark:text-emerald-400">W</span> /
+          <span class="font-semibold text-rose-600 dark:text-rose-400">L</span>
+          = change if they win / lose
         </p>
 
         <!-- Milestone rows -->
@@ -146,11 +148,21 @@
               </span>
               <span
                 v-if="m.delta !== null"
-                class="text-[11px] font-bold tabular-nums w-12 text-right"
+                class="text-[11px] font-bold tabular-nums w-14 text-right"
                 :style="{ color: m.delta >= 0 ? '#16a34a' : '#dc2626' }"
                 :title="`If they win next: ${(m.cond ?? 0).toFixed(1)}%`"
               >
+                <span class="text-gray-400 dark:text-gray-500 font-normal">W</span>
                 {{ m.delta >= 0 ? '+' : '' }}{{ m.delta.toFixed(1) }}
+              </span>
+              <span
+                v-if="m.lossDelta !== null"
+                class="text-[11px] font-bold tabular-nums w-14 text-right"
+                :style="{ color: m.lossDelta >= 0 ? '#16a34a' : '#dc2626' }"
+                :title="`If they lose next: ${(m.lossCond ?? 0).toFixed(1)}%`"
+              >
+                <span class="text-gray-400 dark:text-gray-500 font-normal">L</span>
+                {{ m.lossDelta >= 0 ? '+' : '' }}{{ m.lossDelta.toFixed(1) }}
               </span>
             </div>
           </div>
@@ -339,6 +351,17 @@ function condPct(entry: RangeEntry, from: number, to: number): number | null {
   return (sumCounts(entry.winNextCounts, from, to) / entry.nextGameWinTotal) * 100
 }
 
+// Conditional % given the team loses its next game. Simulated matches never
+// draw, so loss counts are the baseline minus the win-conditional counts, over
+// the sims where the team did not win its next game. Null when no upcoming game.
+function condLossPct(entry: RangeEntry, from: number, to: number): number | null {
+  if (entry.nextMatchId === null) return null
+  const lossTotal = props.total - entry.nextGameWinTotal
+  if (lossTotal <= 0) return null
+  const lossCount = sumCounts(entry.counts, from, to) - sumCounts(entry.winNextCounts, from, to)
+  return (lossCount / lossTotal) * 100
+}
+
 function milestones(entry: RangeEntry) {
   const ranges: Array<{ label: string; from: number; to: number; color: string }> = [
     { label: 'Minor Premier', from: 0,  to: 1,  color: '#16a34a' },
@@ -353,12 +376,15 @@ function milestones(entry: RangeEntry) {
   return ranges.map((r) => {
     const base = pct(entry.counts, r.from, r.to)
     const cond = condPct(entry, r.from, r.to)
+    const lossCond = condLossPct(entry, r.from, r.to)
     return {
       label: r.label,
       color: r.color,
       pct: base,
       cond,
       delta: cond === null ? null : cond - base,
+      lossCond,
+      lossDelta: lossCond === null ? null : lossCond - base,
     }
   })
 }
