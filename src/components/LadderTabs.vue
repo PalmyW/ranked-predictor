@@ -193,11 +193,21 @@
               >{{ isRunningRange ? 'Running…' : 'Run' }}</button>
             </div>
           </div>
-          <SimulationRange v-if="rangeResults && !isRunningRange" :results="rangeResults" :total="rangeTotal" :stats="simStats" />
-          <div v-else-if="isRunningRange" class="text-center py-6 text-sm text-gray-400 dark:text-gray-500">
-            Running {{ rangeCount.toLocaleString() }} simulations…
+          <!-- Progress bar while a (batched) run is in flight -->
+          <div v-if="isRunningRange" class="mb-3">
+            <div class="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 mb-1">
+              <span>Running {{ rangeCount.toLocaleString() }} simulations…</span>
+              <span class="tabular-nums">{{ Math.round(rangeProgress * 100) }}%</span>
+            </div>
+            <div class="h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+              <div
+                class="h-full bg-purple-600 rounded-full transition-[width] duration-150 ease-linear"
+                :style="{ width: `${rangeProgress * 100}%` }"
+              ></div>
+            </div>
           </div>
-          <div v-else class="text-center py-4 text-xs text-gray-400 dark:text-gray-500">
+          <SimulationRange v-if="rangeResults" :results="rangeResults" :total="rangeTotal" :stats="simStats" />
+          <div v-else-if="!isRunningRange" class="text-center py-4 text-xs text-gray-400 dark:text-gray-500">
             Select a count and press Run to see finishing position distributions
           </div>
         </div>
@@ -277,6 +287,7 @@ const props = defineProps<{
   rangeTotal: number
   simStats: SimulationStats | null
   isRunningRange: boolean
+  rangeProgress: number
   viewOnly?: boolean
   palmyVenueAdjusted: boolean
   simVenueAdjusted: boolean
@@ -289,7 +300,7 @@ const emit = defineEmits<{
   (e: 'update:usePalmyProb', value: boolean): void
 }>()
 
-const RANGE_COUNTS = [100, 500, 1000, 5000]
+const RANGE_COUNTS = [100, 500, 1000, 5000, 100000]
 const rangeCount = ref(1000)
 const runBtnEl = ref<HTMLElement | null>(null)
 
@@ -325,7 +336,7 @@ function triggerSmoke() {
 async function handleRunMany() {
   if (props.isRunningRange || props.isLoading || !props.hasMatches) return
   await props.runMany(rangeCount.value)
-  if (rangeCount.value === 5000) triggerSmoke()
+  if (rangeCount.value >= 5000) triggerSmoke()
 }
 
 const powerLabel = computed(() => ' ' + firstMeaningfulWord(powerRankingsTitle.value))

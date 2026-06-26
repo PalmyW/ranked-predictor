@@ -254,14 +254,23 @@ function runOneSim(
   return { order, nextWinners }
 }
 
-function runManySimulations(
-  rankMap: Record<number, number>,
-  matches: readonly AflMatch[],
-  n: number,
-  predMap: Map<number, MatchScorePrediction> | null,
-  usePalmy: boolean,
-  variant: PalmyVariant,
-): { results: RangeEntry[]; stats: SimulationStats } {
+// Accumulator that lets a large simulation run be split into batches: each
+// batch adds to the running tallies and a snapshot of results/stats can be
+// rebuilt after every batch to drive an incrementally-updating chart.
+interface RangeAccumulator {
+  counts: Record<number, number[]>
+  winNextCounts: Record<number, number[]>
+  ladderCounts: Map<string, number>
+  nextMatchId: Record<number, number>
+  nextOpponentName: Record<number, string>
+  nextIsHome: Record<number, boolean>
+  nextMatchIds: Set<number>
+  baseStats: Record<number, TeamStats>
+  teamMap: Record<number, { name: string; abbreviation: string; iconId: string }>
+  ran: number
+}
+
+function createRangeAccumulator(matches: readonly AflMatch[]): RangeAccumulator {
   const teamMap = Object.fromEntries(TEAMS.map((t) => [t.id, t]))
   const counts: Record<number, number[]> = {}
   const winNextCounts: Record<number, number[]> = {}
@@ -295,20 +304,49 @@ function runManySimulations(
     }
   }
 
-  const ladderCounts = new Map<string, number>()
-  const baseStats = buildStats(matches)
-  for (let i = 0; i < n; i++) {
-    const { order, nextWinners } = runOneSim(baseStats, matches, rankMap, predMap, usePalmy, variant, nextMatchIds)
+  return {
+    counts,
+    winNextCounts,
+    ladderCounts: new Map<string, number>(),
+    nextMatchId,
+    nextOpponentName,
+    nextIsHome,
+    nextMatchIds,
+    baseStats: buildStats(matches),
+    teamMap,
+    ran: 0,
+  }
+}
+
+function runRangeBatch(
+  acc: RangeAccumulator,
+  rankMap: Record<number, number>,
+  matches: readonly AflMatch[],
+  batch: number,
+  predMap: Map<number, MatchScorePrediction> | null,
+  usePalmy: boolean,
+  variant: PalmyVariant,
+): void {
+  for (let i = 0; i < batch; i++) {
+    const { order, nextWinners } = runOneSim(acc.baseStats, matches, rankMap, predMap, usePalmy, variant, acc.nextMatchIds)
     const key = order.join(',')
-    ladderCounts.set(key, (ladderCounts.get(key) ?? 0) + 1)
+    acc.ladderCounts.set(key, (acc.ladderCounts.get(key) ?? 0) + 1)
     for (let pos = 0; pos < order.length; pos++) {
       const tid = order[pos]
-      if (!counts[tid]) continue
-      counts[tid][pos]++
-      const nm = nextMatchId[tid]
-      if (nm !== undefined && nextWinners[nm] === tid) winNextCounts[tid][pos]++
+      if (!acc.counts[tid]) continue
+      acc.counts[tid][pos]++
+      const nm = acc.nextMatchId[tid]
+      if (nm !== undefined && nextWinners[nm] === tid) acc.winNextCounts[tid][pos]++
     }
   }
+  acc.ran += batch
+}
+
+// Build a results/stats snapshot from the accumulator's current tallies.
+// Count arrays are copied so the returned snapshot is stable even as later
+// batches keep mutating the accumulator in place.
+function buildRangeResults(acc: RangeAccumulator): { results: RangeEntry[]; stats: SimulationStats } {
+  const { counts, winNextCounts, ladderCounts, teamMap } = acc
 
   // Most common exact ladder
   let mostCommonKey = ''
@@ -337,12 +375,12 @@ function runManySimulations(
     teamName: teamMap[team.id]?.name ?? String(team.id),
     abbreviation: teamMap[team.id]?.abbreviation ?? '???',
     iconId: teamMap[team.id]?.iconId ?? '',
-    counts: counts[team.id],
-    winNextCounts: winNextCounts[team.id],
+    counts: counts[team.id].slice(),
+    winNextCounts: winNextCounts[team.id].slice(),
     nextGameWinTotal: winNextCounts[team.id].reduce((a, b) => a + b, 0),
-    nextMatchId: nextMatchId[team.id] ?? null,
-    nextOpponentName: nextOpponentName[team.id] ?? null,
-    nextIsHome: nextIsHome[team.id] ?? false,
+    nextMatchId: acc.nextMatchId[team.id] ?? null,
+    nextOpponentName: acc.nextOpponentName[team.id] ?? null,
+    nextIsHome: acc.nextIsHome[team.id] ?? false,
   }))
 
   return { results, stats: { mostCommonLadder, mostCommonCount, consensusLadder, uniqueCount: ladderCounts.size } }
@@ -468,6 +506,7 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef, options?
   const rangeTotal = ref(0)
   const simStats = ref<SimulationStats | null>(null)
   const isRunningRange = ref(false)
+  const rangeProgress = ref(0)  // 0..1 progress of the current batched run
 
   function simulate() {
     if (!ranking.value.length) return
@@ -549,22 +588,41 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef, options?
     return frames
   }
 
+  // Run in batches so the UI can repaint between them: the chart and progress
+  // bar update after each batch instead of freezing until the whole run is done.
+  const RANGE_BATCH_SIZE = 5000
+
   async function runMany(n: number) {
     if (!ranking.value.length) return
     isRunningRange.value = true
+    rangeProgress.value = 0
     const rankMap: Record<number, number> = {}
     ranking.value.forEach((id, i) => { rankMap[id] = i + 1 })
-    await new Promise<void>((resolve) => {
-      setTimeout(() => {
-        const { results, stats } = runManySimulations(rankMap, matches.value, n, palmyPredMap(), usePalmy(), variant())
-        rangeResults.value = results
-        simStats.value = stats
-        rangeTotal.value = n
-        resolve()
-      }, 0)
-    })
+    const predMap = palmyPredMap()
+    const palmy = usePalmy()
+    const palmyVariant = variant()
+    const acc = createRangeAccumulator(matches.value)
+    let done = 0
+    while (done < n) {
+      const batch = Math.min(RANGE_BATCH_SIZE, n - done)
+      // setTimeout(0) yields to the event loop so Vue can flush the previous
+      // batch's update (chart + progress bar) before the next batch runs.
+      await new Promise<void>((resolve) => {
+        setTimeout(() => {
+          runRangeBatch(acc, rankMap, matches.value, batch, predMap, palmy, palmyVariant)
+          done += batch
+          const { results, stats } = buildRangeResults(acc)
+          rangeResults.value = results
+          simStats.value = stats
+          rangeTotal.value = done
+          rangeProgress.value = done / n
+          resolve()
+        }, 0)
+      })
+    }
+    rangeProgress.value = 1
     isRunningRange.value = false
   }
 
-  return { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate, getSimulationFrames, rangeResults, rangeTotal, simStats, isRunningRange, runMany }
+  return { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate, getSimulationFrames, rangeResults, rangeTotal, simStats, isRunningRange, rangeProgress, runMany }
 }

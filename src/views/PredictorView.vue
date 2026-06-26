@@ -92,6 +92,7 @@
             :rangeTotal="rangeTotal"
             :simStats="simStats"
             :isRunningRange="isRunningRange"
+            :rangeProgress="rangeProgress"
             :viewOnly="!isCurrentSeason"
             v-model:palmyVenueAdjusted="palmyVenueAdjusted"
             v-model:simVenueAdjusted="simVenueAdjusted"
@@ -161,7 +162,7 @@ const usePalmyProb = ref(false)
 const simVenueAdjusted = ref(true)
 const simPalmyPredictions = computed(() => predictions.upcomingPredictions(simVenueAdjusted.value))
 
-const { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate, getSimulationFrames, rangeResults, rangeTotal, simStats, isRunningRange, runMany } = useSimulation(
+const { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate, getSimulationFrames, rangeResults, rangeTotal, simStats, isRunningRange, rangeProgress, runMany } = useSimulation(
   ranking,
   matches,
   { palmyPredictions: simPalmyPredictions, usePalmyProb, venueAdjusted: simVenueAdjusted },
