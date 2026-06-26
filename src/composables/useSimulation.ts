@@ -9,6 +9,11 @@ export interface RangeEntry {
   abbreviation: string
   iconId: string
   counts: number[]  // counts[i] = times finished in position i+1
+  winNextCounts: number[]     // counts restricted to sims where the team won its next game
+  nextGameWinTotal: number    // # sims where the team won its next game (= sum of winNextCounts)
+  nextMatchId: number | null  // first upcoming match for this team (null if none)
+  nextOpponentName: string | null
+  nextIsHome: boolean
 }
 
 export interface SimulationStats {
@@ -216,9 +221,11 @@ function runOneSim(
   predMap: Map<number, MatchScorePrediction> | null,
   usePalmy: boolean,
   variant: PalmyVariant,
-): number[] {
+  captureMatchIds: Set<number> | null,
+): { order: number[]; nextWinners: Record<number, number> } {
   const simStats: Record<number, TeamStats> = {}
   for (const [id, s] of Object.entries(baseStats)) simStats[Number(id)] = { ...s }
+  const nextWinners: Record<number, number> = {}
 
   for (const match of matches) {
     if (match.status === 'CONCLUDED') continue
@@ -228,13 +235,14 @@ function runOneSim(
     const homeWins = Math.random() < matchHomeWinProb(match, rankMap, predMap, usePalmy, variant)
     const winnerId = homeWins ? hId : aId
     const loserId = homeWins ? aId : hId
+    if (captureMatchIds?.has(match.id)) nextWinners[match.id] = winnerId
     simStats[winnerId].wins++; simStats[winnerId].pts += 4; simStats[winnerId].played++
     simStats[winnerId].for += SIM_WIN_SCORE; simStats[winnerId].against += SIM_LOSS_SCORE
     simStats[loserId].losses++; simStats[loserId].played++
     simStats[loserId].for += SIM_LOSS_SCORE; simStats[loserId].against += SIM_WIN_SCORE
   }
 
-  return Object.values(simStats)
+  const order = Object.values(simStats)
     .sort((a, b) => {
       if (b.pts !== a.pts) return b.pts - a.pts
       const aPct = a.against > 0 ? a.for / a.against : (a.for > 0 ? 999 : 1)
@@ -242,6 +250,8 @@ function runOneSim(
       return bPct - aPct
     })
     .map((s) => s.teamId)
+
+  return { order, nextWinners }
 }
 
 function runManySimulations(
@@ -254,16 +264,49 @@ function runManySimulations(
 ): { results: RangeEntry[]; stats: SimulationStats } {
   const teamMap = Object.fromEntries(TEAMS.map((t) => [t.id, t]))
   const counts: Record<number, number[]> = {}
-  for (const team of TEAMS) counts[team.id] = new Array(18).fill(0)
+  const winNextCounts: Record<number, number[]> = {}
+  for (const team of TEAMS) {
+    counts[team.id] = new Array(18).fill(0)
+    winNextCounts[team.id] = new Array(18).fill(0)
+  }
+
+  // Each team's next game: the first upcoming (non-concluded) match they appear
+  // in, walking the fixture in order. A single match is the next game for both
+  // its teams, so the distinct next-game match IDs are few (≤ ~9).
+  const nextMatchId: Record<number, number> = {}
+  const nextOpponentName: Record<number, string> = {}
+  const nextIsHome: Record<number, boolean> = {}
+  const nextMatchIds = new Set<number>()
+  for (const match of matches) {
+    if (match.status === 'CONCLUDED') continue
+    const hId = match.homeTeamId
+    const aId = match.awayTeamId
+    if (hId && nextMatchId[hId] === undefined) {
+      nextMatchId[hId] = match.id
+      nextOpponentName[hId] = teamMap[aId]?.name ?? String(aId)
+      nextIsHome[hId] = true
+      nextMatchIds.add(match.id)
+    }
+    if (aId && nextMatchId[aId] === undefined) {
+      nextMatchId[aId] = match.id
+      nextOpponentName[aId] = teamMap[hId]?.name ?? String(hId)
+      nextIsHome[aId] = false
+      nextMatchIds.add(match.id)
+    }
+  }
 
   const ladderCounts = new Map<string, number>()
   const baseStats = buildStats(matches)
   for (let i = 0; i < n; i++) {
-    const order = runOneSim(baseStats, matches, rankMap, predMap, usePalmy, variant)
+    const { order, nextWinners } = runOneSim(baseStats, matches, rankMap, predMap, usePalmy, variant, nextMatchIds)
     const key = order.join(',')
     ladderCounts.set(key, (ladderCounts.get(key) ?? 0) + 1)
     for (let pos = 0; pos < order.length; pos++) {
-      if (counts[order[pos]]) counts[order[pos]][pos]++
+      const tid = order[pos]
+      if (!counts[tid]) continue
+      counts[tid][pos]++
+      const nm = nextMatchId[tid]
+      if (nm !== undefined && nextWinners[nm] === tid) winNextCounts[tid][pos]++
     }
   }
 
@@ -295,6 +338,11 @@ function runManySimulations(
     abbreviation: teamMap[team.id]?.abbreviation ?? '???',
     iconId: teamMap[team.id]?.iconId ?? '',
     counts: counts[team.id],
+    winNextCounts: winNextCounts[team.id],
+    nextGameWinTotal: winNextCounts[team.id].reduce((a, b) => a + b, 0),
+    nextMatchId: nextMatchId[team.id] ?? null,
+    nextOpponentName: nextOpponentName[team.id] ?? null,
+    nextIsHome: nextIsHome[team.id] ?? false,
   }))
 
   return { results, stats: { mostCommonLadder, mostCommonCount, consensusLadder, uniqueCount: ladderCounts.size } }

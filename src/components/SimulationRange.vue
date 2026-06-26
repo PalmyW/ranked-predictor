@@ -98,7 +98,7 @@
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       @click.self="selectedEntry = null"
     >
-      <div class="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-5 w-72 max-w-[90vw]">
+      <div class="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-5 w-96 max-w-[90vw]">
         <!-- Header -->
         <div class="flex items-center justify-between mb-4">
           <div class="flex items-center gap-2">
@@ -111,6 +111,15 @@
           >&times;</button>
         </div>
 
+        <!-- Conditional sub-header: "if this team wins its next game" -->
+        <p
+          v-if="selectedEntry.nextMatchId !== null && selectedEntry.nextOpponentName"
+          class="text-xs text-gray-500 dark:text-gray-400 mb-3 -mt-1"
+        >
+          Faded → if {{ selectedEntry.teamName }} beats {{ selectedEntry.nextOpponentName }}
+          <span class="text-gray-400 dark:text-gray-500">({{ selectedEntry.nextIsHome ? 'H' : 'A' }})</span>
+        </p>
+
         <!-- Milestone rows -->
         <div class="space-y-2">
           <div
@@ -118,16 +127,30 @@
             :key="m.label"
             class="flex items-center justify-between"
           >
-            <span class="text-sm text-gray-600 dark:text-gray-400">{{ m.label }}</span>
+            <span class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ m.label }}</span>
             <div class="flex items-center gap-2">
-              <div class="w-24 h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+              <div class="relative w-24 h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                <!-- Conditional bar (faded) behind the baseline bar -->
                 <div
-                  class="h-2 rounded-full"
+                  v-if="m.cond !== null"
+                  class="absolute inset-y-0 left-0 rounded-full opacity-40"
+                  :style="{ width: `${m.cond}%`, background: m.color }"
+                ></div>
+                <div
+                  class="absolute inset-y-0 left-0 rounded-full"
                   :style="{ width: `${m.pct}%`, background: m.color }"
                 ></div>
               </div>
               <span class="text-sm font-bold tabular-nums w-12 text-right" :style="{ color: m.color }">
                 {{ m.pct.toFixed(1) }}%
+              </span>
+              <span
+                v-if="m.delta !== null"
+                class="text-[11px] font-bold tabular-nums w-12 text-right"
+                :style="{ color: m.delta >= 0 ? '#16a34a' : '#dc2626' }"
+                :title="`If they win next: ${(m.cond ?? 0).toFixed(1)}%`"
+              >
+                {{ m.delta >= 0 ? '+' : '' }}{{ m.delta.toFixed(1) }}
               </span>
             </div>
           </div>
@@ -309,18 +332,35 @@ function pct(counts: number[], from: number, to: number): number {
   return (sumCounts(counts, from, to) / props.total) * 100
 }
 
+// Conditional % given the team wins its next game. Null when the team has no
+// upcoming game (no sims in which it could win one).
+function condPct(entry: RangeEntry, from: number, to: number): number | null {
+  if (!entry.nextGameWinTotal) return null
+  return (sumCounts(entry.winNextCounts, from, to) / entry.nextGameWinTotal) * 100
+}
+
 function milestones(entry: RangeEntry) {
-  const c = entry.counts
-  return [
-    { label: 'Minor Premier', pct: pct(c, 0, 1),   color: '#16a34a' },
-    { label: 'Top 2',    pct: pct(c, 0, 2),   color: '#22c55e' },
-    { label: 'Top 4',    pct: pct(c, 0, 4),   color: '#86efac' },
-    { label: 'Top 6',    pct: pct(c, 0, 6),   color: '#ca8a04' },
-    { label: 'Top 8',    pct: pct(c, 0, 8),   color: '#ea580c' },
-    { label: 'Top 10',   pct: pct(c, 0, 10),  color: '#fdba74' },
-    { label: 'Bottom 4', pct: pct(c, 14, 18), color: '#991b1b' },
-    { label: 'Last',     pct: pct(c, 17, 18), color: '#292524' },
+  const ranges: Array<{ label: string; from: number; to: number; color: string }> = [
+    { label: 'Minor Premier', from: 0,  to: 1,  color: '#16a34a' },
+    { label: 'Top 2',    from: 0,  to: 2,  color: '#22c55e' },
+    { label: 'Top 4',    from: 0,  to: 4,  color: '#86efac' },
+    { label: 'Top 6',    from: 0,  to: 6,  color: '#ca8a04' },
+    { label: 'Top 8',    from: 0,  to: 8,  color: '#ea580c' },
+    { label: 'Top 10',   from: 0,  to: 10, color: '#fdba74' },
+    { label: 'Bottom 4', from: 14, to: 18, color: '#991b1b' },
+    { label: 'Last',     from: 17, to: 18, color: '#292524' },
   ]
+  return ranges.map((r) => {
+    const base = pct(entry.counts, r.from, r.to)
+    const cond = condPct(entry, r.from, r.to)
+    return {
+      label: r.label,
+      color: r.color,
+      pct: base,
+      cond,
+      delta: cond === null ? null : cond - base,
+    }
+  })
 }
 
 function medianPosition(entry: RangeEntry): number {
