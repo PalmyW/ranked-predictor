@@ -214,7 +214,51 @@ CREATE TABLE IF NOT EXISTS match_details (
   max_margin_secs           INTEGER,  -- periodSeconds within max_margin_period
   max_margin_period         INTEGER,  -- quarter in which the overall biggest lead occurred
   lead_changes              INTEGER,  -- number of times the lead changed hands
-  largest_deficit_recovered INTEGER   -- biggest deficit the eventual winner had to overcome
+  largest_deficit_recovered INTEGER,  -- biggest deficit the eventual winner had to overcome
+  -- Betting market data (aussportsbetting.com, 2009+). home_* always refers to the
+  -- match's home team. NULL when no betting data exists for the match.
+  betting_source              TEXT,
+  betting_play_off_game       INTEGER, -- 0/1
+  betting_bookmakers_surveyed INTEGER,
+  betting_home_odds           REAL,
+  betting_away_odds           REAL,
+  betting_home_odds_open      REAL,
+  betting_home_odds_min       REAL,
+  betting_home_odds_max       REAL,
+  betting_home_odds_close     REAL,
+  betting_away_odds_open      REAL,
+  betting_away_odds_min       REAL,
+  betting_away_odds_max       REAL,
+  betting_away_odds_close     REAL,
+  betting_home_line_open      REAL,
+  betting_home_line_min       REAL,
+  betting_home_line_max       REAL,
+  betting_home_line_close     REAL,
+  betting_away_line_open      REAL,
+  betting_away_line_min       REAL,
+  betting_away_line_max       REAL,
+  betting_away_line_close     REAL,
+  betting_home_line_odds_open  REAL,
+  betting_home_line_odds_min   REAL,
+  betting_home_line_odds_max   REAL,
+  betting_home_line_odds_close REAL,
+  betting_away_line_odds_open  REAL,
+  betting_away_line_odds_min   REAL,
+  betting_away_line_odds_max   REAL,
+  betting_away_line_odds_close REAL,
+  betting_total_score_open    REAL,
+  betting_total_score_min     REAL,
+  betting_total_score_max     REAL,
+  betting_total_score_close   REAL,
+  betting_total_score_over_open  REAL,
+  betting_total_score_over_min   REAL,
+  betting_total_score_over_max   REAL,
+  betting_total_score_over_close REAL,
+  betting_total_score_under_open  REAL,
+  betting_total_score_under_min   REAL,
+  betting_total_score_under_max   REAL,
+  betting_total_score_under_close REAL,
+  betting_notes               TEXT
 );
 
 CREATE TABLE IF NOT EXISTS score_events (

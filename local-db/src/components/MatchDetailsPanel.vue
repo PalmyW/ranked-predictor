@@ -93,6 +93,59 @@ function peakTeamAbbr(team) {
   if (!matchDetails.value) return ''
   return team === 'H' ? matchDetails.value.home_abbr : team === 'A' ? matchDetails.value.away_abbr : ''
 }
+
+// ── Betting markets ─────────────────────────────────────────────────────────────
+
+const hasBetting = computed(() => !!matchDetails.value?.betting_source)
+
+function fmtOdds(v) { return v == null ? '—' : Number(v).toFixed(2) }
+function fmtLine(v) {
+  if (v == null) return '—'
+  return v > 0 ? `+${v}` : `${v}`
+}
+function fmtNum(v) { return v == null ? '—' : `${v}` }
+
+// All betting markets as render-ready tables (every open/min/max/close value).
+const bettingTables = computed(() => {
+  const d = matchDetails.value
+  if (!d?.betting_source) return []
+  const phases = ['open', 'min', 'max', 'close']
+  const b = (col) => d[`betting_${col}`]
+  const oddsRow  = (label, prefix, cls) => ({ label, cls, values: phases.map((p) => fmtOdds(b(`${prefix}_${p}`))) })
+  const lineRow  = (label, prefix, cls) => ({ label, cls, values: phases.map((p) => fmtLine(b(`${prefix}_${p}`))) })
+  const numRow   = (label, prefix, cls) => ({ label, cls, values: phases.map((p) => fmtNum(b(`${prefix}_${p}`))) })
+  const home = d.home_abbr, away = d.away_abbr
+
+  return [
+    {
+      title: 'Head to Head',
+      headers: ['Avg', 'Open', 'Min', 'Max', 'Close'],
+      rows: [
+        { label: home, cls: 'bm-home', values: [fmtOdds(b('home_odds')), ...phases.map((p) => fmtOdds(b(`home_odds_${p}`)))] },
+        { label: away, cls: 'bm-away', values: [fmtOdds(b('away_odds')), ...phases.map((p) => fmtOdds(b(`away_odds_${p}`)))] },
+      ],
+    },
+    {
+      title: 'Line',
+      headers: ['Open', 'Min', 'Max', 'Close'],
+      rows: [
+        lineRow(`${home} line`, 'home_line', 'bm-home'),
+        lineRow(`${away} line`, 'away_line', 'bm-away'),
+        oddsRow(`${home} odds`, 'home_line_odds', 'bm-home'),
+        oddsRow(`${away} odds`, 'away_line_odds', 'bm-away'),
+      ],
+    },
+    {
+      title: 'Total Score',
+      headers: ['Open', 'Min', 'Max', 'Close'],
+      rows: [
+        numRow('Points', 'total_score', ''),
+        oddsRow('Over', 'total_score_over', ''),
+        oddsRow('Under', 'total_score_under', ''),
+      ],
+    },
+  ]
+})
 </script>
 
 <template>
@@ -221,6 +274,37 @@ function peakTeamAbbr(team) {
         </div>
       </template>
 
+      <!-- Betting markets -->
+      <div v-if="hasBetting" class="betting-section mt-3">
+        <div class="betting-head">
+          <span class="betting-title">Betting</span>
+          <span class="betting-src">
+            {{ matchDetails.betting_source }}
+            <template v-if="matchDetails.betting_bookmakers_surveyed != null">· {{ matchDetails.betting_bookmakers_surveyed }} bookmakers</template>
+            <template v-if="matchDetails.betting_play_off_game"> · Finals</template>
+          </span>
+        </div>
+        <div class="betting-grid">
+          <div v-for="market in bettingTables" :key="market.title" class="betting-market">
+            <table class="bm-table">
+              <thead>
+                <tr>
+                  <th class="bm-mkt">{{ market.title }}</th>
+                  <th v-for="h in market.headers" :key="h">{{ h }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in market.rows" :key="row.label">
+                  <td class="bm-rowlbl" :class="row.cls">{{ row.label }}</td>
+                  <td v-for="(v, i) in row.values" :key="i" :class="{ 'bm-close': i === row.values.length - 1 }">{{ v }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div v-if="matchDetails.betting_notes" class="betting-notes">{{ matchDetails.betting_notes }}</div>
+      </div>
+
     </v-card-text>
   </v-card>
 </template>
@@ -268,4 +352,57 @@ function peakTeamAbbr(team) {
 .metric-lbl { font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.05em; }
 
 .worm-wrap { border-radius: 6px; overflow: hidden; background: rgba(0,0,0,0.25); }
+
+.betting-section { font-size: 12px; }
+.betting-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.betting-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; opacity: 0.55; }
+.betting-sub   { text-transform: none; letter-spacing: normal; opacity: 0.7; font-weight: 400; }
+.betting-src   { font-size: 10px; opacity: 0.4; }
+
+.betting-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.betting-market {
+  flex: 1 1 240px;
+  min-width: 220px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+.bm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.bm-table th, .bm-table td {
+  padding: 3px 4px;
+  text-align: right;
+}
+.bm-table thead th {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.4;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.bm-mkt {
+  text-align: left !important;
+  opacity: 0.6 !important;
+  font-size: 10px !important;
+  white-space: nowrap;
+}
+.bm-table tbody td { opacity: 0.7; }
+.bm-table tbody td.bm-close { opacity: 1; font-weight: 600; }
+.bm-rowlbl { text-align: left !important; font-weight: 600; opacity: 0.8; white-space: nowrap; }
+.bm-home { color: #4fc3f7; opacity: 1 !important; }
+.bm-away { color: #ff8a65; opacity: 1 !important; }
+.betting-notes { font-size: 10px; opacity: 0.4; margin-top: 6px; font-style: italic; }
 </style>

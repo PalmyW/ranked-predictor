@@ -17,7 +17,7 @@ const theme = useTheme()
 const isDark = computed(() => theme.global.current.value.dark)
 const teamMap = inject('teamMap', null)
 
-const MAX_POINTS = 50
+const MAX_POINTS = 300
 const PALETTE = [
   '#42a5f5', '#66bb6a', '#ffa726', '#ab47bc', '#ef5350',
   '#26c6da', '#ec407a', '#d4e157', '#8d6e63', '#78909c',

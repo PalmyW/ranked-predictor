@@ -83,6 +83,33 @@ export function openDb() {
       if (!db.prepare(`SELECT 1 FROM pragma_table_info('match_details') WHERE name='${col}'`).get())
         db.exec(`ALTER TABLE match_details ADD COLUMN ${col} TEXT`);
     }
+    // Migration: add betting market columns to match_details (see schema.sql).
+    const bettingReal = [
+      'betting_home_odds', 'betting_away_odds',
+      'betting_home_odds_open', 'betting_home_odds_min', 'betting_home_odds_max', 'betting_home_odds_close',
+      'betting_away_odds_open', 'betting_away_odds_min', 'betting_away_odds_max', 'betting_away_odds_close',
+      'betting_home_line_open', 'betting_home_line_min', 'betting_home_line_max', 'betting_home_line_close',
+      'betting_away_line_open', 'betting_away_line_min', 'betting_away_line_max', 'betting_away_line_close',
+      'betting_home_line_odds_open', 'betting_home_line_odds_min', 'betting_home_line_odds_max', 'betting_home_line_odds_close',
+      'betting_away_line_odds_open', 'betting_away_line_odds_min', 'betting_away_line_odds_max', 'betting_away_line_odds_close',
+      'betting_total_score_open', 'betting_total_score_min', 'betting_total_score_max', 'betting_total_score_close',
+      'betting_total_score_over_open', 'betting_total_score_over_min', 'betting_total_score_over_max', 'betting_total_score_over_close',
+      'betting_total_score_under_open', 'betting_total_score_under_min', 'betting_total_score_under_max', 'betting_total_score_under_close',
+    ];
+    const bettingInt = ['betting_play_off_game', 'betting_bookmakers_surveyed'];
+    const bettingText = ['betting_source', 'betting_notes'];
+    for (const col of bettingReal) {
+      if (!db.prepare(`SELECT 1 FROM pragma_table_info('match_details') WHERE name='${col}'`).get())
+        db.exec(`ALTER TABLE match_details ADD COLUMN ${col} REAL`);
+    }
+    for (const col of bettingInt) {
+      if (!db.prepare(`SELECT 1 FROM pragma_table_info('match_details') WHERE name='${col}'`).get())
+        db.exec(`ALTER TABLE match_details ADD COLUMN ${col} INTEGER`);
+    }
+    for (const col of bettingText) {
+      if (!db.prepare(`SELECT 1 FROM pragma_table_info('match_details') WHERE name='${col}'`).get())
+        db.exec(`ALTER TABLE match_details ADD COLUMN ${col} TEXT`);
+    }
   }
   db.exec('PRAGMA foreign_keys = ON');
   return db;

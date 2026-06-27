@@ -315,8 +315,18 @@ match_details: match_id (FK→matches), weather_description, weather_temp_celsiu
   max_margin_q4, max_margin_q4_team, max_margin_q4_secs,
   max_margin (biggest absolute margin in whole game), max_margin_team ('H'/'A'), max_margin_secs, max_margin_period (quarter it occurred in),
   lead_changes (integer: how many times the lead changed hands),
-  largest_deficit_recovered (integer: biggest points deficit the eventual winner had to overcome; 0 if they led all game)
+  largest_deficit_recovered (integer: biggest points deficit the eventual winner had to overcome; 0 if they led all game),
   — score_worm_json is raw JSON, do NOT query it directly; use the columns above instead
+  — Betting market data (decimal odds, aussportsbetting.com, available 2009 onward; NULL for earlier/unmatched games).
+    home_* always refers to the match home team. Prefer the *_close (closing) columns for "the odds".
+    betting_source, betting_play_off_game (1=finals), betting_bookmakers_surveyed,
+    betting_home_odds, betting_away_odds (head-to-head market average),
+    betting_home_odds_open/min/max/close, betting_away_odds_open/min/max/close (head-to-head; favourite has the lower odds),
+    betting_home_line_open/min/max/close, betting_away_line_open/min/max/close (handicap points; negative = favoured to win by that many),
+    betting_home_line_odds_open/min/max/close, betting_away_line_odds_open/min/max/close (odds on the line bet),
+    betting_total_score_open/min/max/close (over/under points line for combined score),
+    betting_total_score_over_open/min/max/close, betting_total_score_under_open/min/max/close (odds for over/under),
+    betting_notes (text caveat, usually NULL)
 score_events: match_id (FK→matches), seq (0-based order within match), player_id (FK→players; NULL for RUSHED_BEHIND),
   team_id (FK→teams), period_number (1–4), period_seconds (seconds into that quarter),
   score_type ('GOAL'|'BEHIND'|'RUSHED_BEHIND'), score_value (6 for goal, 1 for behind/rushed),

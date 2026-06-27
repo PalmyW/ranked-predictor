@@ -2,6 +2,64 @@ import { readFileSync, statSync, readdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import { runTransaction } from './db.js';
 
+// Maps each betting DB column to its key in the match-details `betting` object
+// (written by scripts/fetch-betting.js). Used to build the INSERT and params.
+const BETTING_FIELDS = {
+  betting_source: 'source',
+  betting_play_off_game: 'playOffGame',
+  betting_bookmakers_surveyed: 'bookmakersSurveyed',
+  betting_home_odds: 'homeOdds',
+  betting_away_odds: 'awayOdds',
+  betting_home_odds_open: 'homeOddsOpen',
+  betting_home_odds_min: 'homeOddsMin',
+  betting_home_odds_max: 'homeOddsMax',
+  betting_home_odds_close: 'homeOddsClose',
+  betting_away_odds_open: 'awayOddsOpen',
+  betting_away_odds_min: 'awayOddsMin',
+  betting_away_odds_max: 'awayOddsMax',
+  betting_away_odds_close: 'awayOddsClose',
+  betting_home_line_open: 'homeLineOpen',
+  betting_home_line_min: 'homeLineMin',
+  betting_home_line_max: 'homeLineMax',
+  betting_home_line_close: 'homeLineClose',
+  betting_away_line_open: 'awayLineOpen',
+  betting_away_line_min: 'awayLineMin',
+  betting_away_line_max: 'awayLineMax',
+  betting_away_line_close: 'awayLineClose',
+  betting_home_line_odds_open: 'homeLineOddsOpen',
+  betting_home_line_odds_min: 'homeLineOddsMin',
+  betting_home_line_odds_max: 'homeLineOddsMax',
+  betting_home_line_odds_close: 'homeLineOddsClose',
+  betting_away_line_odds_open: 'awayLineOddsOpen',
+  betting_away_line_odds_min: 'awayLineOddsMin',
+  betting_away_line_odds_max: 'awayLineOddsMax',
+  betting_away_line_odds_close: 'awayLineOddsClose',
+  betting_total_score_open: 'totalScoreOpen',
+  betting_total_score_min: 'totalScoreMin',
+  betting_total_score_max: 'totalScoreMax',
+  betting_total_score_close: 'totalScoreClose',
+  betting_total_score_over_open: 'totalScoreOverOpen',
+  betting_total_score_over_min: 'totalScoreOverMin',
+  betting_total_score_over_max: 'totalScoreOverMax',
+  betting_total_score_over_close: 'totalScoreOverClose',
+  betting_total_score_under_open: 'totalScoreUnderOpen',
+  betting_total_score_under_min: 'totalScoreUnderMin',
+  betting_total_score_under_max: 'totalScoreUnderMax',
+  betting_total_score_under_close: 'totalScoreUnderClose',
+  betting_notes: 'notes',
+};
+const BETTING_COLUMNS = Object.keys(BETTING_FIELDS);
+
+// Flatten a match-details `betting` object into snake_case DB params (all NULL when absent).
+function bettingParams(b) {
+  const out = {};
+  for (const [col, key] of Object.entries(BETTING_FIELDS)) {
+    if (col === 'betting_play_off_game') out[col] = b ? (b.playOffGame ? 1 : 0) : null;
+    else out[col] = b?.[key] ?? null;
+  }
+  return out;
+}
+
 function periodScore(periodScores, q) {
   return periodScores?.find((p) => p.periodNumber === q)?.score ?? {};
 }
@@ -132,7 +190,8 @@ export function importMatchDetails(db, year, dataDir) {
       max_margin_q3, max_margin_q3_team, max_margin_q3_secs,
       max_margin_q4, max_margin_q4_team, max_margin_q4_secs,
       max_margin, max_margin_team, max_margin_secs, max_margin_period,
-      lead_changes, largest_deficit_recovered
+      lead_changes, largest_deficit_recovered,
+      ${BETTING_COLUMNS.join(', ')}
     ) VALUES (
       @match_id,
       @weather_description, @weather_temp_celsius, @weather_type,
@@ -153,7 +212,8 @@ export function importMatchDetails(db, year, dataDir) {
       @max_margin_q3, @max_margin_q3_team, @max_margin_q3_secs,
       @max_margin_q4, @max_margin_q4_team, @max_margin_q4_secs,
       @max_margin, @max_margin_team, @max_margin_secs, @max_margin_period,
-      @lead_changes, @largest_deficit_recovered
+      @lead_changes, @largest_deficit_recovered,
+      ${BETTING_COLUMNS.map((c) => '@' + c).join(', ')}
     )
   `);
 
@@ -208,6 +268,7 @@ export function importMatchDetails(db, year, dataDir) {
         score_worm_json: score.scoreWorm ? JSON.stringify(score.scoreWorm) : null,
         last_updated: score.lastUpdated ?? null,
         ...worm,
+        ...bettingParams(data.betting),
       });
 
       // Score events

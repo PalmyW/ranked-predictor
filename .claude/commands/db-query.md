@@ -29,6 +29,20 @@ $ARGUMENTS
 - `utc_start_time` TEXT, `status` TEXT  *("CONCLUDED" | "SCHEDULED" | "LIVE")*
 - `home_goals`, `home_behinds`, `home_score`, `away_goals`, `away_behinds`, `away_score` INTEGER
 
+**match_details** — extended per-match data (one row per match, join on `match_id`)
+- `match_id` TEXT PK → matches.match_id
+- Weather: `weather_description`, `weather_temp_celsius`, `weather_type`
+- Quarter scores: `home_q1_goals`/`home_q1_behinds`/`home_q1_score` … through `q4`, same for `away_*`
+- `home_rushed_behinds`, `away_rushed_behinds`, `home_minutes_in_front`, `away_minutes_in_front`
+- Margins (home − away, positive = home ahead): `final_margin`, `halftime_margin`, `three_quarter_margin`
+- `max_margin`, `max_margin_team` ('H'/'A'), `lead_changes`, `largest_deficit_recovered` *(per-quarter `max_margin_q1..q4` variants also exist)*
+- **Betting market data** (decimal odds, source aussportsbetting.com; populated 2009 onward, NULL otherwise). `home_*` always = match home team; prefer the `_close` (closing) columns for "the odds":
+  - `betting_source`, `betting_play_off_game` (1 = finals), `betting_bookmakers_surveyed`
+  - Head-to-head: `betting_home_odds`, `betting_away_odds` (average) and `betting_{home,away}_odds_{open,min,max,close}` *(favourite has the lower odds)*
+  - Line/handicap: `betting_{home,away}_line_{open,min,max,close}` (points; negative = favoured) and `betting_{home,away}_line_odds_{open,min,max,close}`
+  - Totals: `betting_total_score_{open,min,max,close}` and `betting_total_score_{over,under}_{open,min,max,close}`
+  - `betting_notes` (text caveat, usually NULL)
+
 **player_match_stats** — one row per player per match
 - `id` AUTOINCREMENT PK
 - `match_id`, `year`, `round_number`
