@@ -6,6 +6,7 @@ import DataTable from '@/components/DataTable.vue'
 import PlayerChart from '@/components/PlayerChart.vue'
 import PlayerExportModal from '@/components/PlayerExportModal.vue'
 import { numCol, fmt, STAT_BASES, statLabel, STAR_SIGN_EMOJI, isPct } from '@/constants/stats.js'
+import { LOWER_IS_BETTER } from '@/composables/useLeaderboard.js'
 
 const route  = useRoute()
 const router = useRouter()
@@ -127,69 +128,20 @@ function buildRankSql(range, metric, useMin) {
          ${useMin ? 'HAVING COUNT(*) > 5' : ''}`
 }
 
-// ── Leaderboard for the query page ────────────────────────────────────────────
-// Aggregate expression for a single stat: totals where it makes sense, else avg.
-function metricExpr(base, metric) {
-  if (base === 'goal_accuracy')
-    return `ROUND(AVG(CASE WHEN p.stat_shots_at_goal >= 1 THEN p.stat_goal_accuracy END), 2)`
-  if (metric === 'tot' && !isPct(base)) return `ROUND(SUM(p.stat_${base}), 2)`
-  return `ROUND(AVG(p.stat_${base}), 2)`
-}
-
-function metricAlias(base, metric) {
-  const m = metric === 'tot' && !isPct(base) && base !== 'goal_accuracy' ? 'tot' : 'avg'
-  return `${m}_${base}`
-}
-
-// A readable single-stat leaderboard mirroring the player page's range/metric/min
-// and sort direction, so clicking a rank chip lands on that exact leaderboard.
-function buildLeaderboardSql(base, range, metric, useMin) {
-  const alias = metricAlias(base, metric)
-  const dir = LOWER_IS_BETTER.has(base) ? 'ASC' : 'DESC'
-  const select = `p.player_id,
-       MIN(p.given_name) || ' ' || MIN(p.surname) AS player,
-       MIN(t.name) AS team_name,
-       COUNT(*) AS games_played,
-       ${metricExpr(base, metric)} AS ${alias}`
-
-  if (range === 'last4' || range === 'last8') {
-    const n = range === 'last4' ? 4 : 8
-    return `WITH latest_rounds AS (
-  SELECT DISTINCT round_number
-  FROM player_match_stats
-  WHERE year = (SELECT MAX(year) FROM player_match_stats)
-  ORDER BY round_number DESC
-  LIMIT ${n}
-)
-SELECT ${select}
-FROM player_match_stats p
-JOIN teams t ON p.team_id = t.team_id
-WHERE p.year = (SELECT MAX(year) FROM player_match_stats)
-  AND p.round_number IN (SELECT round_number FROM latest_rounds)
-GROUP BY p.player_id
-${useMin ? `HAVING COUNT(*) >= ${Math.ceil(n / 2)}\n` : ''}ORDER BY ${alias} ${dir}
-LIMIT 100`
-  }
-
-  const where = range === 'alltime' ? '' : 'WHERE p.year = (SELECT MAX(year) FROM player_match_stats)\n'
-  return `SELECT ${select}
-FROM player_match_stats p
-JOIN teams t ON p.team_id = t.team_id
-${where}GROUP BY p.player_id
-${useMin ? 'HAVING COUNT(*) > 5\n' : ''}ORDER BY ${alias} ${dir}
-LIMIT 100`
-}
-
+// ── Leaderboard drill-down ────────────────────────────────────────────────────
+// Clicking a rank chip opens the Leaderboards page with this stat/range/metric
+// preloaded (it builds the SQL itself via the shared useLeaderboard composable).
 function openLeaderboard(r) {
-  const sql = buildLeaderboardSql(r.base, rankRange.value, rankMetric.value, applyMin.value)
-  router.push({ name: 'query', query: { sql } })
+  router.push({
+    name: 'leaderboard',
+    query: {
+      stat: r.base,
+      metric: rankMetric.value,
+      range: rankRange.value,
+      min: applyMin.value ? 1 : 0,
+    },
+  })
 }
-
-// Stats where a lower value is better — rank ascending for these.
-const LOWER_IS_BETTER = new Set([
-  'clangers', 'turnovers', 'frees_against',
-  'contest_def_losses', 'contest_def_loss_percentage',
-])
 
 // Defensive one-on-one outcome stats are only meaningful when the player actually
 // contested defensive one-on-ones — hide them otherwise.
