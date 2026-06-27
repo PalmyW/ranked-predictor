@@ -61,17 +61,22 @@ export const useFixturesStore = defineStore('fixtures', () => {
     return inFlight
   }
 
-  /** All concluded matches across every loaded season, deduped by match id. */
+  /**
+   * All concluded matches across every loaded season, deduped by providerId.
+   * Note: dedupe by providerId (CD_M…/PW_M…), NOT the numeric `id` — Champion Data
+   * match ids and scraped statscache mids occupy overlapping integer ranges, so a
+   * numeric-id key collides across the two sources and silently drops matches.
+   */
   const allConcludedMatches = computed<AflMatch[]>(() => {
-    const byId = new Map<number, AflMatch>()
+    const byProviderId = new Map<string, AflMatch>()
     for (const matches of Object.values(seasonsByYear.value)) {
       for (const m of matches) {
         if (m.status === 'CONCLUDED' && m.homeScore && m.awayScore) {
-          byId.set(m.id, m)
+          byProviderId.set(m.providerId, m)
         }
       }
     }
-    return Array.from(byId.values())
+    return Array.from(byProviderId.values())
   })
 
   /** Head-to-head history between two teams, from teamAId's perspective. */

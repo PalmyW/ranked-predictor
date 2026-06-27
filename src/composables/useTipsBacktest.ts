@@ -103,13 +103,15 @@ export function useTipsBacktest(
         count[m.awayTeamId] = (count[m.awayTeamId] ?? 0) + 1
       }
 
-      // Form pool = current-before, supplemented per-team to MIN_FORM_MATCHES
-      const pool = new Map<number, AflMatch>()
-      for (const m of before) pool.set(m.id, m)
+      // Form pool = current-before, supplemented per-team to MIN_FORM_MATCHES.
+      // Key by providerId (not numeric id) — current (CD) and previous-season
+      // (possibly scraped, statscache mids) ids occupy overlapping ranges.
+      const pool = new Map<string, AflMatch>()
+      for (const m of before) pool.set(m.providerId, m)
       for (const tid of allTeamIds) {
         const need = MIN_FORM_MATCHES - (count[tid] ?? 0)
         if (need <= 0) continue
-        for (const m of (prevIdx.get(tid) ?? []).slice(0, need)) pool.set(m.id, m)
+        for (const m of (prevIdx.get(tid) ?? []).slice(0, need)) pool.set(m.providerId, m)
       }
 
       const rows = buildStrengthRows([...pool.values()])

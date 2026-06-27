@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { isTeamId, teamLogoHtml, teamNameHtml } from '../constants/teamLogos.js'
 
 const props = defineProps({
   columns:      { type: Array,   required: true },
@@ -225,7 +226,9 @@ onMounted(() => emit('table-ready', api))
               :class="['dt-td', i === 0 && 'text-left!']"
               :style="colStyle(col)"
             >
-              <span v-if="col.formatter" v-html="renderCell(row, col)" />
+              <span v-if="isTeamId(row[col.field])" v-html="teamLogoHtml(row[col.field])" />
+              <span v-else-if="teamNameHtml(row[col.field])" v-html="teamNameHtml(row[col.field])" />
+              <span v-else-if="col.formatter" v-html="renderCell(row, col)" />
               <template v-else>{{ renderCell(row, col) }}</template>
             </td>
           </tr>

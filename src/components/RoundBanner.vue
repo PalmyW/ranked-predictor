@@ -262,7 +262,7 @@
 import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import type { AflMatch, TeamRanking } from '../types/afl'
-import { TEAMS } from '../composables/useAFLData'
+import { teamById } from '../composables/useAFLData'
 import TeamFixtureSummaryPopup from './TeamFixtureSummaryPopup.vue'
 import HeadToHeadModal from './HeadToHeadModal.vue'
 
@@ -405,13 +405,13 @@ function predictedWinnerId(match: AflMatch): number | null {
 }
 
 function iconId(teamId: number) {
-  return TEAMS.find((t) => t.id === teamId)?.iconId ?? null
+  return teamById(teamId)?.iconId || null
 }
 function abbrev(teamId: number) {
-  return TEAMS.find((t) => t.id === teamId)?.abbreviation ?? String(teamId)
+  return teamById(teamId)?.abbreviation ?? String(teamId)
 }
 function teamName(teamId: number) {
-  return TEAMS.find((t) => t.id === teamId)?.name ?? String(teamId)
+  return teamById(teamId)?.name ?? String(teamId)
 }
 
 function isHomeWinner(match: AflMatch) {

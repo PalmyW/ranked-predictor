@@ -35,7 +35,7 @@
                   class="flex items-center justify-between px-5 py-2 border-b border-gray-100 dark:border-gray-800/60 last:border-0 odd:bg-gray-50/60 dark:odd:bg-gray-800/20"
                 >
                   <dt class="text-sm text-gray-600 dark:text-gray-400">{{ stat.fullName }}</dt>
-                  <dd class="text-sm font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ stat.value }}</dd>
+                  <dd class="text-sm font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ stat.value ?? '—' }}</dd>
                 </div>
               </dl>
             </div>
@@ -228,7 +228,7 @@
                     class="py-1.5 px-3 text-right tabular-nums text-gray-700 dark:text-gray-300"
                     :class="sortKey === col.key ? 'font-semibold text-blue-600 dark:text-blue-400' : ''"
                   >
-                    {{ row[col.key] ?? 0 }}
+                    {{ row[col.key] ?? '—' }}
                   </td>
                 </tr>
               </tbody>
@@ -349,7 +349,9 @@ const rows = computed<SeasonRow[]>(() => {
     }
     for (const key of STAT_COLUMN_KEYS) {
       const isPercentage = (STAT_LABELS[key] ?? '').includes('%')
-      row[key] = (isPercentage ? player.averages : stats)[key] ?? 0
+      // Preserve null ("not recorded") rather than coercing to 0 — older seasons
+      // legitimately lack advanced stats, and that's distinct from a real zero.
+      row[key] = (isPercentage ? player.averages : stats)[key] ?? null
     }
     row['gamesPlayed'] = player.gamesPlayed
     return row
@@ -512,8 +514,12 @@ const sortedRows = computed(() => {
   const key = sortKey.value
   const dir = sortDir.value
   return [...rows.value].sort((a, b) => {
-    const av = (a[key] as number) ?? 0
-    const bv = (b[key] as number) ?? 0
+    const av = a[key] as number | null | undefined
+    const bv = b[key] as number | null | undefined
+    // "Not recorded" (null) always sorts to the bottom, regardless of direction.
+    if (av == null && bv == null) return 0
+    if (av == null) return 1
+    if (bv == null) return -1
     return dir === 'desc' ? bv - av : av - bv
   })
 })

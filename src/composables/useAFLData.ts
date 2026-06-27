@@ -25,6 +25,24 @@ export const TEAMS: AflTeam[] = [
   { id: 8,  name: 'Western Bulldogs',  abbreviation: 'WB',   letter: 'R', iconId: 'icn-aflc-wb',   teamProviderId: 'CD_T140'  },
 ]
 
+// Defunct/historical clubs that appear only in scraped pre-2012 seasons. They are
+// kept OUT of TEAMS (so they never pollute the current-season ranker) but are
+// resolvable for display via teamById/ALL_TEAMS. No crest exists in the sprite, so
+// iconId is empty and callers fall back to the abbreviation/name.
+export const HISTORICAL_TEAMS: AflTeam[] = [
+  { id: 9001, name: 'Fitzroy',        abbreviation: 'FITZ', letter: '', iconId: '', teamProviderId: 'PW_T901' },
+  { id: 9002, name: 'Brisbane Bears', abbreviation: 'BB',   letter: '', iconId: '', teamProviderId: 'PW_T902' },
+  { id: 9003, name: 'University',     abbreviation: 'UNI',  letter: '', iconId: '', teamProviderId: 'PW_T903' },
+]
+
+/** TEAMS plus historical clubs — use for display lookups, not for the ranker. */
+export const ALL_TEAMS: AflTeam[] = [...TEAMS, ...HISTORICAL_TEAMS]
+
+/** Resolve a team (current or historical) by its internal numeric id. */
+export function teamById(id: number): AflTeam | undefined {
+  return ALL_TEAMS.find((t) => t.id === id)
+}
+
 const VALID_STATUSES = new Set<MatchStatus>([
   'CONCLUDED', 'LIVE', 'SCHEDULED', 'PLACEHOLDER', 'UNCONFIRMED_TEAMS', 'CONFIRMED_TEAMS',
 ])
