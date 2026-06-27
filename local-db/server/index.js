@@ -5,6 +5,9 @@ import { existsSync } from 'fs';
 import { openDb, STAT_COLS } from '../scripts/lib/db.js';
 import Anthropic from '@anthropic-ai/sdk';
 import { Agent, fetch as undiciFetch } from 'undici';
+import { makeExecutableSchema } from '@graphql-tools/schema';
+import { WebSocketServer } from 'ws';
+import { useServer } from 'graphql-ws/lib/use/ws';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -394,6 +397,108 @@ app.get('/api/ai/stats', (req, res) => {
   });
 });
 
+// Call Claude once with the given conversation and return the raw text plus this
+// turn's token usage. Updates the shared `aiStats` (session counts + rate limit)
+// so the header usage chip and GET /api/ai/stats stay accurate. Shared by the
+// REST endpoint and the Ask subscription loop.
+async function callClaude(messages, { system = AI_SYSTEM_PROMPT } = {}) {
+  // Cap the request so a blocked outbound connection (e.g. the container can't
+  // reach api.anthropic.com) surfaces as a fast error instead of hanging the UI
+  // for the SDK's 10-minute default timeout.
+  const client = new Anthropic({
+    timeout: 30_000,
+    maxRetries: 1,
+    fetch: undiciFetch,
+    fetchOptions: { dispatcher: ipv4Dispatcher },
+  });
+  const { data: msg, response: httpRes } = await client.messages.create({
+    model: aiStats.model,
+    max_tokens: 4096,
+    system,
+    messages,
+  }).withResponse();
+
+  const usage = {
+    input_tokens:  msg.usage?.input_tokens  ?? 0,
+    output_tokens: msg.usage?.output_tokens ?? 0,
+  };
+  aiStats.requestCount += 1;
+  aiStats.inputTokens  += usage.input_tokens;
+  aiStats.outputTokens += usage.output_tokens;
+
+  const h = httpRes.headers;
+  aiStats.rateLimit = {
+    tokensLimit:         Number(h.get('anthropic-ratelimit-tokens-limit'))      || null,
+    tokensRemaining:     Number(h.get('anthropic-ratelimit-tokens-remaining'))   || null,
+    tokensReset:         h.get('anthropic-ratelimit-tokens-reset')               || null,
+    requestsLimit:       Number(h.get('anthropic-ratelimit-requests-limit'))     || null,
+    requestsRemaining:   Number(h.get('anthropic-ratelimit-requests-remaining')) || null,
+    requestsReset:       h.get('anthropic-ratelimit-requests-reset')             || null,
+  };
+
+  return { text: msg.content[0].text.trim(), usage };
+}
+
+// Pull a SQL statement (and optional title/note) out of Claude's response, which
+// may be a fenced code block, an unclosed fence, or plain text.
+function extractSql(raw) {
+  const titleMatch = raw.match(/^TITLE:\s*(.+)/mi);
+  const title = titleMatch?.[1]?.trim();
+  const body = raw.replace(/^TITLE:.*$/mi, '').trim();
+
+  let sql, note;
+  const codeMatch = body.match(/```(?:sql)?\s*([\s\S]+?)```/i);
+  if (codeMatch) {
+    sql = codeMatch[1].replace(/;$/, '').trim();
+    note = body.replace(/```(?:sql)?[\s\S]+?```/gi, '').trim() || undefined;
+  } else if (body.includes('```')) {
+    // Unclosed fence (e.g. response truncated before the closing ```): strip the
+    // opening fence and any trailing one so we don't leak ```sql into the output.
+    sql = body.replace(/^[\s\S]*?```(?:sql)?\s*/i, '').replace(/```\s*$/, '').replace(/;$/, '').trim();
+  } else {
+    sql = body.replace(/;$/, '').trim();
+  }
+  return { sql, title, note };
+}
+
+// Validate and run a read-only query. Returns the result set, or throws an Error
+// whose message is suitable to show the user / feed back to Claude for fixing.
+function runSqlOrThrow(sql, params = []) {
+  if (!sql || typeof sql !== 'string') throw new Error('Missing sql field');
+  if (!/^\s*(SELECT|WITH)\b/i.test(sql)) throw new Error('Only SELECT statements are allowed');
+  if (sql.includes(';')) throw new Error('Multiple statements are not allowed');
+
+  const start = Date.now();
+  const stmt = db.prepare(sql);
+  const rows = stmt.all(...(Array.isArray(params) ? params : []));
+  const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
+  const limited = rows.slice(0, 10000);
+  return {
+    columns,
+    rows: limited,
+    rowCount: limited.length,
+    executionMs: Date.now() - start,
+  };
+}
+
+// Corrective user message handed back to Claude when a generated query fails.
+function buildFixMessage(errorMsg) {
+  return `That SQLite query returned an error:\n\n${errorMsg}\n\nReturn a corrected query.`;
+}
+
+const logAskStmt = db.prepare(`
+  INSERT INTO ask_log (ts, chat_id, prompt, attempt, sql, success, error, row_count, input_tokens, output_tokens)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`);
+
+function logAsk({ chatId = null, prompt, attempt, sql, success, error = null, rowCount = null, inputTokens = null, outputTokens = null }) {
+  try {
+    logAskStmt.run(Date.now(), chatId, prompt, attempt, sql ?? null, success ? 1 : 0, error, rowCount, inputTokens, outputTokens);
+  } catch (err) {
+    console.error('ask_log insert failed:', err.message);
+  }
+}
+
 app.post('/api/ai/query', async (req, res) => {
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.status(503).json({ error: 'ANTHROPIC_API_KEY environment variable is not set. Start the server with ANTHROPIC_API_KEY=sk-ant-... npm run start' });
@@ -401,53 +506,8 @@ app.post('/api/ai/query', async (req, res) => {
   const { prompt } = req.body ?? {};
   if (!prompt?.trim()) return res.status(400).json({ error: 'Missing prompt' });
   try {
-    // Cap the request so a blocked outbound connection (e.g. the container can't
-    // reach api.anthropic.com) surfaces as a fast error instead of hanging the UI
-    // for the SDK's 10-minute default timeout.
-    const client = new Anthropic({
-      timeout: 30_000,
-      maxRetries: 1,
-      fetch: undiciFetch,
-      fetchOptions: { dispatcher: ipv4Dispatcher },
-    });
-    const { data: msg, response: httpRes } = await client.messages.create({
-      model: aiStats.model,
-      max_tokens: 4096,
-      system: AI_SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: prompt.trim() }],
-    }).withResponse();
-
-    aiStats.requestCount += 1;
-    aiStats.inputTokens  += msg.usage?.input_tokens  ?? 0;
-    aiStats.outputTokens += msg.usage?.output_tokens ?? 0;
-
-    const h = httpRes.headers;
-    aiStats.rateLimit = {
-      tokensLimit:         Number(h.get('anthropic-ratelimit-tokens-limit'))      || null,
-      tokensRemaining:     Number(h.get('anthropic-ratelimit-tokens-remaining'))   || null,
-      tokensReset:         h.get('anthropic-ratelimit-tokens-reset')               || null,
-      requestsLimit:       Number(h.get('anthropic-ratelimit-requests-limit'))     || null,
-      requestsRemaining:   Number(h.get('anthropic-ratelimit-requests-remaining')) || null,
-      requestsReset:       h.get('anthropic-ratelimit-requests-reset')             || null,
-    };
-
-    const raw = msg.content[0].text.trim();
-    const titleMatch = raw.match(/^TITLE:\s*(.+)/mi);
-    const title = titleMatch?.[1]?.trim();
-    const body = raw.replace(/^TITLE:.*$/mi, '').trim();
-
-    let sql, note;
-    const codeMatch = body.match(/```(?:sql)?\s*([\s\S]+?)```/i);
-    if (codeMatch) {
-      sql = codeMatch[1].replace(/;$/, '').trim();
-      note = body.replace(/```(?:sql)?[\s\S]+?```/gi, '').trim() || undefined;
-    } else if (body.includes('```')) {
-      // Unclosed fence (e.g. response truncated before the closing ```): strip the
-      // opening fence and any trailing one so we don't leak ```sql into the output.
-      sql = body.replace(/^[\s\S]*?```(?:sql)?\s*/i, '').replace(/```\s*$/, '').replace(/;$/, '').trim();
-    } else {
-      sql = body.replace(/;$/, '').trim();
-    }
+    const { text } = await callClaude([{ role: 'user', content: prompt.trim() }]);
+    const { sql, title, note } = extractSql(text);
     res.json({ sql, ...(title && { title }), ...(note && { note }) });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -458,28 +518,8 @@ app.post('/api/ai/query', async (req, res) => {
 
 app.post('/api/query', (req, res) => {
   const { sql, params = [] } = req.body ?? {};
-  if (!sql || typeof sql !== 'string') {
-    return res.status(400).json({ error: 'Missing sql field' });
-  }
-  if (!/^\s*(SELECT|WITH)\b/i.test(sql)) {
-    return res.status(400).json({ error: 'Only SELECT statements are allowed' });
-  }
-  if (sql.includes(';')) {
-    return res.status(400).json({ error: 'Multiple statements are not allowed' });
-  }
-
-  const start = Date.now();
   try {
-    const stmt = db.prepare(sql);
-    const rows = stmt.all(...(Array.isArray(params) ? params : []));
-    const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
-    const limited = rows.slice(0, 10000);
-    res.json({
-      columns,
-      rows: limited,
-      rowCount: limited.length,
-      executionMs: Date.now() - start,
-    });
+    res.json(runSqlOrThrow(sql, params));
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -600,11 +640,192 @@ app.get('*', (_, res) => {
   }
 });
 
+// ── GraphQL subscription: the "Ask" page's self-correcting NL→SQL loop ─────────
+// A single subscription streams the behind-the-scenes progress to the client:
+// building the query, each run attempt, errors, Claude fixes, token usage and the
+// final result set. The generated SQL is never sent to the client (only logged to
+// ask_log), so the UI can stay query-free.
+//
+// The page is a chat: follow-up questions refine the previous result. Conversation
+// context is held here, server-side, keyed by chatId — the SQL the user never sees
+// stays out of the client. A fresh chatId (from "Clear chat") starts from scratch.
+
+const ASK_MAX_ATTEMPTS = 5;
+
+// chatId -> clean conversation [{role, content}]. Only the user prompt and the
+// final working SQL of each turn are kept (not the intermediate error/fix
+// sub-exchanges) so follow-ups stay cheap. The Map is an in-memory cache; the
+// ask_chat table is the durable store so context survives restarts / reloads.
+const chatSessions = new Map();
+const CHAT_SESSION_CAP = 50;
+
+const loadChatStmt = db.prepare('SELECT messages FROM ask_chat WHERE chat_id = ?');
+const upsertChatStmt = db.prepare(`
+  INSERT INTO ask_chat (chat_id, messages, updated_at) VALUES (?, ?, ?)
+  ON CONFLICT(chat_id) DO UPDATE SET messages = excluded.messages, updated_at = excluded.updated_at
+`);
+
+// Return this chat's prior turns, falling back to the durable store (and warming
+// the cache) when the chat isn't in memory (server restarted or it was pruned).
+function loadChatHistory(chatId) {
+  if (chatSessions.has(chatId)) return chatSessions.get(chatId);
+  try {
+    const row = loadChatStmt.get(chatId);
+    if (row) {
+      const messages = JSON.parse(row.messages);
+      chatSessions.set(chatId, messages);
+      return messages;
+    }
+  } catch (err) {
+    console.error('ask_chat load failed:', err.message);
+  }
+  return [];
+}
+
+function commitTurn(chatId, history, userText, finalSql) {
+  const next = [
+    ...history,
+    { role: 'user', content: userText },
+    { role: 'assistant', content: finalSql },
+  ];
+  // delete-then-set so the active chat re-inserts as most-recent (LRU-ish).
+  chatSessions.delete(chatId);
+  chatSessions.set(chatId, next);
+  while (chatSessions.size > CHAT_SESSION_CAP) {
+    chatSessions.delete(chatSessions.keys().next().value);
+  }
+  try {
+    upsertChatStmt.run(chatId, JSON.stringify(next), Date.now());
+  } catch (err) {
+    console.error('ask_chat upsert failed:', err.message);
+  }
+}
+
+const typeDefs = /* GraphQL */ `
+  type Query { _empty: String }
+
+  type AskEvent {
+    type: String!          # status | attempt | error | tokens | result | done | failed
+    message: String
+    attempt: Int
+    maxAttempts: Int
+    inputTokens: Int
+    outputTokens: Int
+    rowCount: Int
+    executionMs: Int
+    columns: [String!]
+    rows: String           # JSON-encoded array of row objects (rows are dynamic)
+    model: String
+    title: String          # Claude's short label for the result table
+  }
+
+  type Subscription {
+    ask(chatId: String!, prompt: String!): AskEvent!
+  }
+`;
+
+async function* runAsk(chatId, prompt) {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    yield { type: 'failed', message: 'ANTHROPIC_API_KEY is not set on the server.' };
+    return;
+  }
+  const text = prompt?.trim();
+  if (!text) {
+    yield { type: 'failed', message: 'Empty prompt.' };
+    return;
+  }
+
+  let inputTokens = 0;
+  let outputTokens = 0;
+
+  yield { type: 'status', message: 'Asking Claude to build a query…' };
+
+  // Seed the conversation with this chat's prior turns so follow-ups carry context.
+  const history = loadChatHistory(chatId);
+  const messages = [...history, { role: 'user', content: text }];
+  let sql, title;
+  try {
+    const { text: reply, usage } = await callClaude(messages);
+    inputTokens += usage.input_tokens;
+    outputTokens += usage.output_tokens;
+    const parsed = extractSql(reply);
+    sql = parsed.sql;
+    if (parsed.title) title = parsed.title;
+    yield { type: 'tokens', inputTokens, outputTokens, model: aiStats.model };
+  } catch (err) {
+    yield { type: 'failed', message: `Claude request failed: ${err.message}` };
+    return;
+  }
+
+  for (let attempt = 1; attempt <= ASK_MAX_ATTEMPTS; attempt++) {
+    yield { type: 'attempt', attempt, maxAttempts: ASK_MAX_ATTEMPTS, message: `Running query (attempt ${attempt} of ${ASK_MAX_ATTEMPTS})…` };
+    try {
+      const result = runSqlOrThrow(sql);
+      logAsk({ chatId, prompt: text, attempt, sql, success: true, rowCount: result.rowCount, inputTokens, outputTokens });
+      // Persist a clean turn (user + final working SQL) for follow-up context.
+      commitTurn(chatId, history, text, sql);
+      yield {
+        type: 'result',
+        columns: result.columns,
+        rows: JSON.stringify(result.rows),
+        rowCount: result.rowCount,
+        executionMs: result.executionMs,
+        title: title ?? null,
+      };
+      yield { type: 'done', message: `Done · ${result.rowCount.toLocaleString()} rows · ${(inputTokens + outputTokens).toLocaleString()} tokens`, inputTokens, outputTokens, model: aiStats.model };
+      return;
+    } catch (err) {
+      logAsk({ chatId, prompt: text, attempt, sql, success: false, error: err.message, inputTokens, outputTokens });
+      yield { type: 'error', message: err.message, attempt, maxAttempts: ASK_MAX_ATTEMPTS };
+
+      if (attempt === ASK_MAX_ATTEMPTS) {
+        // Keep the last attempt as context so a "try it differently" follow-up works.
+        commitTurn(chatId, history, text, sql);
+        yield { type: 'failed', message: `Could not produce a working query after ${ASK_MAX_ATTEMPTS} attempts.` };
+        return;
+      }
+
+      yield { type: 'status', message: 'Asking Claude to fix the query…' };
+      messages.push({ role: 'assistant', content: sql });
+      messages.push({ role: 'user', content: buildFixMessage(err.message) });
+      try {
+        const { text: reply, usage } = await callClaude(messages);
+        inputTokens += usage.input_tokens;
+        outputTokens += usage.output_tokens;
+        const parsed = extractSql(reply);
+        sql = parsed.sql;
+        if (parsed.title) title = parsed.title;
+        yield { type: 'tokens', inputTokens, outputTokens, model: aiStats.model };
+      } catch (e) {
+        yield { type: 'failed', message: `Claude request failed: ${e.message}` };
+        return;
+      }
+    }
+  }
+}
+
+const schema = makeExecutableSchema({
+  typeDefs,
+  resolvers: {
+    Query: { _empty: () => null },
+    Subscription: {
+      ask: {
+        subscribe: (_root, { chatId, prompt }) => runAsk(chatId, prompt),
+        resolve: (payload) => payload,
+      },
+    },
+  },
+});
+
 // Bind to loopback by default; set HOST=0.0.0.0 (e.g. in Docker) to expose it.
 const HOST = process.env.HOST ?? '127.0.0.1';
 const server = app.listen(PORT, HOST, () => {
-  console.log(`AFL Stats DB running at http://${HOST}:${PORT}`);
+  console.log(`PalmyDatabase running at http://${HOST}:${PORT}`);
 });
+
+// GraphQL-over-WebSocket endpoint for the Ask page's live progress stream.
+const wsServer = new WebSocketServer({ server, path: '/graphql' });
+useServer({ schema }, wsServer);
 
 server.on('error', err => {
   if (err.code === 'EADDRINUSE') {

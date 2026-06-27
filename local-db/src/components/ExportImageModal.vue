@@ -18,14 +18,45 @@ const downloading = ref(false)
 const exportTitle = ref('')
 const highlighted = ref(new Set())
 
+// Sorting (driven by the arrow control in each header)
+const sortField = ref('')
+const sortDir   = ref('asc')
+
+function toggleSort(field) {
+  if (sortField.value === field) {
+    if (sortDir.value === 'asc') sortDir.value = 'desc'
+    else { sortField.value = ''; sortDir.value = 'asc' }   // third click clears
+  } else {
+    sortField.value = field
+    sortDir.value = 'asc'
+  }
+}
+
+// Editable headers — content lives in the DOM (captured directly in the PNG), so
+// we set the initial text via refs rather than interpolation (which would fight
+// the caret on every keystroke, exactly like the title field).
+const headerRefs = ref([])
+function setHeaderRef(el, ci) {
+  headerRefs.value[ci] = el
+  if (el && el.innerText === '') el.innerText = props.columns[ci]?.title ?? ''
+}
+
+// Highlights are by visible-row index, which sorting reshuffles — clear them.
+watch([sortField, sortDir], () => { highlighted.value = new Set() })
+
 watch(
   () => props.modelValue,
   (open) => {
     if (open) {
       exportTitle.value = props.title
       highlighted.value = new Set()
+      sortField.value = ''
+      sortDir.value = 'asc'
       nextTick(() => {
         if (titleRef.value) titleRef.value.innerText = props.title
+        props.columns.forEach((c, i) => {
+          if (headerRefs.value[i]) headerRefs.value[i].innerText = c.title
+        })
       })
     }
   },
@@ -88,7 +119,21 @@ const rowLimitOpts = computed(() => {
   return [...new Set(opts)].sort((a, b) => a - b)
 })
 const rowLimit = ref(50)
-const visibleRows = computed(() => props.rows.slice(0, rowLimit.value))
+
+const sortedRows = computed(() => {
+  if (!sortField.value) return props.rows
+  const numeric = isNum({ field: sortField.value })
+  return [...props.rows].sort((a, b) => {
+    const av = a[sortField.value]
+    const bv = b[sortField.value]
+    if (av == null && bv == null) return 0
+    if (av == null) return 1
+    if (bv == null) return -1
+    const cmp = numeric ? av - bv : String(av).localeCompare(String(bv))
+    return sortDir.value === 'desc' ? -cmp : cmp
+  })
+})
+const visibleRows = computed(() => sortedRows.value.slice(0, rowLimit.value))
 
 function cellText(row, col) {
   if (!col.formatter) return fmt(row[col.field]) ?? '—'
@@ -190,7 +235,7 @@ function close() {
         />
 
         <span class="text-caption text-medium-emphasis ml-auto" style="white-space: nowrap">
-          Click rows to highlight
+          Edit a heading to rename · ⇅ to sort · click rows to highlight
         </span>
       </div>
 
@@ -274,12 +319,40 @@ function close() {
                     letterSpacing: '0.06em',
                     textTransform: 'uppercase',
                     padding: '9px 14px',
-                    textAlign: ci === 0 ? 'left' : isNum(col) ? 'right' : 'left',
                     borderBottom: `2px solid ${theme.border}`,
                     whiteSpace: 'nowrap',
                   }"
                 >
-                  {{ col.title }}
+                  <span
+                    :style="{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      justifyContent: ci === 0 ? 'flex-start' : isNum(col) ? 'flex-end' : 'flex-start',
+                    }"
+                  >
+                    <span
+                      :ref="el => setHeaderRef(el, ci)"
+                      contenteditable="true"
+                      spellcheck="false"
+                      @keydown="onTitleKeydown"
+                      class="header-editable"
+                      :style="{ outline: 'none', cursor: 'text', borderRadius: '3px', minWidth: '10px' }"
+                    />
+                    <span
+                      class="sort-arrow"
+                      @click="toggleSort(col.field)"
+                      :style="{
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        fontSize: '11px',
+                        lineHeight: '1',
+                        color: sortField === col.field ? theme.accent : theme.sub,
+                        opacity: sortField === col.field ? 1 : 0.5,
+                        display: (downloading && sortField !== col.field) ? 'none' : 'inline',
+                      }"
+                    >{{ sortField === col.field ? (sortDir === 'asc' ? '▲' : '▼') : '⇅' }}</span>
+                  </span>
                 </th>
               </tr>
             </thead>
@@ -365,5 +438,15 @@ function close() {
   content: attr(data-placeholder);
   opacity: 0.4;
   pointer-events: none;
+}
+.header-editable:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+.header-editable:focus {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 0 2px rgba(79, 126, 247, 0.5);
+}
+.sort-arrow:hover {
+  opacity: 1 !important;
 }
 </style>

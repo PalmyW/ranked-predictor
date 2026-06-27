@@ -3,6 +3,7 @@ import MatchesView          from '@/views/MatchesView.vue'
 import PlayerMatchStatsView from '@/views/PlayerMatchStatsView.vue'
 import SeasonStatsView      from '@/views/SeasonStatsView.vue'
 import QueryView            from '@/views/QueryView.vue'
+import AskView              from '@/views/AskView.vue'
 import PlayerView           from '@/views/PlayerView.vue'
 import BrowseView           from '@/views/BrowseView.vue'
 
@@ -13,6 +14,7 @@ export default createRouter({
     { path: '/matches',      name: 'matches',      component: MatchesView },
     { path: '/match-stats',  name: 'match-stats',  component: PlayerMatchStatsView },
     { path: '/season-stats', name: 'season-stats', component: SeasonStatsView },
+    { path: '/ask',          name: 'ask',          component: AskView },
     { path: '/query',        name: 'query',        component: QueryView },
     { path: '/player',       name: 'player',       component: PlayerView },
     { path: '/browse',       name: 'browse',       component: BrowseView },

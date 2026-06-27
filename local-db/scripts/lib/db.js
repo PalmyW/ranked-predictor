@@ -84,6 +84,11 @@ export function openDb() {
         db.exec(`ALTER TABLE match_details ADD COLUMN ${col} TEXT`);
     }
   }
+  // Migration: add chat_id to ask_log (groups the Ask chat's turns for debugging)
+  const hasAskLog = db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='ask_log'").get();
+  if (hasAskLog && !db.prepare("SELECT 1 FROM pragma_table_info('ask_log') WHERE name='chat_id'").get()) {
+    db.exec('ALTER TABLE ask_log ADD COLUMN chat_id TEXT');
+  }
   db.exec('PRAGMA foreign_keys = ON');
   return db;
 }

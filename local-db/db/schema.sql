@@ -294,3 +294,29 @@ JOIN match_predictions p ON p.match_id = m.match_id
 JOIN teams ht ON m.home_team_id = ht.team_id
 JOIN teams at ON m.away_team_id = at.team_id;
 
+
+-- ── Ask page ──────────────────────────────────────────────────────────────────
+-- Debug log for the "Ask" page's self-correcting NL→SQL loop. One row is written
+-- per loop attempt (the generated SQL is hidden from the UI but kept here).
+CREATE TABLE IF NOT EXISTS ask_log (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts            INTEGER NOT NULL,
+  chat_id       TEXT,
+  prompt        TEXT NOT NULL,
+  attempt       INTEGER NOT NULL,
+  sql           TEXT,
+  success       INTEGER NOT NULL,
+  error         TEXT,
+  row_count     INTEGER,
+  input_tokens  INTEGER,
+  output_tokens INTEGER
+);
+
+-- Durable conversation context for the Ask chat, keyed by the client's chatId.
+-- Holds the clean turn history (user prompt + final working SQL per turn) as JSON
+-- so follow-ups keep their context across server restarts / a page reload.
+CREATE TABLE IF NOT EXISTS ask_chat (
+  chat_id    TEXT PRIMARY KEY,
+  messages   TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);

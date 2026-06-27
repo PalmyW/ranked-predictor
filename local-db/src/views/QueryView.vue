@@ -3,18 +3,19 @@ import { ref, computed, inject, nextTick, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useApi } from '@/composables/useApi.js'
 import { useQueryHistory } from '@/composables/useQueryHistory.js'
+import { useResultColumns } from '@/composables/useResultColumns.js'
 import DataTable from '@/components/DataTable.vue'
 import ColToggle from '@/components/ColToggle.vue'
 import AiPrompt from '@/components/AiPrompt.vue'
 import SchemaPanel from '@/components/SchemaPanel.vue'
 import QueryHistory from '@/components/QueryHistory.vue'
 import ExportImageModal from '@/components/ExportImageModal.vue'
-import { SAMPLE_QUERY, fmt, fmtStarSign } from '@/constants/stats.js'
+import { SAMPLE_QUERY } from '@/constants/stats.js'
 
 const router  = useRouter()
 const route   = useRoute()
 const { api } = useApi()
-const teamMap = inject('teamMap')
+const { buildColumns } = useResultColumns()
 const refreshAiStats = inject('refreshAiStats', () => {})
 
 const { history, push: pushHistory, remove: removeHistory, clear: clearHistory } = useQueryHistory()
@@ -75,28 +76,7 @@ async function runQuery() {
     execTime.value = `${result.executionMs}ms`
     rowCount.value = result.rowCount
 
-    const tmap = teamMap?.value ?? {}
-    const toLabel = s => { const w = s.replace(/_/g, ' '); return w.charAt(0).toUpperCase() + w.slice(1) }
-    columns.value = result.columns.map(c => {
-      const isTeamId = /team_id$/i.test(c)
-      const isStarSign = /star_sign$/i.test(c)
-      const firstVal = result.rows[0]?.[c]
-      const isNum = typeof firstVal === 'number'
-      return {
-        title: toLabel(c),
-        field: c,
-        formatter: cell => {
-          const v = cell.getValue()
-          if (isTeamId && v != null) return tmap[v] ?? v
-          if (isStarSign) return fmtStarSign(v)
-          return fmt(v)
-        },
-        sorter: isNum ? 'number' : 'string',
-        hozAlign: isNum ? 'right' : 'left',
-        headerHozAlign: isNum ? 'right' : 'left',
-        minWidth: isTeamId ? 130 : 90,
-      }
-    })
+    columns.value = buildColumns(result.columns, result.rows)
     rows.value = result.rows
     colVis.value = {}
     resultsTitle.value = pendingTitle.value
