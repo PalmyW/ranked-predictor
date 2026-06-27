@@ -1,7 +1,8 @@
 import express from 'express';
 import { fileURLToPath } from 'url';
 import { join, dirname } from 'path';
-import { existsSync } from 'fs';
+import { existsSync, mkdirSync } from 'fs';
+import { DatabaseSync } from 'node:sqlite';
 import { openDb, STAT_COLS } from '../scripts/lib/db.js';
 import Anthropic from '@anthropic-ai/sdk';
 import { Agent, fetch as undiciFetch } from 'undici';
@@ -26,6 +27,36 @@ if (!existsSync(DB_PATH)) {
 }
 
 const db = openDb();
+
+// The Ask page's debug log and durable chat context live in their own SQLite DB,
+// separate from afl-stats.db which is baked into the image and reseeded on every
+// build. Point ASK_DB_PATH at a mounted volume in production so chat history and
+// context survive rebuilds; it defaults alongside the app for local dev.
+const ASK_DB_PATH = process.env.ASK_DB_PATH ?? join(__dirname, '../ask.db');
+mkdirSync(dirname(ASK_DB_PATH), { recursive: true });
+const askDb = new DatabaseSync(ASK_DB_PATH);
+askDb.exec('PRAGMA journal_mode = WAL');
+askDb.exec(`
+  CREATE TABLE IF NOT EXISTS ask_log (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts            INTEGER NOT NULL,
+    chat_id       TEXT,
+    prompt        TEXT NOT NULL,
+    attempt       INTEGER NOT NULL,
+    sql           TEXT,
+    success       INTEGER NOT NULL,
+    error         TEXT,
+    row_count     INTEGER,
+    input_tokens  INTEGER,
+    output_tokens INTEGER
+  );
+  CREATE TABLE IF NOT EXISTS ask_chat (
+    chat_id    TEXT PRIMARY KEY,
+    messages   TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+`);
+
 const app = express();
 app.use(express.json());
 
@@ -486,7 +517,7 @@ function buildFixMessage(errorMsg) {
   return `That SQLite query returned an error:\n\n${errorMsg}\n\nReturn a corrected query.`;
 }
 
-const logAskStmt = db.prepare(`
+const logAskStmt = askDb.prepare(`
   INSERT INTO ask_log (ts, chat_id, prompt, attempt, sql, success, error, row_count, input_tokens, output_tokens)
   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
@@ -659,8 +690,8 @@ const ASK_MAX_ATTEMPTS = 5;
 const chatSessions = new Map();
 const CHAT_SESSION_CAP = 50;
 
-const loadChatStmt = db.prepare('SELECT messages FROM ask_chat WHERE chat_id = ?');
-const upsertChatStmt = db.prepare(`
+const loadChatStmt = askDb.prepare('SELECT messages FROM ask_chat WHERE chat_id = ?');
+const upsertChatStmt = askDb.prepare(`
   INSERT INTO ask_chat (chat_id, messages, updated_at) VALUES (?, ?, ?)
   ON CONFLICT(chat_id) DO UPDATE SET messages = excluded.messages, updated_at = excluded.updated_at
 `);
