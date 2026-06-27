@@ -32,6 +32,16 @@ const ASK_SUBSCRIPTION = /* GraphQL */ `
 
 let _turnId = 0
 
+// crypto.randomUUID() is only available in secure contexts (HTTPS / localhost),
+// so it throws on a plain-HTTP LAN IP. Fall back to a good-enough unique id —
+// chatIds only need to be unique per client, not cryptographically random.
+function genId() {
+  try {
+    if (globalThis.crypto?.randomUUID) return crypto.randomUUID()
+  } catch { /* insecure context — use the fallback */ }
+  return `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+}
+
 // Persist chat sessions (bubbles + latest result, named by Claude's table label)
 // so they survive a reload and can be reopened from the history list. The server
 // keeps the matching conversation context durably (keyed by the same chatId), so
@@ -41,7 +51,7 @@ const MAX_STORED_TURNS = 100
 const MAX_SESSIONS = 30
 
 export function useAsk() {
-  const chatId = ref(crypto.randomUUID())
+  const chatId = ref(genId())
   const turns = ref([])               // current session: { id, prompt, events:[], tokens, result, running, done, failed }
   const result = shallowRef(null)     // latest successful result, shown in the main area
   const running = ref(false)
@@ -108,7 +118,7 @@ export function useAsk() {
   // history, so this is also "clear chat" — the new chat has no prior context.
   function newChat() {
     stop()
-    chatId.value = crypto.randomUUID()
+    chatId.value = genId()
     currentName.value = ''
     turns.value = []
     result.value = null
