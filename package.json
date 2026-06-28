@@ -14,11 +14,7 @@
     "fetch-historical": "node scripts/fetch-historical-season.js",
     "scrape-statscache": "node data_sources/statscache/scrape-season.js",
     "verify-statscache-2012": "node data_sources/statscache/verify-2012.js",
-    "compute-champions": "node scripts/compute-xpalmy-champions.js",
-    "db:install": "cd local-db && npm install",
-    "db:import": "cd local-db && node scripts/import.js",
-    "db:dev": "cd local-db && npm run dev",
-    "db:start": "cd local-db && node --env-file-if-exists=.env server/index.js"
+    "compute-champions": "node scripts/compute-xpalmy-champions.js"
   },
   "dependencies": {
     "html-to-image": "^1.11.13",

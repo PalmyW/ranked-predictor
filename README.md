@@ -60,64 +60,12 @@ Hit the **?** button at any time to replay the interactive guided tour covering 
 
 ---
 
-## Local DB — AFL Stats Explorer
+## AFL Stats Explorer (palmy-data)
 
-A separate local-only app (`/local-db/`) that imports all AFL stats JSON files into a SQLite database and serves a web UI for exploring them with sorting, filtering, and a custom SQL query interface with Claude AI query building.
-
-> This app runs entirely on your machine and is not part of the GitHub Pages build.
-
-### Features
-
-- **Matches** — browse every match with scores, filtered by season/round/team
-- **Player Match Stats** — per-game stats for every player across all seasons with 62 stat columns
-- **Season Stats** — aggregated season totals and averages computed on the fly from match data
-- **SQL Query** — run arbitrary SELECT queries with a schema reference panel, query history, and CSV export
-- **Ask Claude** — type a natural language question and Claude generates the SQL query for you
-
-### Install
-
-```bash
-npm run db:install
-```
-
-### Import data
-
-Imports all AFL data from `public/data/` into `local-db/afl-stats.db`:
-
-```bash
-npm run db:import
-```
-
-To refresh a single season after fetching new data:
-
-```bash
-npm run db:import -- --year=2026
-```
-
-### Run
-
-```bash
-npm run db:start
-```
-
-Opens at **http://localhost:3737**
-
-### Claude AI integration (optional)
-
-The "Ask Claude" prompt on the SQL Query tab sends natural language questions to the Claude API and inserts the generated SQL into the query box.
-
-**1. Get an API key**
-
-Sign up at [console.anthropic.com](https://console.anthropic.com) and create a key at **Settings → API Keys**. The API is billed separately from Claude.ai Pro — Haiku costs ~$0.001 per query so $5 of credits goes a long way. Credits do not expire.
-
-**2. Add the key to `.env`**
-
-```bash
-# local-db/.env  (gitignored — never committed)
-ANTHROPIC_API_KEY=sk-ant-...
-```
-
-The server loads this file automatically on start. Without the key the rest of the app works normally — Ask Claude just shows an error.
+The local-only SQLite stats explorer / Claude-powered "Ask" app now lives in its own
+repo, **[palmy-data](https://github.com/PalmyW/palmy-data)**. It consumes this project's
+`public/data/` as a git submodule, so this repo remains the single source of truth for
+the season data.
 
 ---
 
