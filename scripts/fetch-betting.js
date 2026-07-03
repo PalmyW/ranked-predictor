@@ -71,7 +71,20 @@ function loadWorkbook() {
   if (!path) {
     path = join(tmpdir(), `afl-betting-${Date.now()}.xlsx`)
     console.log(`Downloading ${XLSX_URL} ...`)
-    execSync(`curl -fsSL '${XLSX_URL}' -o '${path}'`, { stdio: ['ignore', 'ignore', 'pipe'] })
+    // aussportsbetting.com's WAF 403s bare `curl/x.x` requests (and, on some
+    // hosting-provider IP ranges like GitHub Actions runners, requests without
+    // browser-like headers even more aggressively) — send realistic headers
+    // and retry transient failures.
+    const curlArgs = [
+      'curl -fsSL',
+      `-A 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'`,
+      `-H 'Accept: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,*/*'`,
+      `-H 'Accept-Language: en-US,en;q=0.9'`,
+      `-H 'Referer: https://www.aussportsbetting.com/data/'`,
+      '--retry 3 --retry-delay 5 --retry-all-errors',
+      `'${XLSX_URL}' -o '${path}'`,
+    ].join(' ')
+    execSync(curlArgs, { stdio: ['ignore', 'ignore', 'pipe'] })
   }
   return XLSX.read(readFileSync(path), { type: 'buffer' })
 }
