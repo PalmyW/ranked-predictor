@@ -120,7 +120,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted } from 'vue'
+import { computed, ref, watch, onMounted, provide } from 'vue'
 import { useAFLData } from '../composables/useAFLData'
 import { useRanking } from '../composables/useRanking'
 import { useAlgorithmRankings, ALGORITHMS } from '../composables/useAlgorithmRankings'
@@ -138,6 +138,9 @@ const { matches, teams, isLoading, error } = useAFLData()
 const { isCurrentSeason, activeSeasonYear, resetToCurrentSeason } = useSeason()
 onMounted(resetToCurrentSeason)
 const { ranking, tierSizes, shareUrl, rankedFromUrl, rankedFromStorage, ladderSource, savedState, rankingHistory, setRanking, setTierSizes, resetToLadder, loadSavedRanking, saveToMyLadder, importRanking, revertImport, seedHistoryFromSavedRanking, snapshotRoundRanking, updateRoundSnapshot } = useRanking()
+
+provide('matches', matches)
+provide('ranking', ranking)
 const { winPctRanking, srsRanking, colleyRanking, masseyRanking, winFlowRanking, palmyRanking, xpalmyRanking } = useAlgorithmRankings(matches)
 
 const importedFromName = ref<string | null>(null)
