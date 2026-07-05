@@ -399,7 +399,16 @@ function medianPosition(entry: RangeEntry): number {
   return 18
 }
 
-const sortedResults = computed(() =>
-  [...props.results].sort((a, b) => medianPosition(a) - medianPosition(b)),
-)
+const sortedResults = computed(() => {
+  const consensusLadder = props.stats?.consensusLadder
+  if (consensusLadder?.length) {
+    const rank = new Map(consensusLadder.map((teamId, i) => [teamId, i]))
+    return [...props.results].sort((a, b) => {
+      const rankA = rank.get(a.teamId) ?? consensusLadder.length
+      const rankB = rank.get(b.teamId) ?? consensusLadder.length
+      return rankA - rankB
+    })
+  }
+  return [...props.results].sort((a, b) => medianPosition(a) - medianPosition(b))
+})
 </script>
