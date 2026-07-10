@@ -53,6 +53,56 @@ Raw HTML is cached under `data_sources/afltables/.cache/` (gitignored), so re-ru
 and re-parses don't re-hit the network. The scrape is idempotent — existing output
 files are skipped.
 
+## Coach + attendance enrichment
+
+`import-coaches.js` enriches already-scraped `match-details/` files with each
+match's head coaches — the 1897–1964 counterpart to `../coach-attendance/`, which
+covers 1965–present via footywire. On afltables' match-stats pages, the coach is
+a distinct row in each team's "Player Details" table (in `<tfoot>`, not `<tbody>`)
+whose "#" cell is the literal letter `C` rather than a jumper number, linking to
+`../../coaches/{Name}.html` instead of a `players/` permalink — that row is the
+one thing this scraper's regular player-stats scrape doesn't already capture.
+Attendance is fetched too, but is mostly a no-op — `scrape-season.js` already
+writes it for nearly every match; this only tops up the rare miss.
+
+```bash
+# One season
+npm run import-afltables-coaches -- --year=1955
+
+# A range
+npm run import-afltables-coaches -- --from=1897 --to=1964
+
+# No args = every year 1897–1964, newest first (the backfill/"crawler" mode)
+npm run import-afltables-coaches
+
+# Re-resolve even matches already carrying a `coaches` block
+npm run import-afltables-coaches -- --force
+
+# Debugging: cap how many matches per year are actually fetched
+npm run import-afltables-coaches -- --year=1955 --limit=5
+```
+
+No new matches are discovered — every file in this era already *is* afltables
+data (`AT_M{matchId}.json`), so the matchId (and the page URL it fetches) is read
+straight off the filename, no round/team matching needed.
+
+Coach → player id resolution has no independent verification signal (afltables'
+coach entries carry no date of birth) — same best-effort NAME + playing-career-
+plausibility heuristic `../coach-attendance/import-coaches.js` uses, against the
+same all-provider, all-era player index. In practice a high fraction resolve
+cleanly to an *existing* id rather than minting a fresh one — many pre-1965
+coaches were captain-coaches or had earlier playing careers already present in
+this same dataset. Ambiguous same-name cases are printed to the console rather
+than guessed, same as the footywire-era importer.
+
+**The coach row simply isn't recorded for a meaningful stretch of the earliest
+seasons** — spot checks found 0 coach rows per team in 1897, 1 (one team only) by
+1910, both teams reliably present from ~1920 onward. A match with no coach data
+on the source still gets a `coaches` block written (`{ fetchedAt, home: null,
+away: null }`, or one side null) so it isn't re-fetched forever looking for data
+that was never recorded — `null` here means "checked, genuinely not there," not
+a failure.
+
 ## Sanity check
 
 There is **no overlap year** between afltables (1897–1964) and the rest of the

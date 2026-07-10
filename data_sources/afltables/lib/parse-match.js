@@ -5,13 +5,20 @@
  * attendance/quarter scores/umpire), then one `<table class="sortable">` per team
  * headed "{Team} Match Statistics" with one row per player (jumper #, permalink,
  * then up to 23 stat columns per the KI/MK/HB/DI/GL/BH/... legend), followed by a
- * "{Team} Player Details" table (career tallies — not needed, skipped).
+ * "{Team} Player Details" table (career tallies, plus — this is the one row of it
+ * this parser reads — a trailing coach row whose "#" cell is the literal letter
+ * "C" instead of a jumper number, linking to `../../coaches/{Name}.html` rather
+ * than a `players/` permalink).
  *
  * Confirmed by an automated column scan across 1897/1920/1940/1964 samples: **only
  * the GL (goals) column is ever populated** anywhere in this era — every other stat
  * column is blank for every player, every match. Blank cells are left absent (not
  * defaulted to 0) so the aggregator downstream correctly reports them as
  * not-recorded rather than a real zero.
+ *
+ * The coach row itself is not consistently present across the whole era — spot
+ * checks found 0 per team in 1897, 1 in 1910, 2 (both teams) by 1920 onward —
+ * afltables simply doesn't have it recorded that far back, not a parsing gap.
  */
 
 import { load } from 'cheerio'
@@ -96,9 +103,47 @@ function parsePlayerTables($) {
   return teams.slice(0, 2)
 }
 
+/**
+ * Extract each team's coach from its "{Team} Player Details" table — the row
+ * whose "#" cell is the literal letter "C" (a captain-coach still gets a
+ * regular jumper-number row in the Match Statistics table above; this "C" row
+ * is the one authoritative coach marker, present once per team when recorded
+ * at all). Returns a name→coach map so the caller can align it to the
+ * `parsePlayerTables` result by the same team-name string both tables use.
+ */
+function parsePlayerDetailsTables($) {
+  const coachByTeamName = new Map()
+  $('table.sortable').each((_, table) => {
+    const $table = $(table)
+    const headerText = $table.find('thead th').first().text().trim()
+    const nameMatch = headerText.match(/^(.*?)\s+Player Details$/)
+    if (!nameMatch) return // not a "Player Details" table (e.g. "Match Statistics")
+
+    let coach = null
+    // The coach row sits in <tfoot> (alongside an unrelated "Opposition" totals
+    // row), not <tbody> where every other row in this table lives.
+    $table.find('tbody tr, tfoot tr').each((_, tr) => {
+      const tds = $(tr).find('td')
+      if (tds.length < 2) return
+      const marker = $(tds[0]).text().replace(/&nbsp;/g, '').trim()
+      if (marker !== 'C') return
+      const link = $(tds[1]).find('a').first()
+      if (!link.length) return
+      coach = {
+        permalink: link.attr('href'), // e.g. "../../coaches/Norm_Smith.html"
+        name: link.text().trim(), // "Surname, Given"
+      }
+    })
+    coachByTeamName.set(nameMatch[1].trim(), coach)
+  })
+  return coachByTeamName
+}
+
 export function parseMatchPage(html) {
   const $ = load(html)
   const meta = parseMeta($)
   const teams = parsePlayerTables($)
+  const coachByTeamName = parsePlayerDetailsTables($)
+  for (const t of teams) t.coach = coachByTeamName.get(t.teamName) ?? null
   return { meta, teams }
 }
