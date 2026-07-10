@@ -103,6 +103,35 @@ away: null }`, or one side null) so it isn't re-fetched forever looking for data
 that was never recorded — `null` here means "checked, genuinely not there," not
 a failure.
 
+## Player bio backfill (date of birth, height)
+
+`scrape-season.js` only fetches a player's own profile page when a CD-id match
+is ambiguous and needs a DOB tie-break (`lib/ids.js`) — the common case for this
+era is a brand-new player with zero CD candidates, which mints an `AT_I` id
+immediately without ever fetching the profile page (there's nothing to
+disambiguate). So most `AT_I` players never had their `Born:`/`Height:` line
+pulled, even though the page has it and `lib/player-page.js` already parses it —
+92.8% of `AT_I` profiles (7098 of 7649) were missing one or both before this
+script existed.
+
+```bash
+# Every AT_I player missing dateOfBirth or heightCm
+npm run backfill-afltables-player-bio
+
+# Debugging
+npm run backfill-afltables-player-bio -- --limit=100
+
+# Re-fetch even players who already have both fields
+npm run backfill-afltables-player-bio -- --force
+```
+
+Not a rescrape — a separate pass over the existing output. For each profile
+missing a field, it looks up that player's permalink from `id-map.json` (the
+reverse of the persistent permalink→id map the base scraper already maintains)
+and fetches just that one page. Coach-minted profiles (`role: "coach"`, from
+`import-coaches.js`) are skipped — they came from a `coaches/` page, which has
+no `Born:`/`Height:` line to fetch in the first place.
+
 ## Sanity check
 
 There is **no overlap year** between afltables (1897–1964) and the rest of the

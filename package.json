@@ -18,6 +18,7 @@
     "scrape-afltables": "node data_sources/afltables/scrape-season.js",
     "sanity-check-afltables": "node data_sources/afltables/sanity-check.js",
     "import-afltables-coaches": "node data_sources/afltables/import-coaches.js",
+    "backfill-afltables-player-bio": "node data_sources/afltables/backfill-player-bio.js",
     "import-ratings": "node data_sources/ratings-enrichment/import-season.js",
     "import-coaches": "node data_sources/coach-attendance/import-coaches.js",
     "compute-champions": "node scripts/compute-xpalmy-champions.js"
