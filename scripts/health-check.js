@@ -162,11 +162,9 @@ const RATINGS_IMPORTER = join(ROOT, 'data_sources/ratings-enrichment/import-seas
 if (missingRatings === 0) {
   console.log('\nNo ratings data missing — nothing to import.')
 } else if (!existsSync(RATINGS_IMPORTER)) {
-  // data_sources/ is gitignored (local-only tooling, never committed — see
-  // data_sources/ratings-enrichment/README.md) so it simply doesn't exist on a fresh
-  // CI checkout. That's expected there, not an error — importing ratings data is
-  // something to run from a machine that has data_sources/ checked out.
-  console.log(`\n${missingRatings} match(es) missing ratings data, but data_sources/ratings-enrichment/ isn't present in this checkout (expected in CI) — skipping.`)
+  // data_sources/ is version-controlled, so this shouldn't normally happen —
+  // defensive fallback for a sparse/partial checkout rather than crashing CI.
+  console.log(`\n${missingRatings} match(es) missing ratings data, but data_sources/ratings-enrichment/ isn't present in this checkout — skipping.`)
 } else if (DRY_RUN) {
   console.log(`\nDry-run: would run \`npm run import-ratings -- --year=${SEASON}\``)
 } else {

@@ -23,5 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 
-# Data-source import tooling (statscache scraper etc.) — local, not version-controlled
-data_sources/
+# Data-source import tooling (data_sources/) is version-controlled — only the
+# disposable, regenerable-from-network fetch caches and scratch verification
+# output stay out.
+data_sources/**/.cache/
+data_sources/**/staging/
