@@ -1,4 +1,3 @@
-import { execSync } from 'child_process'
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
@@ -66,25 +65,37 @@ function serialToDate(serial) {
 }
 
 // --- Download (or read local) spreadsheet ---
-function loadWorkbook() {
+async function downloadWorkbook(url, { retries = 3, retryDelayMs = 5000 } = {}) {
+  // aussportsbetting.com's WAF 403s bare requests (and, on some hosting-provider
+  // IP ranges like GitHub Actions runners, requests without browser-like headers
+  // even more aggressively) — send realistic headers and retry transient failures.
+  const headers = {
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,*/*',
+    'accept-language': 'en-US,en;q=0.9',
+    referer: 'https://www.aussportsbetting.com/data/',
+  }
+  let lastErr
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, { headers })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      return Buffer.from(await res.arrayBuffer())
+    } catch (err) {
+      lastErr = err
+      if (attempt < retries) await new Promise((r) => setTimeout(r, retryDelayMs))
+    }
+  }
+  throw lastErr
+}
+
+async function loadWorkbook() {
   let path = fileArg
   if (!path) {
-    path = join(tmpdir(), `afl-betting-${Date.now()}.xlsx`)
     console.log(`Downloading ${XLSX_URL} ...`)
-    // aussportsbetting.com's WAF 403s bare `curl/x.x` requests (and, on some
-    // hosting-provider IP ranges like GitHub Actions runners, requests without
-    // browser-like headers even more aggressively) — send realistic headers
-    // and retry transient failures.
-    const curlArgs = [
-      'curl -fsSL',
-      `-A 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'`,
-      `-H 'Accept: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,*/*'`,
-      `-H 'Accept-Language: en-US,en;q=0.9'`,
-      `-H 'Referer: https://www.aussportsbetting.com/data/'`,
-      '--retry 3 --retry-delay 5 --retry-all-errors',
-      `'${XLSX_URL}' -o '${path}'`,
-    ].join(' ')
-    execSync(curlArgs, { stdio: ['ignore', 'ignore', 'pipe'] })
+    const buf = await downloadWorkbook(XLSX_URL)
+    path = join(tmpdir(), `afl-betting-${Date.now()}.xlsx`)
+    writeFileSync(path, buf)
   }
   return XLSX.read(readFileSync(path), { type: 'buffer' })
 }
@@ -252,8 +263,8 @@ function processSeason(index, season) {
 
     matched++
     const betting = alignToAfl(entry, homeId)
-    const next = JSON.stringify({ ...data, betting })
-    if (next !== JSON.stringify(data)) {
+    const next = JSON.stringify({ ...data, betting }, null, 2)
+    if (next !== JSON.stringify(data, null, 2)) {
       writeFileSync(path, next)
       written++
     }
@@ -269,7 +280,7 @@ function processSeason(index, season) {
 }
 
 // --- Main ---
-const wb = loadWorkbook()
+const wb = await loadWorkbook()
 const index = buildIndex(wb)
 
 const totals = { matched: 0, unmatched: 0, written: 0 }
