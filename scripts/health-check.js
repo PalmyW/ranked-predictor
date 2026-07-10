@@ -157,13 +157,19 @@ console.log(
     `${missingWheelo} match(es) missing wheelo data.`,
 )
 
-if (missingWheelo > 0) {
-  if (DRY_RUN) {
-    console.log(`\nDry-run: would run \`npm run import-wheelo -- --year=${SEASON}\``)
-  } else {
-    console.log(`\nRunning import-wheelo for season ${SEASON}...`)
-    execSync(`npm run import-wheelo -- --year=${SEASON}`, { stdio: 'inherit', cwd: ROOT })
-  }
-} else {
+const WHEELO_IMPORTER = join(ROOT, 'data_sources/wheeloratings/import-season.js')
+
+if (missingWheelo === 0) {
   console.log('\nNo wheelo data missing — nothing to import.')
+} else if (!existsSync(WHEELO_IMPORTER)) {
+  // data_sources/ is gitignored (local-only tooling, never committed — see
+  // data_sources/wheeloratings/README.md) so it simply doesn't exist on a fresh
+  // CI checkout. That's expected there, not an error — importing wheelo data is
+  // something to run from a machine that has data_sources/ checked out.
+  console.log(`\n${missingWheelo} match(es) missing wheelo data, but data_sources/wheeloratings/ isn't present in this checkout (expected in CI) — skipping.`)
+} else if (DRY_RUN) {
+  console.log(`\nDry-run: would run \`npm run import-wheelo -- --year=${SEASON}\``)
+} else {
+  console.log(`\nRunning import-wheelo for season ${SEASON}...`)
+  execSync(`npm run import-wheelo -- --year=${SEASON}`, { stdio: 'inherit', cwd: ROOT })
 }
