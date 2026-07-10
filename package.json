@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "fetch-data": "curl -fsSL -H 'accept: */*' -H 'account: afl' -H 'origin: https://www.afl.com.au' -H 'referer: https://www.afl.com.au/' -H 'user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36' 'https://aflapi.afl.com.au/afl/v2/matches?pageSize=300&competitionId=1&compSeasonId=85' -o public/data/2026/fixture.json && echo 'Fixture data updated'",
     "fetch-stats": "node scripts/fetch-stats.js",
+    "health-check": "node scripts/health-check.js",
     "fetch-betting": "node scripts/fetch-betting.js",
     "aggregate-stats": "node scripts/aggregate-team-stats.js",
     "fetch-historical": "node scripts/fetch-historical-season.js",
@@ -17,6 +18,7 @@
     "scrape-afltables": "node data_sources/afltables/scrape-season.js",
     "sanity-check-afltables": "node data_sources/afltables/sanity-check.js",
     "import-wheelo": "node data_sources/wheeloratings/import-season.js",
+    "import-footywire-coaches": "node data_sources/footywire-coaches/import-coaches.js",
     "compute-champions": "node scripts/compute-xpalmy-champions.js"
   },
   "dependencies": {
