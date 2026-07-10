@@ -10,25 +10,25 @@
  *      `ratingPoints` comes back null. Fix: delete the stats file so the
  *      next `npm run fetch-stats` run re-fetches it from scratch.
  *
- *   2. Missing wheelo data — a concluded match whose match-details file
- *      doesn't yet carry the top-level `wheelo` block wheeloratings
- *      enrichment adds. Fix: run `npm run import-wheelo` for the season.
+ *   2. Missing ratings data — a concluded match whose match-details file
+ *      doesn't yet carry the top-level `wheelo` block the ratings-enrichment
+ *      importer adds. Fix: run `npm run import-ratings` for the season.
  *
  * These two interact: deleting a stats file for (1) also throws away any
- * `wheelo` data that had been merged into its player rows, but leaves the
- * `wheelo` marker on match-details untouched. Since import-wheelo's own
+ * ratings data that had been merged into its player rows, but leaves the
+ * `wheelo` marker on match-details untouched. Since the ratings importer's own
  * idempotency check only looks at that match-details marker, it would
  * silently skip re-merging the freshly-refetched stats file forever. So
  * whenever a stats file is deleted for missing rating points, this also
  * strips the match-details `wheelo` block for that match.
  *
  * That stripped match is deliberately *not* included in this run's
- * import-wheelo trigger, though — its stats file doesn't exist yet, and
- * import-wheelo writes the match-details `wheelo` marker regardless of
+ * ratings-import trigger, though — its stats file doesn't exist yet, and
+ * the ratings importer writes the match-details `wheelo` marker regardless of
  * whether it found a stats file to merge player rows into. Running it now
  * would re-mark the match "done" at the team level only, permanently hiding
  * the still-missing player-level merge from every future run. It's left
- * for the next `npm run health-check` (or `npm run import-wheelo`) run,
+ * for the next `npm run health-check` (or `npm run import-ratings`) run,
  * after `npm run fetch-stats` has refetched the file.
  *
  * Usage:
@@ -74,9 +74,9 @@ console.log(`[${SEASON}] health check: ${concluded.length} concluded match(es)\n
 let missingStatsFile = 0
 let missingDetailsFile = 0
 let deletedForRatingPoints = 0
-let strippedWheeloMarker = 0
-let missingWheelo = 0
-let missingWheeloBlockedOnStats = 0
+let strippedRatingsMarker = 0
+let missingRatings = 0
+let missingRatingsBlockedOnStats = 0
 
 for (const match of concluded) {
   const id = match.providerId
@@ -133,43 +133,43 @@ for (const match of concluded) {
   }
 
   if (details.wheelo && statsNeedsRefetch) {
-    console.log(`  ! stale wheelo marker on match-details — ${label}${DRY_RUN ? ' (dry-run, not stripped)' : ' — stripping, blocked on refetch'}`)
+    console.log(`  ! stale ratings marker on match-details — ${label}${DRY_RUN ? ' (dry-run, not stripped)' : ' — stripping, blocked on refetch'}`)
     if (!DRY_RUN) {
       delete details.wheelo
       writeFileSync(detailsPath, JSON.stringify(details, null, 2))
     }
-    strippedWheeloMarker++
-    missingWheeloBlockedOnStats++
+    strippedRatingsMarker++
+    missingRatingsBlockedOnStats++
   } else if (!details.wheelo) {
     if (statsUsable) {
-      missingWheelo++
+      missingRatings++
     } else {
-      console.log(`  ! missing wheelo data, blocked until stats file is (re)fetched — ${label}`)
-      missingWheeloBlockedOnStats++
+      console.log(`  ! missing ratings data, blocked until stats file is (re)fetched — ${label}`)
+      missingRatingsBlockedOnStats++
     }
   }
 }
 
 console.log(
   `\nSummary: ${missingStatsFile} missing stats file(s), ${missingDetailsFile} missing match-details file(s), ` +
-    `${deletedForRatingPoints} stats file(s) deleted for refetch, ${strippedWheeloMarker} stale wheelo marker(s) stripped, ` +
-    `${missingWheeloBlockedOnStats} match(es) missing wheelo blocked pending stats refetch, ` +
-    `${missingWheelo} match(es) missing wheelo data.`,
+    `${deletedForRatingPoints} stats file(s) deleted for refetch, ${strippedRatingsMarker} stale ratings marker(s) stripped, ` +
+    `${missingRatingsBlockedOnStats} match(es) missing ratings blocked pending stats refetch, ` +
+    `${missingRatings} match(es) missing ratings data.`,
 )
 
-const WHEELO_IMPORTER = join(ROOT, 'data_sources/wheeloratings/import-season.js')
+const RATINGS_IMPORTER = join(ROOT, 'data_sources/ratings-enrichment/import-season.js')
 
-if (missingWheelo === 0) {
-  console.log('\nNo wheelo data missing — nothing to import.')
-} else if (!existsSync(WHEELO_IMPORTER)) {
+if (missingRatings === 0) {
+  console.log('\nNo ratings data missing — nothing to import.')
+} else if (!existsSync(RATINGS_IMPORTER)) {
   // data_sources/ is gitignored (local-only tooling, never committed — see
-  // data_sources/wheeloratings/README.md) so it simply doesn't exist on a fresh
-  // CI checkout. That's expected there, not an error — importing wheelo data is
+  // data_sources/ratings-enrichment/README.md) so it simply doesn't exist on a fresh
+  // CI checkout. That's expected there, not an error — importing ratings data is
   // something to run from a machine that has data_sources/ checked out.
-  console.log(`\n${missingWheelo} match(es) missing wheelo data, but data_sources/wheeloratings/ isn't present in this checkout (expected in CI) — skipping.`)
+  console.log(`\n${missingRatings} match(es) missing ratings data, but data_sources/ratings-enrichment/ isn't present in this checkout (expected in CI) — skipping.`)
 } else if (DRY_RUN) {
-  console.log(`\nDry-run: would run \`npm run import-wheelo -- --year=${SEASON}\``)
+  console.log(`\nDry-run: would run \`npm run import-ratings -- --year=${SEASON}\``)
 } else {
-  console.log(`\nRunning import-wheelo for season ${SEASON}...`)
-  execSync(`npm run import-wheelo -- --year=${SEASON}`, { stdio: 'inherit', cwd: ROOT })
+  console.log(`\nRunning ratings import for season ${SEASON}...`)
+  execSync(`npm run import-ratings -- --year=${SEASON}`, { stdio: 'inherit', cwd: ROOT })
 }

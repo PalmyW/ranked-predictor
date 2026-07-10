@@ -31,7 +31,7 @@ jobs:
 
       - run: npm ci
 
-      - name: Health check existing stats (delete files missing rating points, re-import missing wheelo data)
+      - name: Health check existing stats (delete files missing rating points, re-import missing ratings data)
         run: npm run health-check
 
       - name: Fetch player stats for concluded matches

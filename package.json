@@ -17,8 +17,8 @@
     "verify-statscache-2012": "node data_sources/statscache/verify-2012.js",
     "scrape-afltables": "node data_sources/afltables/scrape-season.js",
     "sanity-check-afltables": "node data_sources/afltables/sanity-check.js",
-    "import-wheelo": "node data_sources/wheeloratings/import-season.js",
-    "import-footywire-coaches": "node data_sources/footywire-coaches/import-coaches.js",
+    "import-ratings": "node data_sources/ratings-enrichment/import-season.js",
+    "import-coaches": "node data_sources/coach-attendance/import-coaches.js",
     "compute-champions": "node scripts/compute-xpalmy-champions.js"
   },
   "dependencies": {
