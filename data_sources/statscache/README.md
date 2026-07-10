@@ -44,6 +44,36 @@ Raw HTML is cached under `scripts/footywire/.cache/` (gitignored), so re-runs an
 re-parses don't re-hit the network. The scrape is idempotent — existing output files
 are skipped.
 
+## Player bio backfill (date of birth, height)
+
+`scrape-season.js` only fetches a player's own profile page when a CD-id match
+is ambiguous and needs a DOB tie-break (`lib/ids.js`) — the common case for this
+era is a brand-new player with zero CD candidates, which mints a `PW_I` id
+immediately without ever fetching the profile page (there's nothing to
+disambiguate). So most `PW_I` players never had their `Born:`/`Playing Height:`
+line pulled, even though the page has it and `lib/parse-profile.js` already
+parses it — 90.4% of `PW_I` profiles (3744 of 4141) were missing one or both
+before this script existed. The pre-1965 counterpart is
+`../afltables/backfill-player-bio.js`.
+
+```bash
+# Every PW_I player missing dateOfBirth or heightCm
+npm run backfill-statscache-player-bio
+
+# Debugging
+npm run backfill-statscache-player-bio -- --limit=100
+
+# Re-fetch even players who already have both fields
+npm run backfill-statscache-player-bio -- --force
+```
+
+Not a rescrape — a separate pass over the existing output. For each profile
+missing a field, it looks up that player's `pp-` slug from `id-map.json` (the
+reverse of the persistent slug→id map the base scraper already maintains) and
+fetches just that one page. Coach-minted profiles (`role: "coach"`, from
+`../coach-attendance/import-coaches.js`) are skipped — they came from a `cp-`
+page, which has no `Born:`/`Playing Height:` line to fetch in the first place.
+
 ## Accuracy harness (2012)
 
 2012 exists in both sources, so it's the ground-truth check:

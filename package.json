@@ -15,6 +15,7 @@
     "fetch-historical": "node scripts/fetch-historical-season.js",
     "scrape-statscache": "node data_sources/statscache/scrape-season.js",
     "verify-statscache-2012": "node data_sources/statscache/verify-2012.js",
+    "backfill-statscache-player-bio": "node data_sources/statscache/backfill-player-bio.js",
     "scrape-afltables": "node data_sources/afltables/scrape-season.js",
     "sanity-check-afltables": "node data_sources/afltables/sanity-check.js",
     "import-afltables-coaches": "node data_sources/afltables/import-coaches.js",
