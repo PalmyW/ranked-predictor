@@ -1450,28 +1450,6 @@
           </text>
           <text
             :x="SC.x0 + 6"
-            :y="SC.y0 + 14"
-            text-anchor="start"
-            font-size="9"
-            font-family="system-ui,sans-serif"
-            fill="rgba(37,99,235,0.7)"
-            font-weight="600"
-          >
-            POOR OFFENSE
-          </text>
-          <text
-            :x="SC.x1 - 6"
-            :y="SC.y1 - 6"
-            text-anchor="end"
-            font-size="9"
-            font-family="system-ui,sans-serif"
-            fill="rgba(234,88,12,0.7)"
-            font-weight="600"
-          >
-            POOR DEFENSE
-          </text>
-          <text
-            :x="SC.x0 + 6"
             :y="SC.y1 - 6"
             text-anchor="start"
             font-size="9"
@@ -1480,6 +1458,31 @@
             font-weight="600"
           >
             BUMS
+          </text>
+
+          <!-- Best-direction labels -->
+          <text
+            :x="(SC.x0 + SC.x1) / 2"
+            :y="SC.y0 + 14"
+            text-anchor="middle"
+            font-size="9"
+            font-family="system-ui,sans-serif"
+            fill="rgba(0,0,0,0.4)"
+            font-weight="600"
+          >
+            BEST DEFENSE
+          </text>
+          <text
+            :x="SC.x1 + 10"
+            :y="(SC.y0 + SC.y1) / 2"
+            text-anchor="middle"
+            font-size="9"
+            font-family="system-ui,sans-serif"
+            fill="rgba(0,0,0,0.4)"
+            font-weight="600"
+            :transform="`rotate(90, ${SC.x1 + 10}, ${(SC.y0 + SC.y1) / 2})`"
+          >
+            BEST ATTACK
           </text>
 
           <!-- X axis label -->
