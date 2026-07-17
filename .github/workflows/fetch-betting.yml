@@ -1,10 +1,9 @@
 name: Fetch Betting Data
 
 on:
-  schedule:
-    # Weekly, Tuesday 02:00 UTC (after the weekend's matches conclude and the
-    # aussportsbetting.com spreadsheet is updated for the round).
-    - cron: '0 2 * * 2'
+  # Schedule disabled: aussportsbetting.com is geo-blocked to Australia, so
+  # this fails on GitHub's (non-AU) hosted runners. Run `npm run fetch-betting
+  # -- --latest` locally instead.
   workflow_dispatch:
 
 env:
