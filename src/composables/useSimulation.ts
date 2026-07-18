@@ -356,19 +356,30 @@ function buildRangeResults(acc: RangeAccumulator): { results: RangeEntry[]; stat
   }
   const mostCommonLadder = mostCommonKey ? mostCommonKey.split(',').map(Number) : []
 
-  // Consensus ladder: greedy — for each position pick the team with most appearances there
-  const consensusLadder: number[] = []
-  const assigned = new Set<number>()
-  for (let pos = 0; pos < 18; pos++) {
-    let bestTeam = -1
-    let bestCount = -1
-    for (const team of TEAMS) {
-      if (assigned.has(team.id)) continue
-      const c = counts[team.id]?.[pos] ?? 0
-      if (c > bestCount) { bestCount = c; bestTeam = team.id }
-    }
-    if (bestTeam !== -1) { consensusLadder.push(bestTeam); assigned.add(bestTeam) }
+  // Consensus ladder: rank teams by mean finishing position across all runs.
+  // (A prior greedy "claim the most-appeared team per position" approach could
+  // force whichever teams were left unclaimed into the wrong slot — e.g. a
+  // mid-table team shoved to last — since it was a one-pass assignment with no
+  // backtracking. Sorting by expected position is a pure, deterministic sort
+  // that can't misplace a team relative to its own distribution.)
+  const meanPosition = (teamId: number): number => {
+    const arr = counts[teamId] ?? []
+    let weighted = 0
+    let total = 0
+    for (let pos = 0; pos < arr.length; pos++) { weighted += arr[pos] * pos; total += arr[pos] }
+    return total > 0 ? weighted / total : 999
   }
+  const consensusLadder: number[] = TEAMS.map((team) => team.id).sort((a, b) => {
+    const diff = meanPosition(a) - meanPosition(b)
+    if (diff !== 0) return diff
+    // Tie-break: prefer the team with more weight at better positions.
+    const ca = counts[a] ?? []
+    const cb = counts[b] ?? []
+    for (let pos = 0; pos < ca.length; pos++) {
+      if (ca[pos] !== cb[pos]) return cb[pos] - ca[pos]
+    }
+    return a - b
+  })
 
   const results = TEAMS.map((team) => ({
     teamId: team.id,
