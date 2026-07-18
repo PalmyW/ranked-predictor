@@ -202,16 +202,17 @@
               </div>
             </div>
           </div>
-          <!-- Progress bar while a (batched) run is in flight -->
-          <div v-if="isRunningRange" class="mb-3">
+          <!-- Progress bar while a (batched) run is in flight; timing summary lingers after -->
+          <div v-if="isRunningRange || rangeResults" class="mb-3">
             <div class="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 mb-1">
-              <span>Running {{ rangeCount.toLocaleString() }} simulations…</span>
-              <span class="flex items-center gap-2">
+              <span v-if="isRunningRange">Running {{ rangeCount.toLocaleString() }} simulations…</span>
+              <span v-else>{{ rangeTotal.toLocaleString() }} simulations ran in {{ formatElapsed(elapsedMs) }}</span>
+              <span v-if="isRunningRange" class="flex items-center gap-2">
                 <span class="tabular-nums">{{ formatElapsed(elapsedMs) }}</span>
                 <span class="tabular-nums">{{ Math.round(displayProgress * 100) }}%</span>
               </span>
             </div>
-            <div class="h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+            <div v-if="isRunningRange" class="h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
               <div
                 class="h-full bg-purple-600 rounded-full"
                 :style="{ width: `${displayProgress * 100}%` }"
