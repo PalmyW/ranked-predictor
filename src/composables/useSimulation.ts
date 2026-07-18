@@ -214,9 +214,14 @@ function statsToLadder(
   return rows
 }
 
+// Fixed team-id list, computed once, so the hot per-sim loop below can clone
+// stats and rebuild the ladder without allocating an Object.entries()/
+// Object.values() pair array on every single simulation.
+const TEAM_IDS = TEAMS.map((t) => t.id)
+
 function runOneSim(
   baseStats: Record<number, TeamStats>,
-  matches: readonly AflMatch[],
+  activeMatches: readonly AflMatch[],
   rankMap: Record<number, number>,
   predMap: Map<number, MatchScorePrediction> | null,
   usePalmy: boolean,
@@ -224,14 +229,17 @@ function runOneSim(
   captureMatchIds: Set<number> | null,
 ): { order: number[]; nextWinners: Record<number, number> } {
   const simStats: Record<number, TeamStats> = {}
-  for (const [id, s] of Object.entries(baseStats)) simStats[Number(id)] = { ...s }
+  for (const id of TEAM_IDS) {
+    const s = baseStats[id]
+    simStats[id] = { teamId: s.teamId, wins: s.wins, losses: s.losses, draws: s.draws, pts: s.pts, for: s.for, against: s.against, played: s.played }
+  }
   const nextWinners: Record<number, number> = {}
 
-  for (const match of matches) {
-    if (match.status === 'CONCLUDED') continue
+  // activeMatches is pre-filtered to non-concluded matches with both teams
+  // present, so every iteration here does real work (no "already played" skips).
+  for (const match of activeMatches) {
     const hId = match.homeTeamId
     const aId = match.awayTeamId
-    if (!hId || !aId || !simStats[hId] || !simStats[aId]) continue
     const homeWins = Math.random() < matchHomeWinProb(match, rankMap, predMap, usePalmy, variant)
     const winnerId = homeWins ? hId : aId
     const loserId = homeWins ? aId : hId
@@ -242,7 +250,7 @@ function runOneSim(
     simStats[loserId].for += SIM_LOSS_SCORE; simStats[loserId].against += SIM_WIN_SCORE
   }
 
-  const order = Object.values(simStats)
+  const order = TEAM_IDS.map((id) => simStats[id])
     .sort((a, b) => {
       if (b.pts !== a.pts) return b.pts - a.pts
       const aPct = a.against > 0 ? a.for / a.against : (a.for > 0 ? 999 : 1)
@@ -266,6 +274,10 @@ interface RangeAccumulator {
   nextIsHome: Record<number, boolean>
   nextMatchIds: Set<number>
   baseStats: Record<number, TeamStats>
+  // Non-concluded matches with both teams recognised, filtered once so the
+  // per-sim hot loop never wastes iterations re-checking already-played
+  // matches or missing teams.
+  activeMatches: AflMatch[]
   teamMap: Record<number, { name: string; abbreviation: string; iconId: string }>
   ran: number
 }
@@ -286,10 +298,12 @@ function createRangeAccumulator(matches: readonly AflMatch[]): RangeAccumulator 
   const nextOpponentName: Record<number, string> = {}
   const nextIsHome: Record<number, boolean> = {}
   const nextMatchIds = new Set<number>()
+  const activeMatches: AflMatch[] = []
   for (const match of matches) {
     if (match.status === 'CONCLUDED') continue
     const hId = match.homeTeamId
     const aId = match.awayTeamId
+    if (hId && aId && teamMap[hId] && teamMap[aId]) activeMatches.push(match)
     if (hId && nextMatchId[hId] === undefined) {
       nextMatchId[hId] = match.id
       nextOpponentName[hId] = teamMap[aId]?.name ?? String(aId)
@@ -311,6 +325,7 @@ function createRangeAccumulator(matches: readonly AflMatch[]): RangeAccumulator 
     nextMatchId,
     nextOpponentName,
     nextIsHome,
+    activeMatches,
     nextMatchIds,
     baseStats: buildStats(matches),
     teamMap,
@@ -321,14 +336,13 @@ function createRangeAccumulator(matches: readonly AflMatch[]): RangeAccumulator 
 function runRangeBatch(
   acc: RangeAccumulator,
   rankMap: Record<number, number>,
-  matches: readonly AflMatch[],
   batch: number,
   predMap: Map<number, MatchScorePrediction> | null,
   usePalmy: boolean,
   variant: PalmyVariant,
 ): void {
   for (let i = 0; i < batch; i++) {
-    const { order, nextWinners } = runOneSim(acc.baseStats, matches, rankMap, predMap, usePalmy, variant, acc.nextMatchIds)
+    const { order, nextWinners } = runOneSim(acc.baseStats, acc.activeMatches, rankMap, predMap, usePalmy, variant, acc.nextMatchIds)
     const key = order.join(',')
     acc.ladderCounts.set(key, (acc.ladderCounts.get(key) ?? 0) + 1)
     for (let pos = 0; pos < order.length; pos++) {
@@ -599,9 +613,30 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef, options?
     return frames
   }
 
+  // Yields to the event loop without the ~4ms floor `setTimeout` imposes once
+  // a few calls have nested (the HTML5 nested-timeout clamp) — a MessageChannel
+  // task is scheduled as a plain macrotask, so batches resume as fast as the
+  // browser will schedule them instead of being artificially throttled.
+  let yieldChannel: MessageChannel | null = null
+  function yieldToEventLoop(): Promise<void> {
+    return new Promise((resolve) => {
+      const channel = yieldChannel ?? (yieldChannel = new MessageChannel())
+      channel.port1.onmessage = () => resolve()
+      channel.port2.postMessage(null)
+    })
+  }
+
   // Run in batches so the UI can repaint between them: the chart and progress
-  // bar update after each batch instead of freezing until the whole run is done.
-  const RANGE_BATCH_SIZE = 5000
+  // bar update after each batch instead of freezing until the whole run is
+  // done. Batch size self-tunes toward a target compute slice per tick by
+  // growing/shrinking gradually from the previous batch's measured time
+  // (never jumping straight to an estimate from a single noisy sample), so a
+  // fast device converges to doing proportionally more work per yield without
+  // ever risking one batch blocking the main thread for seconds.
+  const BATCH_TARGET_MS = 60    // aim for ~60ms of compute per batch
+  const BATCH_CEILING_MS = 150  // shrink immediately if a batch overshoots this
+  const MIN_BATCH_SIZE = 200
+  const MAX_BATCH_SIZE = 50000
 
   async function runMany(n: number) {
     if (!ranking.value.length) return
@@ -614,22 +649,25 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef, options?
     const palmyVariant = variant()
     const acc = createRangeAccumulator(matches.value)
     let done = 0
+    let batchSize = MIN_BATCH_SIZE
     while (done < n) {
-      const batch = Math.min(RANGE_BATCH_SIZE, n - done)
-      // setTimeout(0) yields to the event loop so Vue can flush the previous
-      // batch's update (chart + progress bar) before the next batch runs.
-      await new Promise<void>((resolve) => {
-        setTimeout(() => {
-          runRangeBatch(acc, rankMap, matches.value, batch, predMap, palmy, palmyVariant)
-          done += batch
-          const { results, stats } = buildRangeResults(acc)
-          rangeResults.value = results
-          simStats.value = stats
-          rangeTotal.value = done
-          rangeProgress.value = done / n
-          resolve()
-        }, 0)
-      })
+      const batch = Math.min(batchSize, n - done)
+      const t0 = performance.now()
+      runRangeBatch(acc, rankMap, batch, predMap, palmy, palmyVariant)
+      const elapsed = performance.now() - t0
+      done += batch
+      const { results, stats } = buildRangeResults(acc)
+      rangeResults.value = results
+      simStats.value = stats
+      rangeTotal.value = done
+      rangeProgress.value = done / n
+      if (elapsed > BATCH_CEILING_MS) {
+        batchSize = Math.max(MIN_BATCH_SIZE, Math.floor(batchSize / 2))
+      } else if (elapsed < BATCH_TARGET_MS) {
+        const growth = Math.min(2, BATCH_TARGET_MS / Math.max(elapsed, 1))
+        batchSize = Math.min(MAX_BATCH_SIZE, Math.ceil(batchSize * growth))
+      }
+      await yieldToEventLoop()
     }
     rangeProgress.value = 1
     isRunningRange.value = false

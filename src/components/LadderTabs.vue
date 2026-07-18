@@ -183,26 +183,38 @@
                   :class="rangeCount === n
                     ? 'bg-purple-600 text-white'
                     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'"
-                >{{ n >= 1000 ? `${n / 1000}k` : n }}</button>
+                >{{ n >= 1000000 ? `${n / 1000000}m` : n >= 1000 ? `${n / 1000}k` : n }}</button>
               </div>
-              <button
-                ref="runBtnEl"
-                @click="handleRunMany"
-                :disabled="isRunningRange || isLoading || !hasMatches"
-                class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-purple-600 text-white hover:bg-purple-700 active:bg-purple-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >{{ isRunningRange ? 'Running…' : 'Run' }}</button>
+              <div class="relative">
+                <button
+                  ref="runBtnEl"
+                  @click="handleRunMany"
+                  :disabled="isRunningRange || isLoading || !hasMatches"
+                  class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-purple-600 text-white hover:bg-purple-700 active:bg-purple-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >{{ isRunningRange ? 'Running…' : 'Run' }}</button>
+                <Transition name="fire-fade">
+                  <div v-if="fireActive" class="fire-wrap" aria-hidden="true">
+                    <span class="flame flame-1"></span>
+                    <span class="flame flame-2"></span>
+                    <span class="flame flame-3"></span>
+                  </div>
+                </Transition>
+              </div>
             </div>
           </div>
           <!-- Progress bar while a (batched) run is in flight -->
           <div v-if="isRunningRange" class="mb-3">
             <div class="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 mb-1">
               <span>Running {{ rangeCount.toLocaleString() }} simulations…</span>
-              <span class="tabular-nums">{{ Math.round(rangeProgress * 100) }}%</span>
+              <span class="flex items-center gap-2">
+                <span class="tabular-nums">{{ formatElapsed(elapsedMs) }}</span>
+                <span class="tabular-nums">{{ Math.round(displayProgress * 100) }}%</span>
+              </span>
             </div>
             <div class="h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
               <div
-                class="h-full bg-purple-600 rounded-full transition-[width] duration-150 ease-linear"
-                :style="{ width: `${rangeProgress * 100}%` }"
+                class="h-full bg-purple-600 rounded-full"
+                :style="{ width: `${displayProgress * 100}%` }"
               ></div>
             </div>
           </div>
@@ -257,7 +269,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import type { LadderRow, TeamRanking } from '../types/afl'
 import type { RangeEntry, SimulationStats } from '../composables/useSimulation'
 import LadderTable from './LadderTable.vue'
@@ -300,7 +312,7 @@ const emit = defineEmits<{
   (e: 'update:usePalmyProb', value: boolean): void
 }>()
 
-const RANGE_COUNTS = [100, 500, 1000, 5000, 100000]
+const RANGE_COUNTS = [100, 500, 1000, 5000, 100000, 1000000]
 const rangeCount = ref(1000)
 const runBtnEl = ref<HTMLElement | null>(null)
 
@@ -325,7 +337,10 @@ const SMOKE_PUFFS: Array<{ dx: number; dy: number; size: number; delay: number }
 ]
 
 function triggerSmoke() {
-  if (!runBtnEl.value) return
+  // Skip if a puff is still mid-animation: since the particles reuse the same
+  // v-for keys, restarting mid-flight would just snap their style instead of
+  // replaying the animation. Let each burst finish before the next can start.
+  if (!runBtnEl.value || smokeParticles.value.length > 0) return
   const rect = runBtnEl.value.getBoundingClientRect()
   const cx = rect.left + rect.width / 2
   const cy = rect.top + rect.height / 2
@@ -333,11 +348,102 @@ function triggerSmoke() {
   setTimeout(() => { smokeParticles.value = [] }, 1400)
 }
 
+// Smoke puffs once per batch while a big-enough run is in flight (past 10%
+// progress), as a visible "still working" pulse. For the 1m option, fire
+// takes over instead: it ignites once progress passes 30% and keeps burning
+// for a few seconds after the run finishes, replacing the smoke entirely
+// rather than running alongside it.
+const SMOKE_MIN_COUNT = 5000
+const SMOKE_START_PROGRESS = 0.1
+const FIRE_THRESHOLD = 1000000
+const FIRE_START_PROGRESS = 0.3
+const FIRE_LINGER_MS = 5000
+
+const activeRunCount = ref(0)
+const fireActive = ref(false)
+let fireHideTimer: ReturnType<typeof setTimeout> | null = null
+
+function clearFireHideTimer() {
+  if (fireHideTimer !== null) { clearTimeout(fireHideTimer); fireHideTimer = null }
+}
+
 async function handleRunMany() {
   if (props.isRunningRange || props.isLoading || !props.hasMatches) return
+  activeRunCount.value = rangeCount.value
   await props.runMany(rangeCount.value)
-  if (rangeCount.value >= 5000) triggerSmoke()
 }
+
+watch(() => props.isRunningRange, (running) => {
+  if (running) {
+    // A fresh run starts unlit; the progress watcher below re-ignites it once
+    // this run crosses the threshold.
+    clearFireHideTimer()
+    fireActive.value = false
+  } else if (activeRunCount.value >= FIRE_THRESHOLD && fireActive.value) {
+    clearFireHideTimer()
+    fireHideTimer = setTimeout(() => { fireActive.value = false }, FIRE_LINGER_MS)
+  }
+})
+
+watch(() => props.rangeProgress, (progress) => {
+  if (!props.isRunningRange) return
+  if (activeRunCount.value >= FIRE_THRESHOLD) {
+    if (progress >= FIRE_START_PROGRESS) { fireActive.value = true; return }
+  }
+  if (!fireActive.value && activeRunCount.value >= SMOKE_MIN_COUNT && progress >= SMOKE_START_PROGRESS) {
+    triggerSmoke()
+  }
+})
+
+// Progress lands in discrete jumps (one per simulation batch), which can be
+// visibly spaced out at high run counts. Smooth those jumps into continuous
+// motion: glide quickly toward a batch's real progress when it lands, then
+// trickle slowly toward it while waiting for the next one, instead of sitting
+// frozen. The same tick drives a live stopwatch of how long the run has taken.
+const displayProgress = ref(0)
+const elapsedMs = ref(0)
+let progressRafId: number | null = null
+let runStartTime = 0
+
+function stopProgressAnim() {
+  if (progressRafId !== null) { cancelAnimationFrame(progressRafId); progressRafId = null }
+}
+
+function tickProgress() {
+  elapsedMs.value = performance.now() - runStartTime
+  const target = props.rangeProgress
+  if (target >= 1) {
+    displayProgress.value = 1
+    progressRafId = null
+    return
+  }
+  displayProgress.value = displayProgress.value < target
+    ? displayProgress.value + (target - displayProgress.value) * 0.35 + 0.004
+    : displayProgress.value + (Math.min(0.99, target + 0.05) - displayProgress.value) * 0.02
+  progressRafId = requestAnimationFrame(tickProgress)
+}
+
+function formatElapsed(ms: number): string {
+  const s = ms / 1000
+  if (s < 60) return `${s.toFixed(1)}s`
+  const m = Math.floor(s / 60)
+  return `${m}m ${(s - m * 60).toFixed(0)}s`
+}
+
+watch(() => props.isRunningRange, (running) => {
+  stopProgressAnim()
+  if (running) {
+    displayProgress.value = 0
+    runStartTime = performance.now()
+    elapsedMs.value = 0
+    progressRafId = requestAnimationFrame(tickProgress)
+  } else if (props.rangeProgress >= 1) {
+    displayProgress.value = 1
+    elapsedMs.value = performance.now() - runStartTime
+  }
+})
+
+onUnmounted(() => { stopProgressAnim(); clearFireHideTimer() })
 
 const powerLabel = computed(() => ' ' + firstMeaningfulWord(powerRankingsTitle.value))
 
@@ -453,4 +559,40 @@ async function handleSimulate() {
     opacity: 0;
   }
 }
+
+.fire-wrap {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 34px;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.flame {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  background: radial-gradient(circle at 50% 70%, #fff3b0 0%, #ffb703 35%, #fb5607 65%, rgba(230, 57, 70, 0) 85%);
+  transform-origin: 50% 100%;
+  animation: flame-flicker 0.6s ease-in-out infinite alternate;
+}
+
+.flame-1 { width: 22px; height: 30px; margin-left: -11px; animation-delay: 0s; }
+.flame-2 { width: 14px; height: 20px; margin-left: -20px; opacity: 0.85; animation-delay: 0.15s; }
+.flame-3 { width: 14px; height: 20px; margin-left: 6px; opacity: 0.85; animation-delay: 0.3s; }
+
+@keyframes flame-flicker {
+  0%   { transform: scaleY(1) scaleX(1) rotate(-2deg); opacity: 0.95; }
+  50%  { transform: scaleY(1.12) scaleX(0.92) rotate(1deg); opacity: 1; }
+  100% { transform: scaleY(0.9) scaleX(1.05) rotate(-1deg); opacity: 0.85; }
+}
+
+.fire-fade-enter-active { transition: opacity 0.4s ease; }
+.fire-fade-leave-active { transition: opacity 0.8s ease; }
+.fire-fade-enter-from,
+.fire-fade-leave-to { opacity: 0; }
 </style>
