@@ -185,6 +185,19 @@
                     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'"
                 >{{ n >= 1000000 ? `${n / 1000000}m` : n >= 1000 ? `${n / 1000}k` : n }}</button>
               </div>
+              <label
+                v-if="gpuAvailable"
+                title="Simulate on the GPU instead of the CPU (experimental)"
+                class="flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold text-gray-600 dark:text-gray-300 cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  v-model="useGpu"
+                  :disabled="isRunningRange"
+                  class="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800"
+                />
+                GPU
+              </label>
               <div class="relative">
                 <button
                   ref="runBtnEl"
@@ -295,12 +308,13 @@ const props = defineProps<{
   simulate: () => void
   getSimulationFrames: () => Array<{ roundNumber: number; roundName: string; ladder: LadderRow[] }>
   simulatedMatchWinners: Record<number, number> | null
-  runMany: (n: number) => Promise<void>
+  runMany: (n: number, useGpu?: boolean) => Promise<void>
   rangeResults: RangeEntry[] | null
   rangeTotal: number
   simStats: SimulationStats | null
   isRunningRange: boolean
   rangeProgress: number
+  gpuAvailable: boolean
   viewOnly?: boolean
   palmyVenueAdjusted: boolean
   simVenueAdjusted: boolean
@@ -368,10 +382,12 @@ function clearFireHideTimer() {
   if (fireHideTimer !== null) { clearTimeout(fireHideTimer); fireHideTimer = null }
 }
 
+const useGpu = ref(false)
+
 async function handleRunMany() {
   if (props.isRunningRange || props.isLoading || !props.hasMatches) return
   activeRunCount.value = rangeCount.value
-  await props.runMany(rangeCount.value)
+  await props.runMany(rangeCount.value, useGpu.value)
 }
 
 watch(() => props.isRunningRange, (running) => {

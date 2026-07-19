@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import type { AflMatch, LadderRow, TeamRanking } from '../types/afl'
 import { TEAMS } from './useAFLData'
 import { homeWinProbFromScore, type PalmyVariant } from '../utils/palmyWinProb'
+import { checkGpuSupport, createGpuSimContext, runGpuRangeBatch, destroyGpuSimContext, gpuMaxBatch } from './useGpuSimulation'
 
 export interface RangeEntry {
   teamId: number
@@ -61,7 +62,8 @@ function homeWinProb(hRank: number, aRank: number): number {
 
 // Per-match home win probability. In PalmyScore mode, uses the calibration curve
 // for the match's predicted margin; otherwise (or when no prediction) the Elo model.
-function matchHomeWinProb(
+// Exported so the GPU batch runner computes probabilities identically to the CPU path.
+export function matchHomeWinProb(
   match: AflMatch,
   rankMap: Record<number, number>,
   predMap: Map<number, MatchScorePrediction> | null,
@@ -79,7 +81,7 @@ function matchHomeWinProb(
   return homeWinProb(hRank, aRank)
 }
 
-interface TeamStats {
+export interface TeamStats {
   teamId: number
   wins: number
   losses: number
@@ -217,7 +219,7 @@ function statsToLadder(
 // Fixed team-id list, computed once, so the hot per-sim loop below can clone
 // stats and rebuild the ladder without allocating an Object.entries()/
 // Object.values() pair array on every single simulation.
-const TEAM_IDS = TEAMS.map((t) => t.id)
+export const TEAM_IDS = TEAMS.map((t) => t.id)
 
 function runOneSim(
   baseStats: Record<number, TeamStats>,
@@ -265,7 +267,7 @@ function runOneSim(
 // Accumulator that lets a large simulation run be split into batches: each
 // batch adds to the running tallies and a snapshot of results/stats can be
 // rebuilt after every batch to drive an incrementally-updating chart.
-interface RangeAccumulator {
+export interface RangeAccumulator {
   counts: Record<number, number[]>
   winNextCounts: Record<number, number[]>
   ladderCounts: Map<string, number>
@@ -333,6 +335,24 @@ function createRangeAccumulator(matches: readonly AflMatch[]): RangeAccumulator 
   }
 }
 
+// Folds one simulated season's result into the running tallies. Shared by both
+// the CPU and GPU batch runners so the two engines can only ever differ in how
+// they produce `order`/`wonNextGame`, never in how results get counted.
+export function accumulateSimResult(
+  acc: RangeAccumulator,
+  order: readonly number[],
+  wonNextGame: (teamId: number) => boolean,
+): void {
+  const key = order.join(',')
+  acc.ladderCounts.set(key, (acc.ladderCounts.get(key) ?? 0) + 1)
+  for (let pos = 0; pos < order.length; pos++) {
+    const tid = order[pos]
+    if (!acc.counts[tid]) continue
+    acc.counts[tid][pos]++
+    if (acc.nextMatchId[tid] !== undefined && wonNextGame(tid)) acc.winNextCounts[tid][pos]++
+  }
+}
+
 function runRangeBatch(
   acc: RangeAccumulator,
   rankMap: Record<number, number>,
@@ -343,15 +363,7 @@ function runRangeBatch(
 ): void {
   for (let i = 0; i < batch; i++) {
     const { order, nextWinners } = runOneSim(acc.baseStats, acc.activeMatches, rankMap, predMap, usePalmy, variant, acc.nextMatchIds)
-    const key = order.join(',')
-    acc.ladderCounts.set(key, (acc.ladderCounts.get(key) ?? 0) + 1)
-    for (let pos = 0; pos < order.length; pos++) {
-      const tid = order[pos]
-      if (!acc.counts[tid]) continue
-      acc.counts[tid][pos]++
-      const nm = acc.nextMatchId[tid]
-      if (nm !== undefined && nextWinners[nm] === tid) acc.winNextCounts[tid][pos]++
-    }
+    accumulateSimResult(acc, order, (tid) => nextWinners[acc.nextMatchId[tid]] === tid)
   }
   acc.ran += batch
 }
@@ -532,6 +544,8 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef, options?
   const simStats = ref<SimulationStats | null>(null)
   const isRunningRange = ref(false)
   const rangeProgress = ref(0)  // 0..1 progress of the current batched run
+  const gpuAvailable = ref(false)
+  checkGpuSupport().then((ok) => { gpuAvailable.value = ok })
 
   function simulate() {
     if (!ranking.value.length) return
@@ -638,7 +652,52 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef, options?
   const MIN_BATCH_SIZE = 200
   const MAX_BATCH_SIZE = 50000
 
-  async function runMany(n: number) {
+  // GPU batches are dispatched as a single large parallel job rather than a
+  // main-thread loop, so the "yield" is the readback await itself and the
+  // per-batch target can be much larger before it risks feeling unresponsive.
+  const GPU_BATCH_TARGET_MS = 200
+  const GPU_BATCH_CEILING_MS = 500
+  const GPU_MIN_BATCH_SIZE = 5000
+
+  // Returns true if the GPU handled the whole run. On any failure partway
+  // through (device lost, out of memory, etc.) it returns false with
+  // acc.ran reflecting whatever it completed, so the caller can fall back
+  // to the CPU path for the remainder instead of leaving the run stuck.
+  async function runManyGpu(n: number, rankMap: Record<number, number>, predMap: Map<number, MatchScorePrediction> | null, palmy: boolean, palmyVariant: PalmyVariant, acc: RangeAccumulator): Promise<boolean> {
+    let gpuCtx: Awaited<ReturnType<typeof createGpuSimContext>> = null
+    try {
+      gpuCtx = await createGpuSimContext(acc, rankMap, predMap, palmy, palmyVariant)
+      if (!gpuCtx) return false
+      const maxBatch = gpuMaxBatch(gpuCtx)
+      let done = 0
+      let batchSize = Math.min(maxBatch, Math.max(GPU_MIN_BATCH_SIZE, Math.ceil(n / 20)))
+      while (done < n) {
+        const batch = Math.min(batchSize, maxBatch, n - done)
+        const t0 = performance.now()
+        await runGpuRangeBatch(gpuCtx, acc, batch)
+        const elapsed = performance.now() - t0
+        done += batch
+        const { results, stats } = buildRangeResults(acc)
+        rangeResults.value = results
+        simStats.value = stats
+        rangeTotal.value = done
+        rangeProgress.value = done / n
+        if (elapsed > GPU_BATCH_CEILING_MS) {
+          batchSize = Math.max(GPU_MIN_BATCH_SIZE, Math.floor(batchSize / 2))
+        } else if (elapsed < GPU_BATCH_TARGET_MS) {
+          const growth = Math.min(2, GPU_BATCH_TARGET_MS / Math.max(elapsed, 1))
+          batchSize = Math.min(maxBatch, Math.ceil(batchSize * growth))
+        }
+      }
+      return true
+    } catch {
+      return false
+    } finally {
+      if (gpuCtx) destroyGpuSimContext(gpuCtx)
+    }
+  }
+
+  async function runMany(n: number, useGpu = false) {
     if (!ranking.value.length) return
     isRunningRange.value = true
     rangeProgress.value = 0
@@ -648,30 +707,35 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef, options?
     const palmy = usePalmy()
     const palmyVariant = variant()
     const acc = createRangeAccumulator(matches.value)
-    let done = 0
-    let batchSize = MIN_BATCH_SIZE
-    while (done < n) {
-      const batch = Math.min(batchSize, n - done)
-      const t0 = performance.now()
-      runRangeBatch(acc, rankMap, batch, predMap, palmy, palmyVariant)
-      const elapsed = performance.now() - t0
-      done += batch
-      const { results, stats } = buildRangeResults(acc)
-      rangeResults.value = results
-      simStats.value = stats
-      rangeTotal.value = done
-      rangeProgress.value = done / n
-      if (elapsed > BATCH_CEILING_MS) {
-        batchSize = Math.max(MIN_BATCH_SIZE, Math.floor(batchSize / 2))
-      } else if (elapsed < BATCH_TARGET_MS) {
-        const growth = Math.min(2, BATCH_TARGET_MS / Math.max(elapsed, 1))
-        batchSize = Math.min(MAX_BATCH_SIZE, Math.ceil(batchSize * growth))
+
+    const gpuHandled = useGpu && gpuAvailable.value && await runManyGpu(n, rankMap, predMap, palmy, palmyVariant, acc)
+
+    if (!gpuHandled) {
+      let done = acc.ran
+      let batchSize = MIN_BATCH_SIZE
+      while (done < n) {
+        const batch = Math.min(batchSize, n - done)
+        const t0 = performance.now()
+        runRangeBatch(acc, rankMap, batch, predMap, palmy, palmyVariant)
+        const elapsed = performance.now() - t0
+        done += batch
+        const { results, stats } = buildRangeResults(acc)
+        rangeResults.value = results
+        simStats.value = stats
+        rangeTotal.value = done
+        rangeProgress.value = done / n
+        if (elapsed > BATCH_CEILING_MS) {
+          batchSize = Math.max(MIN_BATCH_SIZE, Math.floor(batchSize / 2))
+        } else if (elapsed < BATCH_TARGET_MS) {
+          const growth = Math.min(2, BATCH_TARGET_MS / Math.max(elapsed, 1))
+          batchSize = Math.min(MAX_BATCH_SIZE, Math.ceil(batchSize * growth))
+        }
+        await yieldToEventLoop()
       }
-      await yieldToEventLoop()
     }
     rangeProgress.value = 1
     isRunningRange.value = false
   }
 
-  return { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate, getSimulationFrames, rangeResults, rangeTotal, simStats, isRunningRange, rangeProgress, runMany }
+  return { actualLadder, predictedLadder, simulatedLadder, simulatedMatchWinners, simulate, getSimulationFrames, rangeResults, rangeTotal, simStats, isRunningRange, rangeProgress, runMany, gpuAvailable }
 }
