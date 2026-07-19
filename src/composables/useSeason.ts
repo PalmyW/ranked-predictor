@@ -12,14 +12,19 @@ export function useSeason() {
     window.location.href = window.location.pathname + (qs ? `?${qs}` : '')
   }
 
-  function resetToCurrentSeason() {
-    activeSeasonYear.value = CURRENT_SEASON_YEAR
+  // For routes with no season switcher (Predictor, Match Stats, Season Stats):
+  // if a `?season=` override is still in the URL — a stale link, a manual
+  // edit, or state left over from a page that does have the switcher — force
+  // a hard reload back to the current season. A URL-only cleanup isn't enough
+  // here: fixture/stats data is fetched once per full page load keyed off
+  // this same query param, so anything short of a reload would leave that
+  // data mismatched with the now-current-season URL.
+  function enforceCurrentSeason() {
     const params = new URLSearchParams(window.location.search)
-    if (params.has('season')) {
-      params.delete('season')
-      const qs = params.toString()
-      window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''))
-    }
+    if (!params.has('season')) return
+    params.delete('season')
+    const qs = params.toString()
+    window.location.href = window.location.pathname + (qs ? `?${qs}` : '')
   }
 
   return {
@@ -28,6 +33,6 @@ export function useSeason() {
     currentSeasonYear: CURRENT_SEASON_YEAR,
     isCurrentSeason: computed(() => activeSeasonYear.value === CURRENT_SEASON_YEAR),
     switchSeason,
-    resetToCurrentSeason,
+    enforceCurrentSeason,
   }
 }

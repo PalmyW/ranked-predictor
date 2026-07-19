@@ -136,8 +136,8 @@ import ShareBar from '../components/ShareBar.vue'
 import MatchList from '../components/MatchList.vue'
 
 const { matches, teams, isLoading, error } = useAFLData()
-const { isCurrentSeason, activeSeasonYear, resetToCurrentSeason } = useSeason()
-onMounted(resetToCurrentSeason)
+const { isCurrentSeason, activeSeasonYear, enforceCurrentSeason } = useSeason()
+onMounted(enforceCurrentSeason)
 const { ranking, tierSizes, shareUrl, rankedFromUrl, rankedFromStorage, ladderSource, savedState, rankingHistory, setRanking, setTierSizes, resetToLadder, loadSavedRanking, saveToMyLadder, importRanking, revertImport, seedHistoryFromSavedRanking, snapshotRoundRanking, updateRoundSnapshot } = useRanking()
 
 provide('matches', matches)

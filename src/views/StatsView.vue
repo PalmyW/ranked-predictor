@@ -8,10 +8,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAFLData } from '../composables/useAFLData'
 import { useRanking } from '../composables/useRanking'
+import { useSeason } from '../composables/useSeason'
 import RoundBanner from '../components/RoundBanner.vue'
 import StatsBrowser from '../components/StatsBrowser.vue'
 
@@ -19,6 +20,8 @@ const route = useRoute()
 const router = useRouter()
 const { matches, isLoading } = useAFLData()
 const { ranking } = useRanking()
+const { enforceCurrentSeason } = useSeason()
+onMounted(enforceCurrentSeason)
 
 const providerId = computed(() => (route.params.providerId as string) || null)
 
