@@ -1,6 +1,6 @@
 import { computed } from 'vue'
 import type { AflMatch } from '../types/afl'
-import { TEAMS } from './useAFLData'
+import { teamsInMatches, teamById } from './useAFLData'
 
 export type VenueFilter = 'both' | 'home' | 'away'
 
@@ -144,12 +144,6 @@ export interface AlgorithmRankRow {
   officialRank: number
 }
 
-// --- Module-level constants derived from TEAMS ---
-
-const N = TEAMS.length
-const teamIndex = Object.fromEntries(TEAMS.map((t, i) => [t.id, i]))
-const teamIds = TEAMS.map((t) => t.id)
-
 // --- Internal helpers ---
 
 interface BasicStats {
@@ -161,12 +155,15 @@ interface BasicStats {
   against: number
 }
 
+// Team roster comes from the matches themselves (via teamsInMatches), not a
+// fixed current-season list — so a past season's stats/ratings are keyed only
+// by the teams that actually played, and defunct clubs resolve correctly.
 export function buildBasicStats(
   matches: readonly AflMatch[],
   venueFilter: VenueFilter = 'both',
 ): Record<number, BasicStats> {
   const stats: Record<number, BasicStats> = {}
-  for (const t of TEAMS)
+  for (const t of teamsInMatches(matches))
     stats[t.id] = {
       wins: 0,
       losses: 0,
@@ -205,13 +202,13 @@ export function buildBasicStats(
 export function buildOfficialRankMap(
   stats: Record<number, BasicStats>,
 ): Map<number, number> {
-  const sorted = TEAMS.map((t) => ({
-    id: t.id,
-    pts: (stats[t.id]?.wins ?? 0) * 4 + (stats[t.id]?.draws ?? 0) * 2,
+  const sorted = Object.keys(stats).map(Number).map((id) => ({
+    id,
+    pts: (stats[id]?.wins ?? 0) * 4 + (stats[id]?.draws ?? 0) * 2,
     pct:
-      stats[t.id] && stats[t.id].against > 0
-        ? stats[t.id].for / stats[t.id].against
-        : (stats[t.id]?.for ?? 0) > 0
+      stats[id] && stats[id].against > 0
+        ? stats[id].for / stats[id].against
+        : (stats[id]?.for ?? 0) > 0
           ? 999
           : 1,
   })).sort((a, b) => b.pts - a.pts || b.pct - a.pct)
@@ -225,19 +222,22 @@ export function toRows(
   stats: Record<number, BasicStats>,
   officialRankMap: Map<number, number>,
 ): AlgorithmRankRow[] {
-  const rows: AlgorithmRankRow[] = TEAMS.map((t) => ({
-    rank: 0,
-    teamId: t.id,
-    teamName: t.name,
-    abbreviation: t.abbreviation,
-    iconId: t.iconId,
-    rating: ratings[t.id] ?? 0,
-    wins: stats[t.id]?.wins ?? 0,
-    losses: stats[t.id]?.losses ?? 0,
-    draws: stats[t.id]?.draws ?? 0,
-    played: stats[t.id]?.played ?? 0,
-    officialRank: officialRankMap.get(t.id) ?? 0,
-  }))
+  const rows: AlgorithmRankRow[] = Object.keys(stats).map(Number).map((id) => {
+    const t = teamById(id)
+    return {
+      rank: 0,
+      teamId: id,
+      teamName: t?.name ?? String(id),
+      abbreviation: t?.abbreviation ?? '???',
+      iconId: t?.iconId ?? '',
+      rating: ratings[id] ?? 0,
+      wins: stats[id]?.wins ?? 0,
+      losses: stats[id]?.losses ?? 0,
+      draws: stats[id]?.draws ?? 0,
+      played: stats[id]?.played ?? 0,
+      officialRank: officialRankMap.get(id) ?? 0,
+    }
+  })
   rows.sort((a, b) => b.rating - a.rating)
   rows.forEach((r, i) => {
     r.rank = i + 1
@@ -276,9 +276,9 @@ function runWinPct(
   officialRankMap: Map<number, number>,
 ): AlgorithmRankRow[] {
   const ratings: Record<number, number> = {}
-  for (const t of TEAMS) {
-    const ts = stats[t.id]
-    ratings[t.id] = ts.played > 0 ? (ts.wins + 0.5 * ts.draws) / ts.played : 0
+  for (const id of Object.keys(stats).map(Number)) {
+    const ts = stats[id]
+    ratings[id] = ts.played > 0 ? (ts.wins + 0.5 * ts.draws) / ts.played : 0
   }
   return toRows(ratings, stats, officialRankMap)
 }
@@ -288,11 +288,12 @@ function runSRS(
   stats: Record<number, BasicStats>,
   officialRankMap: Map<number, number>,
 ): AlgorithmRankRow[] {
+  const teamIds = Object.keys(stats).map(Number)
   const marginSum: Record<number, number> = {}
   const oppList: Record<number, number[]> = {}
-  for (const t of TEAMS) {
-    marginSum[t.id] = 0
-    oppList[t.id] = []
+  for (const id of teamIds) {
+    marginSum[id] = 0
+    oppList[id] = []
   }
   for (const m of concluded) {
     if (!m.homeScore || !m.awayScore) continue
@@ -303,23 +304,23 @@ function runSRS(
     oppList[m.awayTeamId]?.push(m.homeTeamId)
   }
   let ratings: Record<number, number> = {}
-  for (const t of TEAMS) {
-    const gp = stats[t.id]?.played ?? 0
-    ratings[t.id] = gp > 0 ? marginSum[t.id] / gp : 0
+  for (const id of teamIds) {
+    const gp = stats[id]?.played ?? 0
+    ratings[id] = gp > 0 ? marginSum[id] / gp : 0
   }
   for (let iter = 0; iter < 1000; iter++) {
     const next: Record<number, number> = {}
     let maxDiff = 0
-    for (const t of TEAMS) {
-      const gp = stats[t.id]?.played ?? 0
+    for (const id of teamIds) {
+      const gp = stats[id]?.played ?? 0
       if (gp === 0) {
-        next[t.id] = 0
+        next[id] = 0
         continue
       }
       const avgOpp =
-        oppList[t.id].reduce((sum, oid) => sum + (ratings[oid] ?? 0), 0) / gp
-      next[t.id] = marginSum[t.id] / gp + avgOpp
-      maxDiff = Math.max(maxDiff, Math.abs(next[t.id] - ratings[t.id]))
+        oppList[id].reduce((sum, oid) => sum + (ratings[oid] ?? 0), 0) / gp
+      next[id] = marginSum[id] / gp + avgOpp
+      maxDiff = Math.max(maxDiff, Math.abs(next[id] - ratings[id]))
     }
     ratings = next
     if (maxDiff < 0.0001) break
@@ -332,6 +333,9 @@ function runColley(
   stats: Record<number, BasicStats>,
   officialRankMap: Map<number, number>,
 ): AlgorithmRankRow[] {
+  const teamIds = Object.keys(stats).map(Number)
+  const N = teamIds.length
+  const teamIndex = Object.fromEntries(teamIds.map((id, i) => [id, i]))
   const C: number[][] = Array.from({ length: N }, (_, i) =>
     Array.from({ length: N }, (__, j) => (i === j ? 2 : 0)),
   )
@@ -352,7 +356,7 @@ function runColley(
   const sol = gaussianElim(C, b)
   const ratings: Record<number, number> = {}
   if (!sol) {
-    for (const t of TEAMS) ratings[t.id] = 0.5
+    for (const id of teamIds) ratings[id] = 0.5
   } else {
     for (let i = 0; i < N; i++) ratings[teamIds[i]] = sol[i]
   }
@@ -364,6 +368,9 @@ function runMassey(
   stats: Record<number, BasicStats>,
   officialRankMap: Map<number, number>,
 ): AlgorithmRankRow[] {
+  const teamIds = Object.keys(stats).map(Number)
+  const N = teamIds.length
+  const teamIndex = Object.fromEntries(teamIds.map((id, i) => [id, i]))
   const M: number[][] = Array.from({ length: N }, () => new Array(N).fill(0))
   const p: number[] = new Array(N).fill(0)
   for (const m of concluded) {
@@ -384,7 +391,7 @@ function runMassey(
   const sol = gaussianElim(M, p)
   const ratings: Record<number, number> = {}
   if (!sol) {
-    for (const t of TEAMS) ratings[t.id] = 0
+    for (const id of teamIds) ratings[id] = 0
   } else {
     for (let i = 0; i < N; i++) ratings[teamIds[i]] = sol[i]
   }
@@ -396,8 +403,10 @@ function runWinFlow(
   stats: Record<number, BasicStats>,
   officialRankMap: Map<number, number>,
 ): AlgorithmRankRow[] {
+  const teamIds = Object.keys(stats).map(Number)
+  const N = teamIds.length
   const winsOver: Record<number, Record<number, number>> = {}
-  for (const t of TEAMS) winsOver[t.id] = {}
+  for (const id of teamIds) winsOver[id] = {}
   for (const m of concluded) {
     if (!m.homeScore || !m.awayScore) continue
     const hs = m.homeScore.totalScore
@@ -415,22 +424,22 @@ function runWinFlow(
   }
   const DAMPING = 0.85
   let ratings: Record<number, number> = {}
-  for (const t of TEAMS) ratings[t.id] = 1 / N
+  for (const id of teamIds) ratings[id] = 1 / N
   for (let iter = 0; iter < 300; iter++) {
     const next: Record<number, number> = {}
     let maxDiff = 0
-    for (const t of TEAMS) {
+    for (const id of teamIds) {
       let flow = (1 - DAMPING) / N
-      for (const other of TEAMS) {
-        if (other.id === t.id) continue
-        const w = winsOver[t.id][other.id] ?? 0
+      for (const otherId of teamIds) {
+        if (otherId === id) continue
+        const w = winsOver[id][otherId] ?? 0
         if (w === 0) continue
-        const gp = stats[other.id]?.played ?? 0
+        const gp = stats[otherId]?.played ?? 0
         if (gp === 0) continue
-        flow += DAMPING * (w / gp) * ratings[other.id]
+        flow += DAMPING * (w / gp) * ratings[otherId]
       }
-      next[t.id] = flow
-      maxDiff = Math.max(maxDiff, Math.abs(flow - ratings[t.id]))
+      next[id] = flow
+      maxDiff = Math.max(maxDiff, Math.abs(flow - ratings[id]))
     }
     ratings = next
     if (maxDiff < 1e-9) break
@@ -447,9 +456,10 @@ export function runPalmy(
   ranking: AlgorithmRankRow[]
   opponentLadders: Record<number, PalmyLadderEntry[]>
 } {
-  const teamMap = Object.fromEntries(TEAMS.map((t) => [t.id, t]))
+  const teamIds = Object.keys(stats).map(Number)
+  const teamMap = new Map(teamIds.map((id) => [id, teamById(id)]))
   const opponentLadders: Record<number, PalmyLadderEntry[]> = {}
-  for (const t of TEAMS) opponentLadders[t.id] = []
+  for (const id of teamIds) opponentLadders[id] = []
 
   for (const m of concluded) {
     if (!m.homeScore || !m.awayScore) continue
@@ -457,8 +467,8 @@ export function runPalmy(
     const aScore = m.awayScore.totalScore
     const hId = m.homeTeamId
     const aId = m.awayTeamId
-    const hTeam = teamMap[hId]
-    const aTeam = teamMap[aId]
+    const hTeam = teamMap.get(hId)
+    const aTeam = teamMap.get(aId)
     if (!hTeam || !aTeam) continue
     // aId (away team) appears in hId's ladder; aId was away in this game
     opponentLadders[hId].push({
@@ -486,27 +496,27 @@ export function runPalmy(
     })
   }
 
-  for (const t of TEAMS) {
-    opponentLadders[t.id].sort((a, b) => b.differential - a.differential)
-    opponentLadders[t.id].forEach((entry, i) => {
+  for (const id of teamIds) {
+    opponentLadders[id].sort((a, b) => b.differential - a.differential)
+    opponentLadders[id].forEach((entry, i) => {
       entry.rank = i + 1
     })
   }
 
   const ratings: Record<number, number> = {}
-  for (const teamY of TEAMS) {
+  for (const teamYId of teamIds) {
     const fractions: number[] = []
-    for (const teamX of TEAMS) {
-      if (teamX.id === teamY.id) continue
-      const ladder = opponentLadders[teamX.id]
+    for (const teamXId of teamIds) {
+      if (teamXId === teamYId) continue
+      const ladder = opponentLadders[teamXId]
       for (const entry of ladder) {
-        if (entry.teamId !== teamY.id) continue
+        if (entry.teamId !== teamYId) continue
         if (venueFilter === 'home' && !entry.wasTeamHome) continue
         if (venueFilter === 'away' && entry.wasTeamHome) continue
         fractions.push((entry.rank - 1) / Math.max(ladder.length - 1, 1))
       }
     }
-    ratings[teamY.id] =
+    ratings[teamYId] =
       fractions.length === 0
         ? -999
         : -(fractions.reduce((a, b) => a + b, 0) / fractions.length)
@@ -521,12 +531,13 @@ export function runXPalmy(
   officialRankMap: Map<number, number>,
   venueFilter: VenueFilter = 'both',
 ): XPalmyResult {
-  const teamMap = Object.fromEntries(TEAMS.map((t) => [t.id, t]))
+  const teamIds = Object.keys(stats).map(Number)
+  const teamMap = new Map(teamIds.map((id) => [id, teamById(id)]))
   const xLadders: Record<number, XPalmyLadderEntry[]> = {}
   const yLadders: Record<number, XPalmyLadderEntry[]> = {}
-  for (const t of TEAMS) {
-    xLadders[t.id] = []
-    yLadders[t.id] = []
+  for (const id of teamIds) {
+    xLadders[id] = []
+    yLadders[id] = []
   }
 
   for (const m of concluded) {
@@ -535,8 +546,8 @@ export function runXPalmy(
     const aScore = m.awayScore.totalScore
     const hId = m.homeTeamId
     const aId = m.awayTeamId
-    const hTeam = teamMap[hId]
-    const aTeam = teamMap[aId]
+    const hTeam = teamMap.get(hId)
+    const aTeam = teamMap.get(aId)
     if (!hTeam || !aTeam) continue
 
     const base = { rank: 0, roundNumber: m.roundNumber, roundName: m.roundName }
@@ -559,31 +570,32 @@ export function runXPalmy(
   }
 
   // X-ladders: sort by oppScore descending (highest opposition score = rank 1)
-  for (const t of TEAMS) {
-    xLadders[t.id].sort((a, b) => b.oppScore - a.oppScore)
-    xLadders[t.id].forEach((e, i) => { e.rank = i + 1 })
+  for (const id of teamIds) {
+    xLadders[id].sort((a, b) => b.oppScore - a.oppScore)
+    xLadders[id].forEach((e, i) => { e.rank = i + 1 })
   }
   // Y-ladders: sort by ownScore ascending (lowest own score = rank 1)
-  for (const t of TEAMS) {
-    yLadders[t.id].sort((a, b) => a.ownScore - b.ownScore)
-    yLadders[t.id].forEach((e, i) => { e.rank = i + 1 })
+  for (const id of teamIds) {
+    yLadders[id].sort((a, b) => a.ownScore - b.ownScore)
+    yLadders[id].forEach((e, i) => { e.rank = i + 1 })
   }
 
-  const points: XPalmyTeamPoint[] = TEAMS.map((teamY) => {
+  const points: XPalmyTeamPoint[] = teamIds.map((teamYId) => {
+    const teamY = teamMap.get(teamYId)!
     const xFracs: number[] = []
     const yFracs: number[] = []
-    for (const teamX of TEAMS) {
-      if (teamX.id === teamY.id) continue
-      const xl = xLadders[teamX.id]
+    for (const teamXId of teamIds) {
+      if (teamXId === teamYId) continue
+      const xl = xLadders[teamXId]
       for (const e of xl) {
-        if (e.teamId !== teamY.id) continue
+        if (e.teamId !== teamYId) continue
         if (venueFilter === 'home' && !e.wasTeamHome) continue
         if (venueFilter === 'away' && e.wasTeamHome) continue
         xFracs.push((e.rank - 1) / Math.max(xl.length - 1, 1))
       }
-      const yl = yLadders[teamX.id]
+      const yl = yLadders[teamXId]
       for (const e of yl) {
-        if (e.teamId !== teamY.id) continue
+        if (e.teamId !== teamYId) continue
         if (venueFilter === 'home' && !e.wasTeamHome) continue
         if (venueFilter === 'away' && e.wasTeamHome) continue
         yFracs.push((e.rank - 1) / Math.max(yl.length - 1, 1))
@@ -592,17 +604,17 @@ export function runXPalmy(
     const avg = (arr: number[]) =>
       arr.length === 0 ? 0.5 : arr.reduce((a, b) => a + b, 0) / arr.length
     return {
-      teamId: teamY.id,
+      teamId: teamYId,
       teamName: teamY.name,
       abbreviation: teamY.abbreviation,
       iconId: teamY.iconId,
       xRating: avg(xFracs),
       yRating: avg(yFracs),
-      wins: stats[teamY.id]?.wins ?? 0,
-      losses: stats[teamY.id]?.losses ?? 0,
-      draws: stats[teamY.id]?.draws ?? 0,
-      played: stats[teamY.id]?.played ?? 0,
-      officialRank: officialRankMap.get(teamY.id) ?? 0,
+      wins: stats[teamYId]?.wins ?? 0,
+      losses: stats[teamYId]?.losses ?? 0,
+      draws: stats[teamYId]?.draws ?? 0,
+      played: stats[teamYId]?.played ?? 0,
+      officialRank: officialRankMap.get(teamYId) ?? 0,
     }
   })
 

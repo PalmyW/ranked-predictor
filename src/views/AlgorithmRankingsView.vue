@@ -1800,7 +1800,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toPng } from 'html-to-image'
-import { useAFLData, TEAMS } from '../composables/useAFLData'
+import { useAFLData, teamsInMatches } from '../composables/useAFLData'
 import {
   useAlgorithmRankings,
   ALGORITHMS,
@@ -1818,7 +1818,7 @@ import type {
   XPalmyLadderEntry,
   VenueFilter,
 } from '../composables/useAlgorithmRankings'
-import type { AflMatch } from '../types/afl'
+import type { AflMatch, AflTeam } from '../types/afl'
 import { titleToFilename } from '../composables/usePowerRankingsTitle'
 import { getActiveSeasonYear } from '../config/seasons'
 
@@ -2083,7 +2083,7 @@ interface WormPoint {
   y: number
 }
 interface WormTeamData {
-  team: (typeof TEAMS)[0]
+  team: AflTeam
   color: string
   points: WormPoint[]
 }
@@ -2091,7 +2091,7 @@ interface WormTeamData {
 const wormData = computed<WormTeamData[]>(() => {
   const rounds = concludedRounds.value
   if (rounds.length === 0) return []
-  return TEAMS.map((team) => {
+  return teamsInMatches(rankingMatches.value).map((team) => {
     const points: WormPoint[] = []
     rounds.forEach((round, idx) => {
       const ranking = roundHistory.value.get(round)
@@ -2178,7 +2178,7 @@ onUnmounted(() => document.removeEventListener('click', closePopup))
 
 const teamInfoMap = computed(() => {
   const map = new Map<number, { teamName: string; iconId: string }>()
-  for (const t of TEAMS) map.set(t.id, { teamName: t.name, iconId: t.iconId })
+  for (const t of teamsInMatches(rankingMatches.value)) map.set(t.id, { teamName: t.name, iconId: t.iconId })
   return map
 })
 
@@ -2381,7 +2381,7 @@ const xpalmyTrailHistory = computed(() => {
   >()
   if (selectedId.value !== 'xpalmy' || activeView.value !== 'graph')
     return result
-  for (const t of TEAMS) result.set(t.id, [])
+  for (const t of teamsInMatches(rankingMatches.value)) result.set(t.id, [])
   for (const round of concludedRounds.value) {
     const roundMatches = rankingMatches.value.filter(
       (m) => m.roundNumber <= round,

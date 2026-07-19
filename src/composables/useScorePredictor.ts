@@ -1,7 +1,7 @@
 import { computed } from 'vue'
 import type { Ref } from 'vue'
 import type { AflMatch } from '../types/afl'
-import { TEAMS } from './useAFLData'
+import { teamsInMatches } from './useAFLData'
 import { buildBasicStats } from './useAlgorithmRankings'
 
 export interface TeamStrengthRow {
@@ -62,6 +62,7 @@ export function buildStrengthRows(matches: readonly AflMatch[]): TeamStrengthRow
   const statsAll = buildBasicStats(matches, 'both')
   const statsHome = buildBasicStats(matches, 'home')
   const statsAway = buildBasicStats(matches, 'away')
+  const teams = teamsInMatches(matches)
 
   const avgFor: Record<number, number> = {}
   const avgForHome: Record<number, number> = {}
@@ -70,7 +71,7 @@ export function buildStrengthRows(matches: readonly AflMatch[]): TeamStrengthRow
   const avgAgainstHome: Record<number, number> = {}
   const avgAgainstAway: Record<number, number> = {}
 
-  for (const t of TEAMS) {
+  for (const t of teams) {
     const s = statsAll[t.id]
     const sh = statsHome[t.id]
     const sa = statsAway[t.id]
@@ -93,7 +94,7 @@ export function buildStrengthRows(matches: readonly AflMatch[]): TeamStrengthRow
   const adjAwaySum: Record<number, number> = {}
   const adjAwayCount: Record<number, number> = {}
 
-  for (const t of TEAMS) {
+  for (const t of teams) {
     adjAllSum[t.id] = 0; adjAllCount[t.id] = 0
     adjHomeSum[t.id] = 0; adjHomeCount[t.id] = 0
     adjAwaySum[t.id] = 0; adjAwayCount[t.id] = 0
@@ -124,7 +125,7 @@ export function buildStrengthRows(matches: readonly AflMatch[]): TeamStrengthRow
   }
 
   // Build rows
-  const rows: Omit<TeamStrengthRow, 'attackRank' | 'defenceRank'>[] = TEAMS.map((t) => ({
+  const rows: Omit<TeamStrengthRow, 'attackRank' | 'defenceRank'>[] = teams.map((t) => ({
     teamId: t.id,
     teamName: t.name,
     abbreviation: t.abbreviation,

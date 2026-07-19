@@ -49,13 +49,13 @@
           <span v-else-if="syncedAt && isCurrentSeason">Synced {{ timeAgo(syncedAt) }}</span>
         </div>
         <select
-          v-if="seasons.length > 1 && route.path !== '/'"
+          v-if="availableSeasons.length > 1 && route.path !== '/'"
           :value="activeSeasonYear"
           @change="onSeasonChange"
           class="rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-500 transition-colors hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"
           title="Switch season"
         >
-          <option v-for="s in seasons" :key="s.year" :value="s.year">{{ s.year }}</option>
+          <option v-for="s in availableSeasons" :key="s.year" :value="s.year">{{ s.year }}</option>
         </select>
         <button
           @click="$emit('start-tour')"
@@ -77,6 +77,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSeason } from '../composables/useSeason'
 
@@ -94,7 +95,17 @@ defineEmits<{
 const route = useRoute()
 const router = useRouter()
 
-const { seasons, activeSeasonYear, isCurrentSeason, switchSeason } = useSeason()
+const { seasons, activeSeasonYear, isCurrentSeason, switchSeason, currentSeasonYear } = useSeason()
+
+// The deployed build only ships match-details/stats/team-stats for the current
+// season (scripts/prune-deploy-data.js strips them for every other season), so
+// the Match Stats and Season Stats pages can only ever show the current season.
+const isMatchStatsRoute = computed(
+  () => route.path === '/stats' || route.path.startsWith('/stats/') || route.path === '/season-stats',
+)
+const availableSeasons = computed(() =>
+  isMatchStatsRoute.value ? seasons.filter((s) => s.year === currentSeasonYear) : seasons,
+)
 
 function onSeasonChange(e: Event) {
   switchSeason((e.target as HTMLSelectElement).value)

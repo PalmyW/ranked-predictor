@@ -43,6 +43,25 @@ export function teamById(id: number): AflTeam | undefined {
   return ALL_TEAMS.find((t) => t.id === id)
 }
 
+// The roster that actually appears in a set of matches — e.g. a past season's
+// fixture — rather than the fixed current-season TEAMS list. Resolves through
+// ALL_TEAMS so defunct clubs (Fitzroy, Brisbane Bears, University) show up for
+// the seasons they played, and current teams that didn't exist yet (Gold
+// Coast, GWS) don't appear for seasons before they were admitted.
+export function teamsInMatches(matches: readonly AflMatch[]): AflTeam[] {
+  const ids = new Set<number>()
+  for (const m of matches) {
+    ids.add(m.homeTeamId)
+    ids.add(m.awayTeamId)
+  }
+  const teams: AflTeam[] = []
+  for (const id of ids) {
+    const team = teamById(id)
+    if (team) teams.push(team)
+  }
+  return teams
+}
+
 const VALID_STATUSES = new Set<MatchStatus>([
   'CONCLUDED', 'LIVE', 'SCHEDULED', 'PLACEHOLDER', 'UNCONFIRMED_TEAMS', 'CONFIRMED_TEAMS',
 ])
