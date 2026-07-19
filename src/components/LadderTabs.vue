@@ -313,7 +313,7 @@ const emit = defineEmits<{
   (e: 'update:usePalmyProb', value: boolean): void
 }>()
 
-const RANGE_COUNTS = [100, 500, 1000, 5000, 100000, 1000000]
+const RANGE_COUNTS = [100, 500, 1000, 5000, 100000, 1000000, 10000000]
 const rangeCount = ref(1000)
 const runBtnEl = ref<HTMLElement | null>(null)
 

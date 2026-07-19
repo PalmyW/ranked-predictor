@@ -161,7 +161,7 @@ const allUpcomingPredictions = computed(() => predictions.upcomingPredictions(pa
 
 // Simulator can optionally derive each match's win chance from PalmyScore's
 // predicted margin (home/away ratings) via the historical calibration curve.
-const usePalmyProb = ref(false)
+const usePalmyProb = ref(true)
 const simVenueAdjusted = ref(true)
 const simPalmyPredictions = computed(() => predictions.upcomingPredictions(simVenueAdjusted.value))
 
