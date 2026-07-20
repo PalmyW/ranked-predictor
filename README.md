@@ -40,7 +40,6 @@ Six ranking algorithms that account for uneven schedules, each with a **Table** 
 
 | Algorithm | What it measures |
 |---|---|
-| **Win %** | Wins ÷ games played (draws = half win) |
 | **SRS** | Average margin + average opponent rating, iterated to convergence |
 | **Colley Matrix** | 18 simultaneous equations encoding every head-to-head record (wins/losses only) |
 | **Massey** | Least-squares system fitting score margins to team ratings |
@@ -150,7 +149,7 @@ Each letter maps to a team (A = Adelaide, B = Brisbane Lions, … R = Western Bu
 /rankings?algo=palmy&view=graph
 ```
 
-Valid `algo` values: `winpct`, `srs`, `colley`, `massey`, `winflow`, `palmy`. Valid `view` values: `table`, `graph`. Both default to `srs` / `table` if absent.
+Valid `algo` values: `srs`, `colley`, `massey`, `winflow`, `palmy`. Valid `view` values: `table`, `graph`. Both default to `srs` / `table` if absent.
 
 ---
 

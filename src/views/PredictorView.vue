@@ -142,11 +142,10 @@ const { ranking, tierSizes, shareUrl, rankedFromUrl, rankedFromStorage, ladderSo
 
 provide('matches', matches)
 provide('ranking', ranking)
-const { winPctRanking, srsRanking, colleyRanking, masseyRanking, winFlowRanking, palmyRanking, xpalmyRanking } = useAlgorithmRankings(matches)
+const { srsRanking, colleyRanking, masseyRanking, winFlowRanking, palmyRanking, xpalmyRanking } = useAlgorithmRankings(matches)
 
 const importedFromName = ref<string | null>(null)
 const algoRankingMap = computed<Record<string, { teamId: number }[]>>(() => ({
-  winpct: winPctRanking.value,
   srs: srsRanking.value,
   colley: colleyRanking.value,
   massey: masseyRanking.value,

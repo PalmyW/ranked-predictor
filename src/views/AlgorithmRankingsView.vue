@@ -658,80 +658,8 @@
             ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace;
         "
       >
-        <!-- Win% -->
-        <div v-if="selectedId === 'winpct'" class="space-y-4 p-5">
-          <div class="text-center">
-            <svg viewBox="0 0 290 76" class="mx-auto w-56">
-              <text
-                x="30"
-                y="44"
-                fill="#8b949e"
-                font-size="12"
-                font-family="inherit"
-              >
-                Win% =
-              </text>
-              <text
-                x="162"
-                y="28"
-                text-anchor="middle"
-                fill="#79c0ff"
-                font-size="13"
-                font-family="inherit"
-              >
-                W + 0.5 × D
-              </text>
-              <line
-                x1="106"
-                y1="36"
-                x2="218"
-                y2="36"
-                stroke="#30363d"
-                stroke-width="1.5"
-              />
-              <text
-                x="162"
-                y="56"
-                text-anchor="middle"
-                fill="#79c0ff"
-                font-size="13"
-                font-family="inherit"
-              >
-                GP
-              </text>
-              <text
-                x="230"
-                y="44"
-                fill="#8b949e"
-                font-size="11"
-                font-family="inherit"
-              >
-                × 100
-              </text>
-            </svg>
-          </div>
-          <div
-            class="space-y-1.5 rounded-md px-4 py-3"
-            style="background: #161b22"
-          >
-            <div>
-              <span style="color: #79c0ff">W</span> = wins &nbsp;·&nbsp;
-              <span style="color: #79c0ff">D</span> = draws &nbsp;·&nbsp;
-              <span style="color: #79c0ff">GP</span> = games played
-            </div>
-            <div class="pt-1">
-              <span style="color: #8b949e">e.g.</span>
-              <span style="color: #56d364">10W 4L 2D</span> (16 games) →
-              <span style="color: #79c0ff">(10 + 1) / 16 = 68.75</span>
-            </div>
-            <div style="color: #8b949e">
-              Ignores who you beat or by how much — only count matters.
-            </div>
-          </div>
-        </div>
-
         <!-- SRS -->
-        <div v-else-if="selectedId === 'srs'" class="space-y-4 p-5">
+        <div v-if="selectedId === 'srs'" class="space-y-4 p-5">
           <div
             class="space-y-2 rounded-md px-4 py-3"
             style="background: #161b22"
@@ -1840,7 +1768,6 @@ const rankingMatches = computed<readonly AflMatch[]>(() =>
 
 const {
   officialRankMap: compositeOfficialRankMap,
-  winPctRanking,
   srsRanking,
   colleyRanking,
   masseyRanking,
@@ -1956,8 +1883,6 @@ function xpalmyGroup(teamId: number): string {
 
 const currentRanking = computed<AlgorithmRankRow[]>(() => {
   switch (selectedId.value) {
-    case 'winpct':
-      return winPctRanking.value
     case 'srs':
       return srsRanking.value
     case 'colley':
@@ -1979,8 +1904,6 @@ function vsAflDelta(row: AlgorithmRankRow): number {
 
 function formatRating(v: number): string {
   switch (selectedId.value) {
-    case 'winpct':
-      return `${(v * 100).toFixed(1)}%`
     case 'srs':
     case 'massey':
       return `${v >= 0 ? '+' : ''}${v.toFixed(1)}`

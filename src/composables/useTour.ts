@@ -167,7 +167,7 @@ const STEPS: TourStep[] = [
   {
     id: 'rankings-algo-selector',
     title: 'Switch Algorithms',
-    description: 'Pick from seven different ranking methods: Win %, SRS, Colley Matrix, Massey, Win Flow, Palmy, and XPalmy. Each uses a different mathematical approach to weigh results.',
+    description: 'Pick from six different ranking methods: SRS, Colley Matrix, Massey, Win Flow, Palmy, and XPalmy. Each uses a different mathematical approach to weigh results.',
     target: '[data-tour="rankings-algo-selector"]',
     route: '/rankings',
   },

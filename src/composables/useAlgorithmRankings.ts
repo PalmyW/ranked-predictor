@@ -5,7 +5,6 @@ import { teamsInMatches, teamById } from './useAFLData'
 export type VenueFilter = 'both' | 'home' | 'away'
 
 export type AlgorithmId =
-  | 'winpct'
   | 'srs'
   | 'colley'
   | 'massey'
@@ -23,13 +22,6 @@ export interface AlgorithmInfo {
 }
 
 export const ALGORITHMS: AlgorithmInfo[] = [
-  {
-    id: 'winpct',
-    name: 'Win %',
-    description:
-      'Basic win percentage — wins divided by games played, with draws counting as half a win. Ignores who you beat or by how much.',
-    ratingLabel: 'Win%',
-  },
   {
     id: 'srs',
     name: 'SRS',
@@ -270,18 +262,6 @@ function gaussianElim(A: number[][], b: number[]): number[] | null {
 }
 
 // --- Algorithm implementations (pure functions) ---
-
-function runWinPct(
-  stats: Record<number, BasicStats>,
-  officialRankMap: Map<number, number>,
-): AlgorithmRankRow[] {
-  const ratings: Record<number, number> = {}
-  for (const id of Object.keys(stats).map(Number)) {
-    const ts = stats[id]
-    ratings[id] = ts.played > 0 ? (ts.wins + 0.5 * ts.draws) / ts.played : 0
-  }
-  return toRows(ratings, stats, officialRankMap)
-}
 
 function runSRS(
   concluded: readonly AflMatch[],
@@ -659,8 +639,6 @@ export function computeAlgorithmRanking(
   const stats = buildBasicStats(matches)
   const officialRankMap = buildOfficialRankMap(stats)
   switch (id) {
-    case 'winpct':
-      return runWinPct(stats, officialRankMap)
     case 'srs':
       return runSRS(concluded, stats, officialRankMap)
     case 'colley':
@@ -691,9 +669,6 @@ export function useAlgorithmRankings(matchesRef: MatchesRef) {
   )
   const officialRankMap = computed(() => buildOfficialRankMap(basicStats.value))
 
-  const winPctRanking = computed(() =>
-    runWinPct(basicStats.value, officialRankMap.value),
-  )
   const srsRanking = computed(() =>
     runSRS(concluded.value, basicStats.value, officialRankMap.value),
   )
@@ -727,7 +702,6 @@ export function useAlgorithmRankings(matchesRef: MatchesRef) {
 
   return {
     officialRankMap,
-    winPctRanking,
     srsRanking,
     colleyRanking,
     masseyRanking,
