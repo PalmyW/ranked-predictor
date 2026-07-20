@@ -239,19 +239,43 @@
           No upcoming matches scheduled.
         </div>
 
+        <template v-for="(group, gIdx) in roundGroups" :key="group.roundNumber">
+          <!-- Round header (collapsible when more than one round is shown) -->
+          <button
+            v-if="roundGroups.length > 1"
+            type="button"
+            @click="toggleRound(group.roundNumber, gIdx)"
+            class="flex w-full items-center justify-between gap-2 border-b border-gray-100 bg-gray-50 px-4 py-2 text-left transition-colors hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-800/40 dark:hover:bg-gray-800/70"
+          >
+            <span class="flex items-center gap-2 text-xs font-semibold text-gray-600 dark:text-gray-300">
+              <svg
+                class="size-3.5 shrink-0 text-gray-400 transition-transform"
+                :class="isRoundExpanded(group.roundNumber, gIdx) ? 'rotate-90' : ''"
+                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round"
+              >
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+              {{ group.roundName }}
+              <span class="font-normal text-gray-400 dark:text-gray-500">
+                ({{ group.matches.length }} {{ group.matches.length === 1 ? 'match' : 'matches' }})
+              </span>
+            </span>
+            <span
+              v-if="!isRoundExpanded(group.roundNumber, gIdx) && group.avgMargin !== null"
+              class="whitespace-nowrap text-xs font-semibold text-gray-500 dark:text-gray-400"
+              title="Average predicted winning margin this round"
+            >
+              Avg margin: {{ group.avgMargin.toFixed(1) }}
+            </span>
+          </button>
+
+        <template v-if="roundGroups.length === 1 || isRoundExpanded(group.roundNumber, gIdx)">
         <div
-          v-for="m in activePredictions"
+          v-for="m in group.matches"
           :key="m.matchId"
           class="flex items-center gap-2 border-b border-gray-100 px-4 py-3 last:border-0 dark:border-gray-800"
         >
-          <!-- Round label when showing all upcoming -->
-          <span
-            v-if="showAllUpcoming"
-            class="hidden w-16 shrink-0 text-xs text-gray-400 dark:text-gray-500 sm:block"
-          >
-            {{ m.roundName }}
-          </span>
-
           <!-- Home side -->
           <div
             class="flex flex-1 cursor-pointer items-center justify-end gap-2 rounded px-1 py-0.5 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -338,6 +362,8 @@
             </span>
           </div>
         </div>
+        </template>
+        </template>
       </template>
     </div>
 
@@ -578,6 +604,49 @@ const activePredictions = computed(() => {
   }
   return list
 })
+
+// Group the active predictions by round. When more than one round is on screen
+// (the "All Upcoming" view), each round becomes a collapsible section so users
+// can scan a summary without every match in view.
+interface RoundGroup {
+  roundNumber: number
+  roundName: string
+  matches: UpcomingMatchPrediction[]
+  avgMargin: number | null
+}
+
+const roundGroups = computed<RoundGroup[]>(() => {
+  const groups = new Map<number, RoundGroup>()
+  for (const m of activePredictions.value) {
+    let g = groups.get(m.roundNumber)
+    if (!g) {
+      g = { roundNumber: m.roundNumber, roundName: m.roundName, matches: [], avgMargin: null }
+      groups.set(m.roundNumber, g)
+    }
+    g.matches.push(m)
+  }
+  return [...groups.values()]
+    .sort((a, b) => a.roundNumber - b.roundNumber)
+    .map((g) => {
+      const margins = g.matches
+        .filter((m) => m.hasStrengthData)
+        .map((m) => Math.abs(m.predictedHomeScore - m.predictedAwayScore))
+      const avgMargin = margins.length > 0 ? margins.reduce((sum, v) => sum + v, 0) / margins.length : null
+      return { ...g, avgMargin }
+    })
+})
+
+// Explicit expand/collapse overrides, keyed by round number. Rounds default to
+// expanded for the soonest round and collapsed for everything after it.
+const roundExpandedOverride = ref(new Map<number, boolean>())
+
+function isRoundExpanded(roundNumber: number, index: number): boolean {
+  return roundExpandedOverride.value.get(roundNumber) ?? index === 0
+}
+
+function toggleRound(roundNumber: number, index: number) {
+  roundExpandedOverride.value.set(roundNumber, !isRoundExpanded(roundNumber, index))
+}
 
 // Predicted winner + historical win % for each match, from the calibration curve
 // matching the active ratings variant (all-games vs home/away).
