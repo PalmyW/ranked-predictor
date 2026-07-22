@@ -72,6 +72,12 @@ CAST((julianday('now') - julianday(
 )) / 365.25 AS INTEGER) AS age
 ```
 
+**squad_memberships** — one row per player/team/year the club's official squad list carried that player, whether they played a game that season or not
+- `year` INTEGER, `team_id` TEXT (FK→teams), `player_id` TEXT (FK→players)
+- `jumper_number` INTEGER, `position` TEXT
+- PRIMARY KEY (`year`, `team_id`, `player_id`)
+- Source: AFL.com.au's squads endpoint (see `ranked-predictor/scripts/fetch-squad-players.js`), not derived from matches — this is the only place uncapped/injured/delisted-without-a-game players show up with a team+year at all.
+
 ---
 
 ### Convenience views (team names pre-joined — prefer these)
@@ -79,6 +85,7 @@ CAST((julianday('now') - julianday(
 **v_player_season_stats** — aggregated per player-season-team: `year`, `player_id`, `team_id`, `team_name`, `team_abbr`, `given_name`, `surname`, `position`, `jumper_number`, `games_played`, 62 `tot_*` + 62 `avg_*` columns
 **v_player_match_stats** — player_match_stats + `team_name`, `team_abbr`
 **v_matches** — matches + `home_team_name`, `home_abbr`, `away_team_name`, `away_abbr`, `venue_name`
+**v_squad_players** — squad_memberships joined with team + player bio (`state_of_origin`, `date_of_birth`, `height_cm`, etc.) plus `played_that_year` (1/0, from player_match_stats). Example: "all SA players on a team list in 2026" → `SELECT team_name, given_name, surname FROM v_squad_players WHERE year = 2026 AND state_of_origin = 'SA'`
 
 ---
 
