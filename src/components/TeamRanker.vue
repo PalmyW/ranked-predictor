@@ -73,6 +73,7 @@ import { ref, watch, computed } from 'vue'
 import draggable from 'vuedraggable'
 import type { AflTeam, AflMatch, TeamRanking } from '../types/afl'
 import { DEFAULT_TIER_SIZES } from '../composables/useRanking'
+import { DRAW_RESULT } from '../composables/useSimulation'
 import TeamFixturePopover from './TeamFixturePopover.vue'
 import TeamFixtureSummaryPopup from './TeamFixtureSummaryPopup.vue'
 import type { FixtureGame } from './TeamFixturePopover.vue'
@@ -171,7 +172,7 @@ function remainingFixture(teamId: number): FixtureGame[] {
         opponent: isHome ? m.awayTeamName : m.homeTeamName,
         isHome,
         predicted: myRank < (rankMap.value[opponentId] ?? 999) ? 'W' : 'L',
-        simulated: simWinner === null ? null : simWinner === teamId ? 'W' : 'L',
+        simulated: simWinner === null ? null : simWinner === teamId ? 'W' : simWinner === DRAW_RESULT ? 'D' : 'L',
       }
     })
     .sort((a, b) => a.roundNumber - b.roundNumber)

@@ -52,6 +52,17 @@ const AVG_WIN_MARGIN = 32   // average AFL winning margin in points
 const AVG_AFL_SCORE  = 85   // average points per team per game
 const SIM_WIN_SCORE  = AVG_AFL_SCORE + Math.round(AVG_WIN_MARGIN / 2)  // 101
 const SIM_LOSS_SCORE = AVG_AFL_SCORE - Math.round(AVG_WIN_MARGIN / 2)  // 69
+const SIM_DRAW_SCORE = AVG_AFL_SCORE  // both teams score 85 in a drawn game
+
+// Chance of any simulated game ending in a draw. A single random roll decides
+// the whole match: r < DRAW_PROB is a draw, otherwise r is rescaled back to
+// [0,1) and compared against the home win probability. Mirrored as a hardcoded
+// constant in the GPU shader (useGpuSimulation.ts) — keep the two in sync.
+export const DRAW_PROB = 0.009
+
+// Sentinel in winner maps (simulatedMatchWinners, nextWinners) for a drawn
+// match: present, but matches no team ID.
+export const DRAW_RESULT = 0
 
 function homeWinProb(hRank: number, aRank: number): number {
   const homeRating = ELO_TOP_RATING - (hRank - 1) * (ELO_SPREAD / 17) + ELO_HOME_ADV
@@ -90,6 +101,16 @@ export interface TeamStats {
   for: number
   against: number
   played: number
+}
+
+// Credits a simulated draw to both teams (2 pts, equal scores). No-ops if
+// either team is unrecognised, matching how the win/loss paths guard.
+function applyDraw(stats: Record<number, TeamStats>, hId: number, aId: number): void {
+  if (!stats[hId] || !stats[aId]) return
+  stats[hId].draws++; stats[hId].pts += 2; stats[hId].played++
+  stats[hId].for += SIM_DRAW_SCORE; stats[hId].against += SIM_DRAW_SCORE
+  stats[aId].draws++; stats[aId].pts += 2; stats[aId].played++
+  stats[aId].for += SIM_DRAW_SCORE; stats[aId].against += SIM_DRAW_SCORE
 }
 
 function buildStats(matches: readonly AflMatch[]): Record<number, TeamStats> {
@@ -242,7 +263,13 @@ function runOneSim(
   for (const match of activeMatches) {
     const hId = match.homeTeamId
     const aId = match.awayTeamId
-    const homeWins = Math.random() < matchHomeWinProb(match, rankMap, predMap, usePalmy, variant)
+    const r = Math.random()
+    if (r < DRAW_PROB) {
+      if (captureMatchIds?.has(match.id)) nextWinners[match.id] = DRAW_RESULT
+      applyDraw(simStats, hId, aId)
+      continue
+    }
+    const homeWins = (r - DRAW_PROB) / (1 - DRAW_PROB) < matchHomeWinProb(match, rankMap, predMap, usePalmy, variant)
     const winnerId = homeWins ? hId : aId
     const loserId = homeWins ? aId : hId
     if (captureMatchIds?.has(match.id)) nextWinners[match.id] = winnerId
@@ -494,9 +521,17 @@ function simulateMatches(
     if (!simStats[hId] || !simStats[aId]) continue
     const hRank = rankMap[hId] ?? 999
     const aRank = rankMap[aId] ?? 999
-    const winnerId = random
-      ? (Math.random() < homeWinProb(hRank, aRank) ? hId : aId)
-      : (hRank < aRank ? hId : aId)
+    let winnerId: number
+    if (random) {
+      const r = Math.random()
+      if (r < DRAW_PROB) {
+        applyDraw(simStats, hId, aId)
+        continue
+      }
+      winnerId = (r - DRAW_PROB) / (1 - DRAW_PROB) < homeWinProb(hRank, aRank) ? hId : aId
+    } else {
+      winnerId = hRank < aRank ? hId : aId
+    }
     const loserId = winnerId === hId ? aId : hId
     simStats[winnerId].wins++; simStats[winnerId].pts += 4; simStats[winnerId].played++
     simStats[winnerId].for += SIM_WIN_SCORE; simStats[winnerId].against += SIM_LOSS_SCORE
@@ -562,7 +597,10 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef, options?
       const hId = match.homeTeamId
       const aId = match.awayTeamId
       if (!hId || !aId) continue
-      winners[match.id] = Math.random() < matchHomeWinProb(match, rankMap, predMap, palmy, palmyVariant) ? hId : aId
+      const r = Math.random()
+      winners[match.id] = r < DRAW_PROB
+        ? DRAW_RESULT
+        : (r - DRAW_PROB) / (1 - DRAW_PROB) < matchHomeWinProb(match, rankMap, predMap, palmy, palmyVariant) ? hId : aId
       // Use same winners for the ladder calculation below
     }
     simulatedMatchWinners.value = winners
@@ -574,7 +612,11 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef, options?
     for (const match of matches.value) {
       if (match.status === 'CONCLUDED') continue
       const winnerId = winners[match.id]
-      if (!winnerId) continue
+      if (winnerId === undefined) continue
+      if (winnerId === DRAW_RESULT) {
+        applyDraw(simStats, match.homeTeamId, match.awayTeamId)
+        continue
+      }
       const loserId = winnerId === match.homeTeamId ? match.awayTeamId : match.homeTeamId
       if (!simStats[winnerId] || !simStats[loserId]) continue
       simStats[winnerId].wins++; simStats[winnerId].pts += 4; simStats[winnerId].played++
@@ -612,7 +654,11 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef, options?
     for (const [roundNumber, { roundName, roundMatches }] of rounds) {
       for (const match of roundMatches) {
         const winnerId = winners[match.id]
-        if (!winnerId) continue
+        if (winnerId === undefined) continue
+        if (winnerId === DRAW_RESULT) {
+          applyDraw(runningStats, match.homeTeamId, match.awayTeamId)
+          continue
+        }
         const loserId = winnerId === match.homeTeamId ? match.awayTeamId : match.homeTeamId
         if (!runningStats[winnerId] || !runningStats[loserId]) continue
         runningStats[winnerId].wins++; runningStats[winnerId].pts += 4; runningStats[winnerId].played++

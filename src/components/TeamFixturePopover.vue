@@ -42,7 +42,7 @@
           <span
             v-if="row.simulated !== null"
             class="shrink-0 size-5 flex items-center justify-center rounded text-white text-xs font-bold opacity-60"
-            :class="row.simulated === 'W' ? 'bg-green-500' : 'bg-red-500'"
+            :class="row.simulated === 'W' ? 'bg-green-500' : row.simulated === 'D' ? 'bg-amber-500' : 'bg-red-500'"
             title="Simulated"
           >{{ row.simulated }}</span>
         </div>
@@ -60,7 +60,7 @@ export interface FixtureGame {
   opponent: string
   isHome: boolean
   predicted: 'W' | 'L'
-  simulated: 'W' | 'L' | null
+  simulated: 'W' | 'L' | 'D' | null
 }
 
 type ByeRow = { type: 'bye'; roundNumber: number }

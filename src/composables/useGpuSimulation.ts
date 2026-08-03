@@ -42,6 +42,12 @@ struct Params {
 
 const SIM_WIN_SCORE: f32 = 101.0;
 const SIM_LOSS_SCORE: f32 = 69.0;
+const SIM_DRAW_SCORE: f32 = 85.0;
+// Must match DRAW_PROB in useSimulation.ts: same single-roll model (r below
+// DRAW_PROB draws, otherwise r rescaled to [0,1) decides the winner).
+const DRAW_PROB: f32 = 0.009;
+// winnerOfMatch sentinel for a drawn game; matches no team index.
+const NO_WINNER: u32 = 0xffffffffu;
 const MAX_TEAMS: u32 = 18u;
 
 fn hash_u32(x: u32) -> u32 {
@@ -90,9 +96,19 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   let m = params.numMatches;
   for (var k: u32 = 0u; k < m; k = k + 1u) {
     let r = rand01(i, k);
-    let homeWins = r < matchHomeProb[k];
     let h = matchHomeIdx[k];
     let a = matchAwayIdx[k];
+    if (r < DRAW_PROB) {
+      winnerOfMatch[k] = NO_WINNER;
+      pts[h] = pts[h] + 2.0;
+      pts[a] = pts[a] + 2.0;
+      forf[h] = forf[h] + SIM_DRAW_SCORE;
+      against[h] = against[h] + SIM_DRAW_SCORE;
+      forf[a] = forf[a] + SIM_DRAW_SCORE;
+      against[a] = against[a] + SIM_DRAW_SCORE;
+      continue;
+    }
+    let homeWins = (r - DRAW_PROB) / (1.0 - DRAW_PROB) < matchHomeProb[k];
     var winner: u32;
     var loser: u32;
     if (homeWins) { winner = h; loser = a; } else { winner = a; loser = h; }

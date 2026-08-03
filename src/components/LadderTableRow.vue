@@ -112,8 +112,10 @@
                   class="shrink-0 w-4 text-center text-xs font-bold rounded"
                   :class="simulatedMatchWinners[opp.matchId] === row.teamId
                     ? 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400'
-                    : 'bg-red-100 text-red-500 dark:bg-red-900/40 dark:text-red-400'"
-                >{{ simulatedMatchWinners[opp.matchId] === row.teamId ? 'W' : 'L' }}</span>
+                    : simulatedMatchWinners[opp.matchId] === DRAW_RESULT
+                      ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400'
+                      : 'bg-red-100 text-red-500 dark:bg-red-900/40 dark:text-red-400'"
+                >{{ simulatedMatchWinners[opp.matchId] === row.teamId ? 'W' : simulatedMatchWinners[opp.matchId] === DRAW_RESULT ? 'D' : 'L' }}</span>
                 <span
                   v-else-if="simulatedMatchWinners === undefined"
                   class="shrink-0 w-4 text-center text-xs font-bold rounded"
@@ -133,6 +135,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { LadderRow } from '../types/afl'
+import { DRAW_RESULT } from '../composables/useSimulation'
 import HtmlTooltip from './HtmlTooltip.vue'
 import TeamFixtureSummaryPopup from './TeamFixtureSummaryPopup.vue'
 
