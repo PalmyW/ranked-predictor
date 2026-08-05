@@ -518,24 +518,25 @@
           <span v-else>{{ selectedAlgo.creditName }}</span>
         </span>
       </div>
-      <!-- Last 8 + Table / Graph toggle + download -->
+      <!-- Recent form window + Table / Graph toggle + download -->
       <div class="flex shrink-0 items-center gap-2 self-center">
-        <button
-          @click="recentOnly = !recentOnly"
+        <select
+          v-model.number="recentLimit"
           :title="
-            recentOnly
-              ? `Ranking each team on their last ${RECENT_LIMIT} games`
-              : `Click to rank on each team's last ${RECENT_LIMIT} games only`
+            recentLimit
+              ? `Ranking each team on their last ${recentLimit} games`
+              : `Rank on each team's last X games only`
           "
-          class="rounded border px-3 py-1.5 text-xs font-semibold transition-colors"
+          class="rounded border px-2 py-1.5 text-xs font-semibold transition-colors"
           :class="
-            recentOnly
+            recentLimit
               ? 'border-blue-600 bg-blue-600 text-white shadow-sm'
               : 'border-gray-300 bg-white text-gray-500 hover:border-blue-400 hover:text-blue-600 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-400 dark:hover:border-blue-500 dark:hover:text-blue-400'
           "
         >
-          Last {{ RECENT_LIMIT }}
-        </button>
+          <option :value="0">Full Season</option>
+          <option v-for="n in RECENT_OPTIONS" :key="n" :value="n">Last {{ n }}</option>
+        </select>
         <button
           v-if="activeView === 'graph' && !graphCapturing"
           @click="screenshotGraph"
@@ -1706,9 +1707,9 @@
         Top 10 (wildcard)
       </span>
       <span
-        v-if="recentOnly"
+        v-if="recentLimit"
         class="font-semibold text-blue-500 dark:text-blue-400"
-        >Form mode: each team's last {{ RECENT_LIMIT }} games only</span
+        >Form mode: each team's last {{ recentLimit }} games only</span
       >
       <span v-if="activeView === 'table'"
         >vs AFL = difference from the official points-based ladder
@@ -1757,12 +1758,20 @@ const router = useRouter()
 
 const { matches, isLoading } = useAFLData()
 
-// "Last 8" form toggle — restrict every ladder to each team's most recent 8 games.
-const RECENT_LIMIT = 8
-const recentOnly = ref(route.query.recent === '1')
+// "Last X" form select — restrict every ladder to each team's most recent N games.
+// 0 = full season. Legacy links used recent=1 for the old fixed last-8 toggle.
+const RECENT_OPTIONS = Array.from({ length: 22 }, (_, i) => i + 2)
+const queryRecent = Number(route.query.recent)
+const recentLimit = ref(
+  route.query.recent === '1'
+    ? 8
+    : RECENT_OPTIONS.includes(queryRecent)
+      ? queryRecent
+      : 0,
+)
 const rankingMatches = computed<readonly AflMatch[]>(() =>
-  recentOnly.value
-    ? filterRecentMatches(matches.value, RECENT_LIMIT)
+  recentLimit.value
+    ? filterRecentMatches(matches.value, recentLimit.value)
     : matches.value,
 )
 
@@ -1826,8 +1835,10 @@ const activeView = ref<'table' | 'graph'>(
 )
 const showNerdStuff = ref(false)
 
-watch([selectedId, activeView, recentOnly], ([algo, view, recent]) => {
-  router.replace({ query: { algo, view, ...(recent ? { recent: '1' } : {}) } })
+watch([selectedId, activeView, recentLimit], ([algo, view, recent]) => {
+  router.replace({
+    query: { algo, view, ...(recent ? { recent: String(recent) } : {}) },
+  })
 })
 const selectedAlgo = computed(
   () => ALGORITHMS.find((a) => a.id === selectedId.value)!,

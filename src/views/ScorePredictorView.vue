@@ -168,17 +168,20 @@
               "
             >Home/Away</button>
           </div>
-          <!-- Last 8 games toggle -->
-          <button
-            @click="recentOnly = !recentOnly"
-            :title="recentOnly ? `Rating each team on their last ${RECENT_LIMIT} games` : `Rate each team on their last ${RECENT_LIMIT} games only`"
-            class="rounded border px-3 py-1 text-xs font-semibold transition-colors"
+          <!-- Recent form window select -->
+          <select
+            v-model.number="recentLimit"
+            :title="recentLimit ? `Rating each team on their last ${recentLimit} games` : `Rate each team on their last X games only`"
+            class="rounded border px-2 py-1 text-xs font-semibold transition-colors"
             :class="
-              recentOnly
+              recentLimit
                 ? 'border-blue-600 bg-blue-600 text-white'
                 : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
             "
-          >Last {{ RECENT_LIMIT }}</button>
+          >
+            <option :value="0">Full Season</option>
+            <option v-for="n in RECENT_OPTIONS" :key="n" :value="n">Last {{ n }}</option>
+          </select>
           <!-- Round toggle -->
           <div
             v-if="allUpcomingPredictions.length > 0"
@@ -549,17 +552,17 @@ const { matches, isLoading } = useAFLData()
 
 const venueAdjusted = ref(false)
 
-// "Last 8" form basis — rate each team on their most recent games only. Strength is
+// "Last X" form basis — rate each team on their most recent games only. Strength is
 // built from concluded matches, so keep the recent window plus all unplayed fixtures
-// (which the predictor needs to know what to predict).
-const RECENT_LIMIT = 8
-const recentOnly = ref(false)
+// (which the predictor needs to know what to predict). 0 = full season.
+const RECENT_OPTIONS = Array.from({ length: 22 }, (_, i) => i + 2)
+const recentLimit = ref(0)
 const predictorMatches = computed<readonly AflMatch[]>(() => {
-  if (!recentOnly.value) return matches.value
+  if (!recentLimit.value) return matches.value
   const upcoming = matches.value.filter(
     (m) => !(m.status === 'CONCLUDED' && m.homeScore && m.awayScore),
   )
-  return [...filterRecentMatches(matches.value, RECENT_LIMIT), ...upcoming]
+  return [...filterRecentMatches(matches.value, recentLimit.value), ...upcoming]
 })
 
 const {
