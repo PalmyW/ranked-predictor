@@ -1,8 +1,8 @@
 // GPU-accelerated alternative to the CPU batch simulator in useSimulation.ts.
-// Runs the exact same season-simulation model (fixed win/loss scores, points,
-// percentage tie-break) as a WebGPU compute shader so a batch of seasons can
-// be simulated in parallel on the GPU instead of one at a time on the main
-// thread. Feature-detected and opt-in: callers must check `checkGpuSupport()`
+// Runs the exact same season-simulation model (strength-scaled random scores,
+// points, percentage tie-break) as a WebGPU compute shader so a batch of
+// seasons can be simulated in parallel on the GPU instead of one at a time on
+// the main thread. Feature-detected and opt-in: callers must check `checkGpuSupport()`
 // before offering it, and everything here falls back to `null`/no-ops if
 // WebGPU isn't available so the CPU path (useSimulation.ts) remains the
 // default, always-working implementation.
@@ -40,9 +40,13 @@ struct Params {
 @group(0) @binding(8) var<storage, read_write> orderOut: array<u32>;
 @group(0) @binding(9) var<storage, read_write> nextWinMaskOut: array<u32>;
 
-const SIM_WIN_SCORE: f32 = 101.0;
-const SIM_LOSS_SCORE: f32 = 69.0;
-const SIM_DRAW_SCORE: f32 = 85.0;
+// Random-score model constants — must match MARGIN_SIGMA / MID_SIGMA /
+// AVG_AFL_SCORE in useSimulation.ts (see sampleMatchScores there for the
+// model: home margin ~ N(MARGIN_SIGMA * invNorm(p), MARGIN_SIGMA), scores
+// split around a shared N(AVG_AFL_SCORE, MID_SIGMA) midpoint).
+const AVG_AFL_SCORE: f32 = 85.0;
+const MARGIN_SIGMA: f32 = 36.0;
+const MID_SIGMA: f32 = 15.0;
 // Must match DRAW_PROB in useSimulation.ts: same single-roll model (r below
 // DRAW_PROB draws, otherwise r rescaled to [0,1) decides the winner).
 const DRAW_PROB: f32 = 0.009;
@@ -63,6 +67,26 @@ fn hash_u32(x: u32) -> u32 {
 fn rand01(invocation: u32, idx: u32) -> f32 {
   let h = hash_u32(hash_u32(params.seed ^ invocation) ^ (idx * 0x9e3779b9u));
   return f32(h) * (1.0 / 4294967296.0);
+}
+
+// Inverse standard normal CDF, Acklam's approximation — mirror of invNorm()
+// in utils/normal.ts (keep coefficients in sync). Input clamped away from 0/1.
+fn inv_norm(p_in: f32) -> f32 {
+  let p = clamp(p_in, 1e-6, 1.0 - 1e-6);
+  if (p < 0.02425) {
+    let q = sqrt(-2.0 * log(p));
+    return (((((-7.784894002430293e-03 * q - 3.223964580411365e-01) * q - 2.400758277161838) * q - 2.549732539343734) * q + 4.374664141464968) * q + 2.938163982698783) /
+      ((((7.784695709041462e-03 * q + 3.224671290700398e-01) * q + 2.445134137142996) * q + 3.754408661907416) * q + 1.0);
+  }
+  if (p > 1.0 - 0.02425) {
+    let q = sqrt(-2.0 * log(1.0 - p));
+    return -(((((-7.784894002430293e-03 * q - 3.223964580411365e-01) * q - 2.400758277161838) * q - 2.549732539343734) * q + 4.374664141464968) * q + 2.938163982698783) /
+      ((((7.784695709041462e-03 * q + 3.224671290700398e-01) * q + 2.445134137142996) * q + 3.754408661907416) * q + 1.0);
+  }
+  let q = p - 0.5;
+  let r = q * q;
+  return (((((-3.969683028665376e+01 * r + 2.209460984245205e+02) * r - 2.759285104469687e+02) * r + 1.383577518672690e+02) * r - 3.066479806614716e+01) * r + 2.506628277459239) * q /
+    (((((-5.447609879822406e+01 * r + 1.615858368580409e+02) * r - 1.556989798598866e+02) * r + 6.680131188771972e+01) * r - 1.328068155288572e+01) * r + 1.0);
 }
 
 var<private> pts: array<f32, 18>;
@@ -98,26 +122,38 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let r = rand01(i, k);
     let h = matchHomeIdx[k];
     let a = matchAwayIdx[k];
+    // Shared per-game scoring midpoint; second uniform salted past the winner
+    // rolls (indices [0, m)) so the streams never collide.
+    let mid = AVG_AFL_SCORE + MID_SIGMA * inv_norm(rand01(i, k + m));
     if (r < DRAW_PROB) {
       winnerOfMatch[k] = NO_WINNER;
+      let drawScore = max(0.0, round(mid));
       pts[h] = pts[h] + 2.0;
       pts[a] = pts[a] + 2.0;
-      forf[h] = forf[h] + SIM_DRAW_SCORE;
-      against[h] = against[h] + SIM_DRAW_SCORE;
-      forf[a] = forf[a] + SIM_DRAW_SCORE;
-      against[a] = against[a] + SIM_DRAW_SCORE;
+      forf[h] = forf[h] + drawScore;
+      against[h] = against[h] + drawScore;
+      forf[a] = forf[a] + drawScore;
+      against[a] = against[a] + drawScore;
       continue;
     }
-    let homeWins = (r - DRAW_PROB) / (1.0 - DRAW_PROB) < matchHomeProb[k];
+    let u = (r - DRAW_PROB) / (1.0 - DRAW_PROB);
+    let p = matchHomeProb[k];
+    let homeWins = u < p;
     var winner: u32;
     var loser: u32;
     if (homeWins) { winner = h; loser = a; } else { winner = a; loser = h; }
     winnerOfMatch[k] = winner;
+    // Same margin construction as sampleMatchScores(): reuse the winner roll u
+    // so the margin's sign agrees with the decided winner by construction.
+    let homeMargin = MARGIN_SIGMA * (inv_norm(p) + inv_norm(1.0 - u));
+    let absMargin = max(1.0, round(abs(homeMargin)));
+    let loserScore = max(0.0, round(mid - absMargin / 2.0));
+    let winnerScore = loserScore + absMargin;
     pts[winner] = pts[winner] + 4.0;
-    forf[winner] = forf[winner] + SIM_WIN_SCORE;
-    against[winner] = against[winner] + SIM_LOSS_SCORE;
-    forf[loser] = forf[loser] + SIM_LOSS_SCORE;
-    against[loser] = against[loser] + SIM_WIN_SCORE;
+    forf[winner] = forf[winner] + winnerScore;
+    against[winner] = against[winner] + loserScore;
+    forf[loser] = forf[loser] + loserScore;
+    against[loser] = against[loser] + winnerScore;
   }
 
   var order: array<u32, 18>;

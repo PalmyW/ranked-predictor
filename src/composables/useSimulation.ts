@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import type { AflMatch, LadderRow, TeamRanking } from '../types/afl'
 import { TEAMS } from './useAFLData'
 import { homeWinProbFromScore, type PalmyVariant } from '../utils/palmyWinProb'
+import { invNorm } from '../utils/normal'
 import { checkGpuSupport, createGpuSimContext, runGpuRangeBatch, destroyGpuSimContext, gpuMaxBatch } from './useGpuSimulation'
 
 export interface RangeEntry {
@@ -50,9 +51,41 @@ const ELO_DIVISOR = 400     // standard Elo scaling divisor
 
 const AVG_WIN_MARGIN = 32   // average AFL winning margin in points
 const AVG_AFL_SCORE  = 85   // average points per team per game
+// Fixed scores used only by the deterministic paths (predictedLadder's
+// non-random simulateMatches branch, buildPalmyLadder's no-prediction
+// fallback). Random simulations sample scores instead — see sampleMatchScores.
 const SIM_WIN_SCORE  = AVG_AFL_SCORE + Math.round(AVG_WIN_MARGIN / 2)  // 101
 const SIM_LOSS_SCORE = AVG_AFL_SCORE - Math.round(AVG_WIN_MARGIN / 2)  // 69
 const SIM_DRAW_SCORE = AVG_AFL_SCORE  // both teams score 85 in a drawn game
+
+// Random-score model for the stochastic simulators. The home margin of each
+// simulated game is N(mu, MARGIN_SIGMA) with mu = MARGIN_SIGMA * invNorm(p),
+// so its sign agrees exactly with the winner already decided by the win-prob
+// roll, and favourites win big more often than underdogs do. Both teams share
+// a game-level scoring midpoint of N(AVG_AFL_SCORE, MID_SIGMA), so per-team
+// scores still average out to AVG_AFL_SCORE across a run. Mirrored in the GPU
+// shader (useGpuSimulation.ts) — keep the two in sync.
+const MARGIN_SIGMA = 36   // SD of AFL game margins
+const MID_SIGMA = 15      // SD of the two teams' shared per-game scoring midpoint
+
+interface SimScores { winnerScore: number; loserScore: number }
+
+// Sample winner/loser scores for a decided game. `u` is the same uniform that
+// decided the winner (u < p means home won), so the sampled margin's sign is
+// consistent with that decision by construction; only its magnitude is new
+// randomness (plus the shared midpoint draw).
+function sampleMatchScores(u: number, p: number): SimScores {
+  const homeMargin = MARGIN_SIGMA * (invNorm(p) + invNorm(1 - u))
+  const absMargin = Math.max(1, Math.round(Math.abs(homeMargin)))
+  const mid = AVG_AFL_SCORE + MID_SIGMA * invNorm(Math.random())
+  const loserScore = Math.max(0, Math.round(mid - absMargin / 2))
+  return { winnerScore: loserScore + absMargin, loserScore }
+}
+
+// Drawn-game score: both teams land on the same randomised midpoint.
+function sampleDrawScore(): number {
+  return Math.max(0, Math.round(AVG_AFL_SCORE + MID_SIGMA * invNorm(Math.random())))
+}
 
 // Chance of any simulated game ending in a draw. A single random roll decides
 // the whole match: r < DRAW_PROB is a draw, otherwise r is rescaled back to
@@ -105,12 +138,12 @@ export interface TeamStats {
 
 // Credits a simulated draw to both teams (2 pts, equal scores). No-ops if
 // either team is unrecognised, matching how the win/loss paths guard.
-function applyDraw(stats: Record<number, TeamStats>, hId: number, aId: number): void {
+function applyDraw(stats: Record<number, TeamStats>, hId: number, aId: number, score = SIM_DRAW_SCORE): void {
   if (!stats[hId] || !stats[aId]) return
   stats[hId].draws++; stats[hId].pts += 2; stats[hId].played++
-  stats[hId].for += SIM_DRAW_SCORE; stats[hId].against += SIM_DRAW_SCORE
+  stats[hId].for += score; stats[hId].against += score
   stats[aId].draws++; stats[aId].pts += 2; stats[aId].played++
-  stats[aId].for += SIM_DRAW_SCORE; stats[aId].against += SIM_DRAW_SCORE
+  stats[aId].for += score; stats[aId].against += score
 }
 
 function buildStats(matches: readonly AflMatch[]): Record<number, TeamStats> {
@@ -266,17 +299,20 @@ function runOneSim(
     const r = Math.random()
     if (r < DRAW_PROB) {
       if (captureMatchIds?.has(match.id)) nextWinners[match.id] = DRAW_RESULT
-      applyDraw(simStats, hId, aId)
+      applyDraw(simStats, hId, aId, sampleDrawScore())
       continue
     }
-    const homeWins = (r - DRAW_PROB) / (1 - DRAW_PROB) < matchHomeWinProb(match, rankMap, predMap, usePalmy, variant)
+    const u = (r - DRAW_PROB) / (1 - DRAW_PROB)
+    const p = matchHomeWinProb(match, rankMap, predMap, usePalmy, variant)
+    const homeWins = u < p
     const winnerId = homeWins ? hId : aId
     const loserId = homeWins ? aId : hId
     if (captureMatchIds?.has(match.id)) nextWinners[match.id] = winnerId
+    const { winnerScore, loserScore } = sampleMatchScores(u, p)
     simStats[winnerId].wins++; simStats[winnerId].pts += 4; simStats[winnerId].played++
-    simStats[winnerId].for += SIM_WIN_SCORE; simStats[winnerId].against += SIM_LOSS_SCORE
+    simStats[winnerId].for += winnerScore; simStats[winnerId].against += loserScore
     simStats[loserId].losses++; simStats[loserId].played++
-    simStats[loserId].for += SIM_LOSS_SCORE; simStats[loserId].against += SIM_WIN_SCORE
+    simStats[loserId].for += loserScore; simStats[loserId].against += winnerScore
   }
 
   const order = TEAM_IDS.map((id) => simStats[id])
@@ -522,21 +558,28 @@ function simulateMatches(
     const hRank = rankMap[hId] ?? 999
     const aRank = rankMap[aId] ?? 999
     let winnerId: number
+    let winnerScore = SIM_WIN_SCORE
+    let loserScore = SIM_LOSS_SCORE
     if (random) {
       const r = Math.random()
       if (r < DRAW_PROB) {
-        applyDraw(simStats, hId, aId)
+        applyDraw(simStats, hId, aId, sampleDrawScore())
         continue
       }
-      winnerId = (r - DRAW_PROB) / (1 - DRAW_PROB) < homeWinProb(hRank, aRank) ? hId : aId
+      const u = (r - DRAW_PROB) / (1 - DRAW_PROB)
+      const p = homeWinProb(hRank, aRank)
+      winnerId = u < p ? hId : aId
+      const scores = sampleMatchScores(u, p)
+      winnerScore = scores.winnerScore
+      loserScore = scores.loserScore
     } else {
       winnerId = hRank < aRank ? hId : aId
     }
     const loserId = winnerId === hId ? aId : hId
     simStats[winnerId].wins++; simStats[winnerId].pts += 4; simStats[winnerId].played++
-    simStats[winnerId].for += SIM_WIN_SCORE; simStats[winnerId].against += SIM_LOSS_SCORE
+    simStats[winnerId].for += winnerScore; simStats[winnerId].against += loserScore
     simStats[loserId].losses++; simStats[loserId].played++
-    simStats[loserId].for += SIM_LOSS_SCORE; simStats[loserId].against += SIM_WIN_SCORE
+    simStats[loserId].for += loserScore; simStats[loserId].against += winnerScore
   }
 
   return statsToLadder(simStats, matches, rankMap)
@@ -574,6 +617,10 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef, options?
   const simulatedLadder = ref<LadderRow[] | null>(null)
   // matchId → winning teamId from last random simulation
   const simulatedMatchWinners = ref<Record<number, number> | null>(null)
+  // matchId → sampled scores from the same simulation, so the ladder build and
+  // the round-by-round replay (getSimulationFrames) reuse identical scores.
+  // Internal only — the UI reads just the winners map.
+  const simulatedMatchScores = ref<Record<number, { home: number; away: number }> | null>(null)
   const rangeResults = ref<RangeEntry[] | null>(null)
   const rangeTotal = ref(0)
   const simStats = ref<SimulationStats | null>(null)
@@ -592,18 +639,31 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef, options?
     const palmy = usePalmy()
     const palmyVariant = variant()
     const winners: Record<number, number> = {}
+    const scores: Record<number, { home: number; away: number }> = {}
     for (const match of matches.value) {
       if (match.status === 'CONCLUDED') continue
       const hId = match.homeTeamId
       const aId = match.awayTeamId
       if (!hId || !aId) continue
       const r = Math.random()
-      winners[match.id] = r < DRAW_PROB
-        ? DRAW_RESULT
-        : (r - DRAW_PROB) / (1 - DRAW_PROB) < matchHomeWinProb(match, rankMap, predMap, palmy, palmyVariant) ? hId : aId
-      // Use same winners for the ladder calculation below
+      if (r < DRAW_PROB) {
+        winners[match.id] = DRAW_RESULT
+        const drawScore = sampleDrawScore()
+        scores[match.id] = { home: drawScore, away: drawScore }
+        continue
+      }
+      const u = (r - DRAW_PROB) / (1 - DRAW_PROB)
+      const p = matchHomeWinProb(match, rankMap, predMap, palmy, palmyVariant)
+      const homeWins = u < p
+      winners[match.id] = homeWins ? hId : aId
+      const { winnerScore, loserScore } = sampleMatchScores(u, p)
+      scores[match.id] = homeWins
+        ? { home: winnerScore, away: loserScore }
+        : { home: loserScore, away: winnerScore }
+      // Use same winners/scores for the ladder calculation below
     }
     simulatedMatchWinners.value = winners
+    simulatedMatchScores.value = scores
 
     // Build ladder from the captured winners (not a second random pass)
     const baseStats = buildStats(matches.value)
@@ -613,16 +673,19 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef, options?
       if (match.status === 'CONCLUDED') continue
       const winnerId = winners[match.id]
       if (winnerId === undefined) continue
+      const score = scores[match.id]
       if (winnerId === DRAW_RESULT) {
-        applyDraw(simStats, match.homeTeamId, match.awayTeamId)
+        applyDraw(simStats, match.homeTeamId, match.awayTeamId, score.home)
         continue
       }
       const loserId = winnerId === match.homeTeamId ? match.awayTeamId : match.homeTeamId
       if (!simStats[winnerId] || !simStats[loserId]) continue
+      const winnerScore = winnerId === match.homeTeamId ? score.home : score.away
+      const loserScore = winnerId === match.homeTeamId ? score.away : score.home
       simStats[winnerId].wins++; simStats[winnerId].pts += 4; simStats[winnerId].played++
-      simStats[winnerId].for += SIM_WIN_SCORE; simStats[winnerId].against += SIM_LOSS_SCORE
+      simStats[winnerId].for += winnerScore; simStats[winnerId].against += loserScore
       simStats[loserId].losses++; simStats[loserId].played++
-      simStats[loserId].for += SIM_LOSS_SCORE; simStats[loserId].against += SIM_WIN_SCORE
+      simStats[loserId].for += loserScore; simStats[loserId].against += winnerScore
     }
     simulatedLadder.value = statsToLadder(simStats, matches.value, rankMap)
   }
@@ -630,6 +693,7 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef, options?
   function getSimulationFrames(): Array<{ roundNumber: number; roundName: string; ladder: LadderRow[] }> {
     const winners = simulatedMatchWinners.value
     if (!winners) return []
+    const scores = simulatedMatchScores.value ?? {}
 
     const rankMap: Record<number, number> = {}
     ranking.value.forEach((id, i) => { rankMap[id] = i + 1 })
@@ -655,16 +719,21 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef, options?
       for (const match of roundMatches) {
         const winnerId = winners[match.id]
         if (winnerId === undefined) continue
+        // Fixed-score fallback covers winners captured before scores existed
+        // (e.g. a stale persisted simulation); normally the map has every match.
+        const score = scores[match.id] ?? { home: SIM_WIN_SCORE, away: SIM_LOSS_SCORE }
         if (winnerId === DRAW_RESULT) {
-          applyDraw(runningStats, match.homeTeamId, match.awayTeamId)
+          applyDraw(runningStats, match.homeTeamId, match.awayTeamId, scores[match.id]?.home ?? SIM_DRAW_SCORE)
           continue
         }
         const loserId = winnerId === match.homeTeamId ? match.awayTeamId : match.homeTeamId
         if (!runningStats[winnerId] || !runningStats[loserId]) continue
+        const winnerScore = winnerId === match.homeTeamId ? score.home : score.away
+        const loserScore = winnerId === match.homeTeamId ? score.away : score.home
         runningStats[winnerId].wins++; runningStats[winnerId].pts += 4; runningStats[winnerId].played++
-        runningStats[winnerId].for += SIM_WIN_SCORE; runningStats[winnerId].against += SIM_LOSS_SCORE
+        runningStats[winnerId].for += winnerScore; runningStats[winnerId].against += loserScore
         runningStats[loserId].losses++; runningStats[loserId].played++
-        runningStats[loserId].for += SIM_LOSS_SCORE; runningStats[loserId].against += SIM_WIN_SCORE
+        runningStats[loserId].for += loserScore; runningStats[loserId].against += winnerScore
       }
       const snap: Record<number, TeamStats> = {}
       for (const [id, s] of Object.entries(runningStats)) snap[Number(id)] = { ...s }
