@@ -1,14 +1,16 @@
 import { readdirSync, readFileSync, writeFileSync, mkdirSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
+import { leagueFromArgv, dataDir, loadCurrentSeasonYear } from './lib/league.js'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
+const LEAGUE = leagueFromArgv()
 
 const seasonArg = process.argv.find((a) => a.startsWith('--season='))
-const season = seasonArg ? seasonArg.split('=')[1] : '2026'
+const season = seasonArg ? seasonArg.split('=')[1] : (loadCurrentSeasonYear(ROOT, LEAGUE) ?? '2026')
 
-const STATS_DIR = join(ROOT, `public/data/${season}/stats`)
-const OUTPUT_DIR = join(ROOT, `public/data/${season}/team-stats`)
+const STATS_DIR = join(dataDir(ROOT, LEAGUE, season), 'stats')
+const OUTPUT_DIR = join(dataDir(ROOT, LEAGUE, season), 'team-stats')
 
 const DIRECT_STATS = [
   'goals', 'behinds', 'superGoals', 'kicks', 'handballs', 'disposals',

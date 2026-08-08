@@ -2,14 +2,16 @@ import { execSync } from 'child_process'
 import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, unlinkSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
+import { leagueFromArgv, dataDir, dataRoot, playersDir, loadCurrentSeasonYear } from './lib/league.js'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
+const LEAGUE = leagueFromArgv()
 
 const seasonArg = process.argv.find((a) => a.startsWith('--season='))
-const season = seasonArg ? seasonArg.split('=')[1] : '2026'
+const season = seasonArg ? seasonArg.split('=')[1] : (loadCurrentSeasonYear(ROOT, LEAGUE) ?? '2026')
 
-const FIXTURE = join(ROOT, `public/data/${season}/fixture.json`)
-const STATS_DIR = join(ROOT, `public/data/${season}/stats`)
+const FIXTURE = join(dataDir(ROOT, LEAGUE, season), 'fixture.json')
+const STATS_DIR = join(dataDir(ROOT, LEAGUE, season), 'stats')
 let TOKEN = process.env.AFL_STATS_TOKEN
 if (!TOKEN) {
   const tokRes = execSync(
@@ -76,7 +78,7 @@ if (missing.length === 0) {
 }
 
 // --- Match details (matchItem) ---
-const MATCH_DETAILS_DIR = join(ROOT, `public/data/${season}/match-details`)
+const MATCH_DETAILS_DIR = join(dataDir(ROOT, LEAGUE, season), 'match-details')
 mkdirSync(MATCH_DETAILS_DIR, { recursive: true })
 
 const missingDetails = concluded.filter(
@@ -122,13 +124,13 @@ if (missingDetails.length === 0) {
 }
 
 // --- Player profiles ---
-const PLAYERS_DIR = join(ROOT, 'public/data/players')
+const PLAYERS_DIR = playersDir(ROOT, LEAGUE)
 mkdirSync(PLAYERS_DIR, { recursive: true })
 
-const DATA_DIR = join(ROOT, 'public/data')
+const DATA_DIR = dataRoot(ROOT, LEAGUE)
 // player_id → Set of competition codes derived from seasons they appeared in
 const playerCompCodes = new Map()
-for (const yearDir of readdirSync(DATA_DIR).filter(d => /^\d{4}$/.test(d))) {
+for (const yearDir of readdirSync(DATA_DIR).filter(d => LEAGUE.keyPattern.test(d))) {
   const seasonStatsDir = join(DATA_DIR, yearDir, 'stats')
   if (!existsSync(seasonStatsDir)) continue
   const matchFiles = readdirSync(seasonStatsDir).filter(f => f.endsWith('.json'))

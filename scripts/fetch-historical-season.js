@@ -1,32 +1,26 @@
 /**
- * One-time script to pull all data for a historical AFL season.
+ * One-time script to pull all data for a historical AFL/AFLW season.
  * Usage: node scripts/fetch-historical-season.js --year=2025 --compSeasonId=77
+ *        node scripts/fetch-historical-season.js --league=aflw --year=2022a
  *
- * Creates public/data/{year}/ with fixture.json, stats/, and team-stats/.
+ * Creates public/data/[aflw/]{year}/ with fixture.json, stats/, and team-stats/.
  */
 
 import { execSync } from 'child_process'
 import { readFileSync, existsSync, mkdirSync, unlinkSync, readdirSync, writeFileSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
+import { leagueFromArgv, dataDir, loadSeasonRegistry } from './lib/league.js'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
-
-// Import SEASON_REGISTRY from the TS config by reading and parsing it directly
-const seasonsSource = readFileSync(join(ROOT, 'src/config/seasons.ts'), 'utf8')
-const registryMatch = seasonsSource.match(/SEASON_REGISTRY[^=]*=\s*\{([^}]*)\}/)
-const SEASON_REGISTRY = {}
-if (registryMatch) {
-  for (const m of registryMatch[1].matchAll(/'(\d+)':\s*(\d+)/g)) {
-    SEASON_REGISTRY[m[1]] = Number(m[2])
-  }
-}
+const LEAGUE = leagueFromArgv()
+const SEASON_REGISTRY = loadSeasonRegistry(ROOT, LEAGUE)
 
 const yearArg = process.argv.find((a) => a.startsWith('--year='))
 const compSeasonArg = process.argv.find((a) => a.startsWith('--compSeasonId='))
 
 if (!yearArg) {
-  console.error('Usage: node scripts/fetch-historical-season.js --year=2025 [--compSeasonId=73]')
+  console.error('Usage: node scripts/fetch-historical-season.js --year=2025 [--compSeasonId=73] [--league=aflw]')
   process.exit(1)
 }
 
@@ -36,13 +30,13 @@ const compSeasonId = compSeasonArg
   : String(SEASON_REGISTRY[year] ?? '')
 
 if (!compSeasonId) {
-  console.error(`Unknown compSeasonId for year ${year}. Pass --compSeasonId=<id> explicitly.`)
+  console.error(`Unknown compSeasonId for ${LEAGUE.key} year ${year}. Pass --compSeasonId=<id> explicitly.`)
   process.exit(1)
 }
 
-console.log(`Season ${year} → compSeasonId=${compSeasonId}`)
+console.log(`[${LEAGUE.key}] Season ${year} → compSeasonId=${compSeasonId}`)
 
-const DATA_DIR = join(ROOT, `public/data/${year}`)
+const DATA_DIR = dataDir(ROOT, LEAGUE, year)
 const FIXTURE = join(DATA_DIR, 'fixture.json')
 const STATS_DIR = join(DATA_DIR, 'stats')
 const TEAM_STATS_DIR = join(DATA_DIR, 'team-stats')
@@ -52,7 +46,7 @@ mkdirSync(STATS_DIR, { recursive: true })
 
 // ─── Step 1: Fetch fixture ────────────────────────────────────────────────────
 
-console.log(`\nFetching ${year} fixture (compSeasonId=${compSeasonId})...`)
+console.log(`\nFetching ${LEAGUE.key} ${year} fixture (compSeasonId=${compSeasonId})...`)
 execSync(
   `curl -fsSL` +
     ` -H 'accept: */*'` +
@@ -60,11 +54,11 @@ execSync(
     ` -H 'origin: https://www.afl.com.au'` +
     ` -H 'referer: https://www.afl.com.au/'` +
     ` -H 'user-agent: Mozilla/5.0 (compatible; ranked-predictor-ci/1.0)'` +
-    ` 'https://aflapi.afl.com.au/afl/v2/matches?pageSize=300&competitionId=1&compSeasonId=${compSeasonId}'` +
+    ` 'https://aflapi.afl.com.au/afl/v2/matches?pageSize=300&competitionId=${LEAGUE.competitionId}&compSeasonId=${compSeasonId}'` +
     ` -o '${FIXTURE}'`,
   { stdio: ['ignore', 'ignore', 'pipe'] },
 )
-console.log(`Fixture saved to public/data/${year}/fixture.json`)
+console.log(`Fixture saved to ${FIXTURE}`)
 
 // ─── Step 2: Fetch player stats ───────────────────────────────────────────────
 
@@ -236,7 +230,7 @@ for (const [teamId, teamPlayers] of teams) {
   writeFileSync(join(TEAM_STATS_DIR, `${teamId}.json`), JSON.stringify(output, null, 2))
 }
 
-console.log(`Done. Wrote ${teams.size} team files to public/data/${year}/team-stats/`)
+console.log(`Done. Wrote ${teams.size} team files to ${TEAM_STATS_DIR}/`)
 
 // ─── Step 4: Update seasons config ───────────────────────────────────────────
 
@@ -244,34 +238,37 @@ const SEASONS_FILE = join(ROOT, 'src/config/seasons.ts')
 const seasonsTsSource = readFileSync(SEASONS_FILE, 'utf8')
 
 const entryStr = `{ year: '${year}', compSeasonId: ${compSeasonId} }`
-const alreadyPresent = seasonsTsSource.includes(`year: '${year}'`)
 
-if (alreadyPresent) {
-  console.log(`\nsrc/config/seasons.ts already contains year '${year}' — no changes needed.`)
+// Anchored to `export const <League's SEASONS const>` and scoped to that
+// array's own text — AFL and AFLW years overlap (both have e.g. '2026'), so
+// an "already present" check against the whole file (or a bare "SEASONS"
+// regex that could match either league's array) would wrongly skip writing
+// a genuinely-missing entry into the OTHER league's array.
+const arrayRe = new RegExp(`export const ${LEAGUE.seasonsConst}[^=]*=\\s*\\[([^\\]]*)\\]`)
+const arrayMatch = seasonsTsSource.match(arrayRe)
+
+if (!arrayMatch) {
+  console.warn(`\nCould not parse ${LEAGUE.seasonsConst} array in seasons.ts — add manually:`)
+  console.warn(`  ${entryStr}`)
+} else if (arrayMatch[1].includes(`year: '${year}'`)) {
+  console.log(`\nsrc/config/seasons.ts's ${LEAGUE.seasonsConst} already contains year '${year}' — no changes needed.`)
 } else {
-  // Extract existing entries from the SEASONS array
-  const arrayMatch = seasonsTsSource.match(/export const SEASONS[^=]*=\s*\[([^\]]*)\]/)
-  if (!arrayMatch) {
-    console.warn('\nCould not parse SEASONS array in seasons.ts — add manually:')
-    console.warn(`  ${entryStr}`)
-  } else {
-    const existingEntries = arrayMatch[1]
-      .split('\n')
-      .map((l) => l.trim())
-      .filter((l) => l.startsWith('{'))
+  const existingEntries = arrayMatch[1]
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.startsWith('{'))
 
-    const allEntries = [...existingEntries, entryStr]
-      .sort((a, b) => {
-        const ya = a.match(/year: '(\d+)'/)?.[1] ?? ''
-        const yb = b.match(/year: '(\d+)'/)?.[1] ?? ''
-        return ya.localeCompare(yb)
-      })
+  const allEntries = [...existingEntries, entryStr]
+    .sort((a, b) => {
+      const ya = a.match(/year: '(\d{4}[ab]?)'/)?.[1] ?? ''
+      const yb = b.match(/year: '(\d{4}[ab]?)'/)?.[1] ?? ''
+      return ya.localeCompare(yb, undefined, { numeric: true })
+    })
 
-    const newArray = `[\n${allEntries.map((e) => `  ${e.replace(/,$/, '')},`).join('\n')}\n]`
-    const updated = seasonsTsSource.replace(/export const SEASONS[^=]*=\s*\[[^\]]*\]/, `export const SEASONS: SeasonConfig[] = ${newArray}`)
-    writeFileSync(SEASONS_FILE, updated)
-    console.log(`\nAdded ${year} to SEASONS in src/config/seasons.ts`)
-  }
+  const newArray = `[\n${allEntries.map((e) => `  ${e.replace(/,$/, '')},`).join('\n')}\n]`
+  const updated = seasonsTsSource.replace(arrayRe, `export const ${LEAGUE.seasonsConst}: SeasonConfig[] = ${newArray}`)
+  writeFileSync(SEASONS_FILE, updated)
+  console.log(`\nAdded ${year} to ${LEAGUE.seasonsConst} in src/config/seasons.ts`)
 }
 
-console.log(`\n✓ Season ${year} data ready in public/data/${year}/`)
+console.log(`\n✓ [${LEAGUE.key}] Season ${year} data ready in ${DATA_DIR}/`)

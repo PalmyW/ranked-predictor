@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { AflMatch } from '../types/afl'
-import { SEASON_REGISTRY } from '../config/seasons'
+import { ACTIVE_SEASONS } from '../config/seasons'
 import { fetchSeasonMatches } from '../composables/useAFLData'
 
 export type H2HResult = 'W' | 'L' | 'D'
@@ -48,7 +48,7 @@ export const useFixturesStore = defineStore('fixtures', () => {
     if (inFlight) return inFlight
 
     isLoading.value = true
-    const years = Object.keys(SEASON_REGISTRY)
+    const years = ACTIVE_SEASONS.map((s) => s.year)
     inFlight = Promise.all(years.map(async (year) => {
       seasonsByYear.value[year] = await fetchSeasonMatches(year)
     }))

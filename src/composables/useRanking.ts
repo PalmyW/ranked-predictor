@@ -1,19 +1,18 @@
 import { ref, computed, watch } from 'vue'
 import type { TeamRanking, LadderRow } from '../types/afl'
 import { TEAMS } from './useAFLData'
+import { LEAGUE_CONFIG } from '../config/league'
 
-const STORAGE_KEY = 'afl-ranking-2026'
-const HISTORY_KEY = 'afl-ranking-history-2026'
+const STORAGE_KEY = `afl-ranking-2026${LEAGUE_CONFIG.lsSuffix}`
+const HISTORY_KEY = `afl-ranking-history-2026${LEAGUE_CONFIG.lsSuffix}`
 
 // Default tier sizes: S=1, A=2, B-F=3 each (total 18)
 export const DEFAULT_TIER_SIZES = [1, 2, 3, 3, 3, 3, 3]
 
-// Letter ↔ team ID maps
-const LETTER_TO_ID: Record<string, number> = {
-  A: 1, B: 2, C: 5, D: 3, E: 12, F: 14, G: 10, H: 4,
-  I: 15, J: 9, K: 17, L: 6, M: 7, N: 16, O: 11, P: 13,
-  Q: 18, R: 8,
-}
+// Letter ↔ team ID maps — derived from the active league's TEAMS so a share
+// URL/localStorage ranking round-trips correctly for whichever league it was
+// encoded in.
+const LETTER_TO_ID: Record<string, number> = Object.fromEntries(TEAMS.map((t) => [t.letter, t.id]))
 const ID_TO_LETTER: Record<number, string> = Object.fromEntries(
   Object.entries(LETTER_TO_ID).map(([l, id]) => [id, l])
 )
@@ -41,18 +40,18 @@ export function decodeRanking(s: string): { ranking: TeamRanking; tierSizes: num
     if (segments.length !== 7) return null
     const tierSizes = segments.map((seg) => seg.length)
     const allLetters = segments.join('')
-    if (allLetters.length !== 18) return null
+    if (allLetters.length !== TEAMS.length) return null
     const ids = allLetters.split('').map((ch) => LETTER_TO_ID[ch])
     if (ids.some((id) => !id)) return null
-    if (new Set(ids).size !== 18) return null
+    if (new Set(ids).size !== TEAMS.length) return null
     return { ranking: ids, tierSizes }
   }
 
-  // Legacy format: plain 18-char string, use default tier sizes
-  if (upper.length !== 18) return null
+  // Legacy format: plain N-char string, use default tier sizes
+  if (upper.length !== TEAMS.length) return null
   const ids = upper.split('').map((ch) => LETTER_TO_ID[ch])
   if (ids.some((id) => !id)) return null
-  if (new Set(ids).size !== 18) return null
+  if (new Set(ids).size !== TEAMS.length) return null
   return { ranking: ids, tierSizes: [...DEFAULT_TIER_SIZES] }
 }
 

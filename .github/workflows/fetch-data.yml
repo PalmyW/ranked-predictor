@@ -38,6 +38,21 @@ jobs:
       - name: Write timestamp
         run: echo "{\"updatedAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > public/data/2026/last-updated.json
 
+      - name: Fetch AFLW fixture
+        run: |
+          mkdir -p public/data/aflw/2026
+          curl -fsSL \
+            -H 'accept: */*' \
+            -H 'account: afl' \
+            -H 'origin: https://www.afl.com.au' \
+            -H 'referer: https://www.afl.com.au/' \
+            -H 'user-agent: Mozilla/5.0 (compatible; ranked-predictor-ci/1.0)' \
+            'https://aflapi.afl.com.au/afl/v2/matches?pageSize=300&competitionId=3&compSeasonId=96' \
+            -o public/data/aflw/2026/fixture.json
+
+      - name: Write AFLW timestamp
+        run: echo "{\"updatedAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > public/data/aflw/2026/last-updated.json
+
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -46,7 +61,7 @@ jobs:
       - run: npm ci
 
       - name: Format fixture with prettier
-        run: npx prettier --write public/data/2026/fixture.json
+        run: npx prettier --write public/data/2026/fixture.json public/data/aflw/2026/fixture.json
 
       - run: npm run build
 
@@ -60,6 +75,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/data/2026/fixture.json public/data/2026/last-updated.json
-          git diff --staged --quiet || git commit -m "chore: update AFL fixture data"
+          git add public/data/2026/fixture.json public/data/2026/last-updated.json public/data/aflw/2026/fixture.json public/data/aflw/2026/last-updated.json
+          git diff --staged --quiet || git commit -m "chore: update AFL/AFLW fixture data"
           git push

@@ -9,8 +9,16 @@
 import type { AflMatch } from '../types/afl'
 import type { PalmyVariant } from '../utils/palmyWinProb'
 import { TEAM_IDS, matchHomeWinProb, accumulateSimResult, type RangeAccumulator, type MatchScorePrediction } from './useSimulation'
+import { LEAGUE_CONFIG } from '../config/league'
+// TEAMS (not TEAM_IDS from useSimulation.ts) specifically to avoid this
+// module's existing circular import with useSimulation.ts: useSimulation.ts
+// imports from here at its own module top level, so a value read from
+// useSimulation.ts used at OUR top level (to size MAX_TEAMS below) could see
+// an uninitialised binding depending on which module starts evaluating
+// first. useAFLData.ts isn't part of that cycle, so it's safe here.
+import { TEAMS } from './useAFLData'
 
-const MAX_TEAMS = 18
+const MAX_TEAMS = TEAMS.length
 // Generous ceiling on remaining matches the shader's fixed-size per-invocation
 // array can track (a full 18-team season is ~207 matches). Runs beyond this
 // fall back to the CPU path rather than risk silent out-of-bounds behaviour,
@@ -40,19 +48,21 @@ struct Params {
 @group(0) @binding(8) var<storage, read_write> orderOut: array<u32>;
 @group(0) @binding(9) var<storage, read_write> nextWinMaskOut: array<u32>;
 
-// Random-score model constants — must match MARGIN_SIGMA / MID_SIGMA /
-// AVG_AFL_SCORE in useSimulation.ts (see sampleMatchScores there for the
+// Random-score model constants — interpolated from LEAGUE_CONFIG.sim (the
+// exact same source useSimulation.ts's MARGIN_SIGMA/MID_SIGMA/AVG_AFL_SCORE
+// read from), so the two can no longer drift out of sync the way hardcoded
+// mirrored literals could. See sampleMatchScores in useSimulation.ts for the
 // model: home margin ~ N(MARGIN_SIGMA * invNorm(p), MARGIN_SIGMA), scores
-// split around a shared N(AVG_AFL_SCORE, MID_SIGMA) midpoint).
-const AVG_AFL_SCORE: f32 = 85.0;
-const MARGIN_SIGMA: f32 = 36.0;
-const MID_SIGMA: f32 = 15.0;
+// split around a shared N(AVG_AFL_SCORE, MID_SIGMA) midpoint.
+const AVG_AFL_SCORE: f32 = ${LEAGUE_CONFIG.sim.avgScore.toFixed(1)};
+const MARGIN_SIGMA: f32 = ${LEAGUE_CONFIG.sim.marginSigma.toFixed(1)};
+const MID_SIGMA: f32 = ${LEAGUE_CONFIG.sim.midSigma.toFixed(1)};
 // Must match DRAW_PROB in useSimulation.ts: same single-roll model (r below
 // DRAW_PROB draws, otherwise r rescaled to [0,1) decides the winner).
 const DRAW_PROB: f32 = 0.009;
 // winnerOfMatch sentinel for a drawn game; matches no team index.
 const NO_WINNER: u32 = 0xffffffffu;
-const MAX_TEAMS: u32 = 18u;
+const MAX_TEAMS: u32 = ${MAX_TEAMS}u;
 
 fn hash_u32(x: u32) -> u32 {
   var v = x;
@@ -89,9 +99,9 @@ fn inv_norm(p_in: f32) -> f32 {
     (((((-5.447609879822406e+01 * r + 1.615858368580409e+02) * r - 1.556989798598866e+02) * r + 6.680131188771972e+01) * r - 1.328068155288572e+01) * r + 1.0);
 }
 
-var<private> pts: array<f32, 18>;
-var<private> forf: array<f32, 18>;
-var<private> against: array<f32, 18>;
+var<private> pts: array<f32, ${MAX_TEAMS}>;
+var<private> forf: array<f32, ${MAX_TEAMS}>;
+var<private> against: array<f32, ${MAX_TEAMS}>;
 var<private> winnerOfMatch: array<u32, ${MAX_TRACKED_MATCHES}>;
 
 fn pct_of(t: u32) -> f32 {
@@ -156,7 +166,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     against[loser] = against[loser] + winnerScore;
   }
 
-  var order: array<u32, 18>;
+  var order: array<u32, ${MAX_TEAMS}>;
   for (var t: u32 = 0u; t < n; t = t + 1u) { order[t] = t; }
 
   for (var ii: u32 = 1u; ii < n; ii = ii + 1u) {

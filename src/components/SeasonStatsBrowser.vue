@@ -245,7 +245,10 @@ import { ref, reactive, computed, watch } from 'vue'
 import type { AflTeam } from '../types/afl'
 import { TEAMS } from '../composables/useAFLData'
 import { getActiveSeasonYear } from '../config/seasons'
+import { DATA_BASE, LEAGUE_CONFIG } from '../config/league'
 
+// BASE_URL (app root, e.g. icons.svg) is intentionally NOT league-prefixed —
+// only DATA_BASE (public/data/[aflw/]) is.
 const BASE_URL = import.meta.env.BASE_URL
 const SEASON = getActiveSeasonYear()
 
@@ -318,7 +321,7 @@ async function loadTeamStats(team: AflTeam) {
   teamPlayers.value = []
 
   try {
-    const url = `${BASE_URL}data/${SEASON}/team-stats/${team.teamProviderId}.json`
+    const url = `${DATA_BASE}${SEASON}/team-stats/${team.teamProviderId}.json`
     const res = await fetch(url, { cache: 'no-store' })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
@@ -433,7 +436,7 @@ const STAT_LABELS: Record<string, string> = {
   kickins: 'KI', kickinsPlayon: 'KIPO',
 }
 
-const HIDDEN_COLS_KEY = 'season-stats-hidden-columns'
+const HIDDEN_COLS_KEY = `season-stats-hidden-columns${LEAGUE_CONFIG.lsSuffix}`
 const hiddenColumns = ref<Set<string>>(
   new Set(JSON.parse(localStorage.getItem(HIDDEN_COLS_KEY) ?? '[]') as string[]),
 )

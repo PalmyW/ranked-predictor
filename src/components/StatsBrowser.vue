@@ -273,7 +273,10 @@ import { ref, reactive, computed, watch, onMounted } from 'vue'
 import type { AflMatch } from '../types/afl'
 import { TEAMS } from '../composables/useAFLData'
 import { getActiveSeasonYear } from '../config/seasons'
+import { DATA_BASE, LEAGUE_CONFIG } from '../config/league'
 
+// BASE_URL (app root, e.g. icons.svg) is intentionally NOT league-prefixed —
+// only DATA_BASE (public/data/[aflw/]) is.
 const BASE_URL = import.meta.env.BASE_URL
 const SEASON = getActiveSeasonYear()
 const teamIconMap = new Map(TEAMS.map((t) => [t.id, t.iconId]))
@@ -409,7 +412,7 @@ const COLUMN_CATEGORIES = [
   { label: 'Extended', keys: ['effectiveKicks', 'kickEfficiency', 'effectiveDisposals', 'disposalEfficiency', 'kickToHandballRatio', 'contestedPossessionRate', 'groundBallGets', 'f50GroundBallGets', 'pressureActs', 'defHalfPressureActs', 'scoreLaunches', 'spoils', 'interceptMarks', 'marksOnLead', 'hitoutsToAdvantage', 'hitoutToAdvantageRate', 'hitoutWinPercentage', 'ruckContests', 'centreBounceAttendances', 'contestDefOneOnOnes', 'contestDefLosses', 'contestDefLossPercentage', 'contestOffOneOnOnes', 'contestOffWins', 'contestOffWinsPercentage', 'kickins', 'kickinsPlayon'] },
 ]
 
-const HIDDEN_COLS_KEY = 'stats-hidden-columns'
+const HIDDEN_COLS_KEY = `stats-hidden-columns${LEAGUE_CONFIG.lsSuffix}`
 const hiddenColumns = ref<Set<string>>(
   new Set(JSON.parse(localStorage.getItem(HIDDEN_COLS_KEY) ?? '[]') as string[]),
 )
@@ -567,7 +570,7 @@ async function selectMatch(match: AflMatch) {
   sortDir.value = 'desc'
 
   try {
-    const url = `${BASE_URL}data/${SEASON}/stats/${match.providerId}.json`
+    const url = `${DATA_BASE}${SEASON}/stats/${match.providerId}.json`
     const res = await fetch(url, { cache: 'no-store' })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()

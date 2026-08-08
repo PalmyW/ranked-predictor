@@ -25,21 +25,24 @@
  *   node scripts/fetch-squad-players.js                    # every AFL Premiership season (2012–latest)
  *   node scripts/fetch-squad-players.js --season=2026       # a single season
  *   node scripts/fetch-squad-players.js --from=2020 --to=2026
+ *   node scripts/fetch-squad-players.js --league=aflw       # every registered AFLW season
  */
 
 import { execSync } from 'child_process'
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
+import { leagueFromArgv, dataDir, playersDir, loadSeasonRegistry, seasonKeyForCompSeason, compareSeasonKeys } from './lib/league.js'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
+const LEAGUE = leagueFromArgv()
 
 function arg(name) {
   const a = process.argv.find((x) => x.startsWith(`--${name}=`))
   return a ? a.split('=')[1] : undefined
 }
 
-const PLAYERS_DIR = join(ROOT, 'public/data/players')
+const PLAYERS_DIR = playersDir(ROOT, LEAGUE)
 mkdirSync(PLAYERS_DIR, { recursive: true })
 
 let TOKEN = process.env.AFL_STATS_TOKEN
@@ -63,38 +66,52 @@ function fetchJson(url) {
   return JSON.parse(body)
 }
 
-// --- Resolve which AFL Premiership seasons to process ---
+// --- Resolve which seasons to process ---
+// The season key is ALWAYS taken from our own registry (src/config/seasons.ts),
+// never from cs.season.year — that field is unreliable for some AFLW
+// compSeasons (Season 7's provider IDs fake year "2101"), and a naive year
+// comparison would also be unable to express AFLW 2022's two real seasons
+// ('2022a'/'2022b'). A compSeason the registry doesn't recognise yet is
+// skipped, not guessed at — same "add it to seasons.ts first" contract
+// fetch-historical-season.js already has for an unknown --year=.
 const compSeasons = fetchJson('https://aflapi.afl.com.au/afl/v2/compseasons?pageSize=200').compSeasons
-const premierships = compSeasons
-  .filter((cs) => cs.competition.providerId === 'CD_C014')
-  .sort((a, b) => a.season.year - b.season.year)
+const registry = loadSeasonRegistry(ROOT, LEAGUE)
+const leagueCompSeasons = compSeasons
+  .filter((cs) => cs.competition.providerId === LEAGUE.compProviderId)
+  .map((cs) => ({ cs, key: seasonKeyForCompSeason(cs.id, registry) }))
+  .filter((x) => x.key != null)
+  .sort((a, b) => compareSeasonKeys(a.key, b.key))
 
-const seasonArg = arg('season')
-const fromArg = Number(arg('from')) || premierships[0].season.year
-const toArg = Number(arg('to')) || premierships[premierships.length - 1].season.year
-
-const targetCompSeasons = seasonArg
-  ? premierships.filter((cs) => cs.season.year === Number(seasonArg))
-  : premierships.filter((cs) => cs.season.year >= fromArg && cs.season.year <= toArg)
-
-if (targetCompSeasons.length === 0) {
-  console.error('No matching AFL Premiership compSeason(s) found for the given range.')
+if (leagueCompSeasons.length === 0) {
+  console.error(`No ${LEAGUE.key} compSeason(s) matched src/config/seasons.ts's ${LEAGUE.registryConst}.`)
   process.exit(1)
 }
-console.log(`Processing ${targetCompSeasons.length} season(s): ${targetCompSeasons.map((cs) => cs.season.year).join(', ')}`)
 
-// --- Resolve the 18 AFL men's team ids (stable across seasons) ---
+const seasonArg = arg('season')
+const fromArg = arg('from') ?? leagueCompSeasons[0].key
+const toArg = arg('to') ?? leagueCompSeasons[leagueCompSeasons.length - 1].key
+
+const targets = seasonArg
+  ? leagueCompSeasons.filter((x) => x.key === seasonArg)
+  : leagueCompSeasons.filter((x) => compareSeasonKeys(x.key, fromArg) >= 0 && compareSeasonKeys(x.key, toArg) <= 0)
+
+if (targets.length === 0) {
+  console.error('No matching compSeason(s) found for the given range.')
+  process.exit(1)
+}
+console.log(`Processing ${targets.length} season(s): ${targets.map((x) => x.key).join(', ')}`)
+
+// --- Resolve the league's team ids (stable across seasons) ---
 const teams = fetchJson('https://aflapi.afl.com.au/afl/v2/teams?pageSize=50').teams.filter(
-  (t) => t.teamType === 'MEN',
+  (t) => t.teamType === LEAGUE.teamType,
 )
-console.log(`Found ${teams.length} AFL men's teams.\n`)
+console.log(`Found ${teams.length} ${LEAGUE.key} teams.\n`)
 
 // --- Pull every season × team squad, write squads.json, collect unique CD_I ids ---
 const allSquadPlayers = new Map() // playerId → { firstName, surname, teamName } (last-seen label, for logging only)
 
-for (const compSeason of targetCompSeasons) {
-  const year = compSeason.season.year
-  console.log(`[${year}] compSeason ${compSeason.id} (${compSeason.name})`)
+for (const { cs: compSeason, key } of targets) {
+  console.log(`[${key}] compSeason ${compSeason.id} (${compSeason.name})`)
 
   const seasonTeams = []
   for (const team of teams) {
@@ -123,7 +140,7 @@ for (const compSeason of targetCompSeasons) {
     }
   }
 
-  const outDir = join(ROOT, `public/data/${year}`)
+  const outDir = dataDir(ROOT, LEAGUE, key)
   mkdirSync(outDir, { recursive: true })
   writeFileSync(
     join(outDir, 'squads.json'),
@@ -180,7 +197,7 @@ if (newPlayers.length === 0) {
         if (status === 404) {
           ;({ status, body } = fetchPlayerProfile(
             pid,
-            `https://api.afl.com.au/statspro/playerProfile/${pid}?competitionCode=CD_C014`,
+            `https://api.afl.com.au/statspro/playerProfile/${pid}?competitionCode=${LEAGUE.compProviderId}`,
           ))
         }
         if (status === 200) {

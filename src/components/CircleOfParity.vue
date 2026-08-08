@@ -150,6 +150,7 @@ import { useAFLData, TEAMS } from '../composables/useAFLData'
 import { useDarkMode } from '../composables/useDarkMode'
 import HtmlTooltip from './HtmlTooltip.vue'
 import type { AflMatch } from '../types/afl'
+import { LEAGUE_CONFIG } from '../config/league'
 
 const { matches } = useAFLData()
 const { isDark } = useDarkMode()
@@ -163,7 +164,7 @@ const teamMap = Object.fromEntries(TEAMS.map(t => [t.id, t]))
 
 // --- Editable title ---
 
-const TITLE_KEY = 'afl-circle-parity-title'
+const TITLE_KEY = `afl-circle-parity-title${LEAGUE_CONFIG.lsSuffix}`
 const title = ref(localStorage.getItem(TITLE_KEY) ?? 'Circle of Parity')
 const isEditingTitle = ref(false)
 const titleInput = ref<HTMLInputElement>()
@@ -192,7 +193,7 @@ const SHAPES = [
 
 type ShapeId = typeof SHAPES[number]['id']
 
-const SHAPE_KEY = 'afl-circle-parity-shape'
+const SHAPE_KEY = `afl-circle-parity-shape${LEAGUE_CONFIG.lsSuffix}`
 const storedShape = localStorage.getItem(SHAPE_KEY)
 const shapeId = ref<ShapeId>(
   SHAPES.some(s => s.id === storedShape) ? (storedShape as ShapeId) : 'circle'

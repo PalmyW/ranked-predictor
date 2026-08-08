@@ -1160,10 +1160,10 @@
             :key="row.teamId"
             class="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
             :class="{
-              'border-b-2 border-orange-400': i === 5,
-              'border-b-2 border-blue-400': i === 9,
+              'border-b-2 border-orange-400': i === FINALS_BOUNDARY_INDEXES[0],
+              'border-b-2 border-blue-400': i === FINALS_BOUNDARY_INDEXES[1],
               'border-b border-gray-100 dark:border-gray-800':
-                i !== 5 && i !== 9,
+                !FINALS_BOUNDARY_INDEXES.includes(i),
             }"
             @click="
               selectedId === 'palmy'
@@ -1698,14 +1698,20 @@
     <div
       class="mt-3 flex flex-wrap items-center gap-4 text-xs text-gray-400 dark:text-gray-500"
     >
-      <span class="flex items-center gap-1.5">
+      <span v-if="LEAGUE === 'aflw'" class="flex items-center gap-1.5">
         <span class="inline-block w-4 border-b-2 border-orange-400"></span>
-        Top 6 (finals qualified)
+        Top 8 (finals qualified)
       </span>
-      <span class="flex items-center gap-1.5">
-        <span class="inline-block w-4 border-b-2 border-blue-400"></span>
-        Top 10 (wildcard)
-      </span>
+      <template v-else>
+        <span class="flex items-center gap-1.5">
+          <span class="inline-block w-4 border-b-2 border-orange-400"></span>
+          Top 6 (finals qualified)
+        </span>
+        <span class="flex items-center gap-1.5">
+          <span class="inline-block w-4 border-b-2 border-blue-400"></span>
+          Top 10 (wildcard)
+        </span>
+      </template>
       <span
         v-if="recentLimit"
         class="font-semibold text-blue-500 dark:text-blue-400"
@@ -1750,6 +1756,7 @@ import type {
 import type { AflMatch, AflTeam } from '../types/afl'
 import { titleToFilename } from '../composables/usePowerRankingsTitle'
 import { getActiveSeasonYear } from '../config/seasons'
+import { LEAGUE } from '../config/league'
 
 const BASE_URL = import.meta.env.BASE_URL
 
@@ -2245,7 +2252,13 @@ const showChampions = ref(false)
 const champions = ref<XPalmyChampion[]>([])
 const currentSeasonYear = getActiveSeasonYear()
 
+// Finals-boundary markers on the ladder table. AFL's 2026 format is a top-6
+// direct-qualify + 7-10 wildcard round; AFLW plays a straight top-8 with no
+// wildcard round, so it gets a single boundary line instead of two.
+const FINALS_BOUNDARY_INDEXES = LEAGUE === 'aflw' ? [7] : [5, 9]
+
 onMounted(async () => {
+  if (LEAGUE !== 'afl') return // xpalmy-champions.json is an AFL-only overlay
   try {
     const res = await fetch(`${BASE_URL}data/xpalmy-champions.json`, {
       cache: 'no-store',

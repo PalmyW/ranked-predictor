@@ -3,6 +3,7 @@ import type { Ref } from 'vue'
 import type { AflMatch } from '../types/afl'
 import { fetchSeasonMatches } from './useAFLData'
 import { buildStrengthRows, predictMatch, type TeamStrengthRow } from './useScorePredictor'
+import { previousSeasonKey } from '../config/seasons'
 
 export interface TipResult {
   matchId: number
@@ -63,9 +64,17 @@ export function useTipsBacktest(
   const prevMatches = ref<AflMatch[]>([])
   const loading = ref(true)
 
-  fetchSeasonMatches(String(Number(seasonYear) - 1))
-    .then((m) => { prevMatches.value = m })
-    .finally(() => { loading.value = false })
+  // Registry-order-based, not `Number(seasonYear) - 1` — that arithmetic NaNs
+  // on AFLW's '2022a'/'2022b' keys, and would be wrong generally if a
+  // league's own season list ever isn't consecutive years.
+  const prevKey = previousSeasonKey(seasonYear)
+  if (prevKey) {
+    fetchSeasonMatches(prevKey)
+      .then((m) => { prevMatches.value = m })
+      .finally(() => { loading.value = false })
+  } else {
+    loading.value = false
+  }
 
   // Per-team previous-season concluded matches, most-recent-first.
   const prevByTeam = computed<Map<number, AflMatch[]>>(() => {

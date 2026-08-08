@@ -1,10 +1,11 @@
 import { ref, readonly } from 'vue'
 import type { AflTeam, AflMatch, MatchStatus } from '../types/afl'
-import { getActiveSeasonYear, CURRENT_SEASON_YEAR } from '../config/seasons'
+import { getActiveSeasonYear, ACTIVE_CURRENT_SEASON_YEAR } from '../config/seasons'
+import { DATA_BASE, LEAGUE } from '../config/league'
 
 const SEASON = getActiveSeasonYear()
 
-export const TEAMS: AflTeam[] = [
+export const AFL_TEAMS: AflTeam[] = [
   { id: 1,  name: 'Adelaide Crows',    abbreviation: 'ADEL', letter: 'A', iconId: 'icn-aflc-adel', teamProviderId: 'CD_T10'   },
   { id: 2,  name: 'Brisbane Lions',    abbreviation: 'BL',   letter: 'B', iconId: 'icn-aflc-bl',   teamProviderId: 'CD_T20'   },
   { id: 5,  name: 'Carlton',           abbreviation: 'CARL', letter: 'C', iconId: 'icn-aflc-carl', teamProviderId: 'CD_T30'   },
@@ -25,6 +26,36 @@ export const TEAMS: AflTeam[] = [
   { id: 8,  name: 'Western Bulldogs',  abbreviation: 'WB',   letter: 'R', iconId: 'icn-aflc-wb',   teamProviderId: 'CD_T140'  },
 ]
 
+// The same 18 clubs as AFL_TEAMS (as of the 2022b/Season 7 expansion — see
+// src/config/seasons.ts's '2022a'/'2022b' note), with their own AFLW provider
+// IDs (from public/data/aflw/2025/fixture.json) and letters kept aligned with
+// AFL_TEAMS's alphabetical A-R assignment since it's the same club. Crest
+// icons are shared with AFL_TEAMS — icons.svg has no separate AFLW crest set,
+// only the 3 league-logo symbols (icn-aflw-logo*).
+export const AFLW_TEAMS: AflTeam[] = [
+  { id: 19,  name: 'Adelaide Crows',    abbreviation: 'ADEL', letter: 'A', iconId: 'icn-aflc-adel', teamProviderId: 'CD_T8098' },
+  { id: 21,  name: 'Brisbane Lions',    abbreviation: 'BL',   letter: 'B', iconId: 'icn-aflc-bl',   teamProviderId: 'CD_T7887' },
+  { id: 22,  name: 'Carlton',           abbreviation: 'CARL', letter: 'C', iconId: 'icn-aflc-carl', teamProviderId: 'CD_T8096' },
+  { id: 24,  name: 'Collingwood',       abbreviation: 'COLL', letter: 'D', iconId: 'icn-aflc-coll', teamProviderId: 'CD_T8097' },
+  { id: 118, name: 'Essendon',          abbreviation: 'ESS',  letter: 'E', iconId: 'icn-aflc-ess',  teamProviderId: 'CD_T9406' },
+  { id: 25,  name: 'Fremantle',         abbreviation: 'FRE',  letter: 'F', iconId: 'icn-aflc-fre',  teamProviderId: 'CD_T7886' },
+  { id: 26,  name: 'Geelong Cats',      abbreviation: 'GEEL', letter: 'G', iconId: 'icn-aflc-geel', teamProviderId: 'CD_T8467' },
+  { id: 33,  name: 'Gold Coast SUNS',   abbreviation: 'GCFC', letter: 'H', iconId: 'icn-aflc-gcs',  teamProviderId: 'CD_T8786' },
+  { id: 28,  name: 'GWS GIANTS',        abbreviation: 'GWS',  letter: 'I', iconId: 'icn-aflc-gws',  teamProviderId: 'CD_T7889' },
+  { id: 119, name: 'Hawthorn',          abbreviation: 'HAW',  letter: 'J', iconId: 'icn-aflc-haw',  teamProviderId: 'CD_T9407' },
+  { id: 29,  name: 'Melbourne',         abbreviation: 'MELB', letter: 'K', iconId: 'icn-aflc-melb', teamProviderId: 'CD_T7386' },
+  { id: 30,  name: 'North Melbourne',   abbreviation: 'NMFC', letter: 'L', iconId: 'icn-aflc-nmfc', teamProviderId: 'CD_T8466' },
+  { id: 120, name: 'Port Adelaide',     abbreviation: 'PORT', letter: 'M', iconId: 'icn-aflc-port', teamProviderId: 'CD_T9409' },
+  { id: 34,  name: 'Richmond',          abbreviation: 'RICH', letter: 'N', iconId: 'icn-aflc-rich', teamProviderId: 'CD_T8788' },
+  { id: 36,  name: 'St Kilda',          abbreviation: 'STK',  letter: 'O', iconId: 'icn-aflc-stk',  teamProviderId: 'CD_T8796' },
+  { id: 121, name: 'Sydney Swans',      abbreviation: 'SYD',  letter: 'P', iconId: 'icn-aflc-syd',  teamProviderId: 'CD_T9408' },
+  { id: 35,  name: 'West Coast Eagles', abbreviation: 'WCE',  letter: 'Q', iconId: 'icn-aflc-wce',  teamProviderId: 'CD_T8787' },
+  { id: 32,  name: 'Western Bulldogs',  abbreviation: 'WB',   letter: 'R', iconId: 'icn-aflc-wb',   teamProviderId: 'CD_T7387' },
+]
+
+/** The active league's 18 teams — every consumer imports this, not AFL_TEAMS/AFLW_TEAMS directly. */
+export const TEAMS: AflTeam[] = LEAGUE === 'aflw' ? AFLW_TEAMS : AFL_TEAMS
+
 // Defunct/historical clubs that appear only in scraped pre-2012 seasons. They are
 // kept OUT of TEAMS (so they never pollute the current-season ranker) but are
 // resolvable for display via teamById/ALL_TEAMS. No crest exists in the sprite, so
@@ -35,8 +66,12 @@ export const HISTORICAL_TEAMS: AflTeam[] = [
   { id: 9003, name: 'University',     abbreviation: 'UNI',  letter: '', iconId: '', teamProviderId: 'PW_T903' },
 ]
 
-/** TEAMS plus historical clubs — use for display lookups, not for the ranker. */
-export const ALL_TEAMS: AflTeam[] = [...TEAMS, ...HISTORICAL_TEAMS]
+/**
+ * TEAMS plus historical clubs — use for display lookups, not for the ranker.
+ * HISTORICAL_TEAMS are pre-2012 defunct AFL (men's) clubs, so they're only
+ * mixed in for the AFL league — AFLW's own history doesn't include them.
+ */
+export const ALL_TEAMS: AflTeam[] = LEAGUE === 'aflw' ? TEAMS : [...TEAMS, ...HISTORICAL_TEAMS]
 
 /** Resolve a team (current or historical) by its internal numeric id. */
 export function teamById(id: number): AflTeam | undefined {
@@ -114,7 +149,7 @@ export function parseMatch(raw: Record<string, unknown>): AflMatch | null {
 // One-shot loader for an arbitrary season's fixture — used to pull previous-season
 // matches as "form" for the tipping backtest. Returns [] if the season isn't on disk.
 export async function fetchSeasonMatches(year: string): Promise<AflMatch[]> {
-  const url = `${import.meta.env.BASE_URL}data/${year}/fixture.json`
+  const url = `${DATA_BASE}${year}/fixture.json`
   try {
     const res = await fetch(url, { cache: 'no-store' })
     if (!res.ok) return []
@@ -138,7 +173,7 @@ let pollingStarted = false
 const POLL_INTERVAL_MS = 15_000
 
 function fetchFixture(): Promise<void> {
-  const url = `${import.meta.env.BASE_URL}data/${SEASON}/fixture.json`
+  const url = `${DATA_BASE}${SEASON}/fixture.json`
   return fetch(url, { cache: 'no-store' })
     .then((res) => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -156,7 +191,7 @@ function fetchFixture(): Promise<void> {
 }
 
 function fetchTimestamp(): Promise<void> {
-  const tsUrl = `${import.meta.env.BASE_URL}data/${SEASON}/last-updated.json`
+  const tsUrl = `${DATA_BASE}${SEASON}/last-updated.json`
   return fetch(tsUrl, { cache: 'no-store' })
     .then((res) => (res.ok ? res.json() : null))
     .then((data: { updatedAt?: string } | null) => {
@@ -172,7 +207,7 @@ function fetchTimestamp(): Promise<void> {
 
 function startPolling() {
   if (pollingStarted) return
-  if (SEASON !== CURRENT_SEASON_YEAR) return
+  if (SEASON !== ACTIVE_CURRENT_SEASON_YEAR) return
   pollingStarted = true
   setInterval(fetchTimestamp, POLL_INTERVAL_MS)
 }

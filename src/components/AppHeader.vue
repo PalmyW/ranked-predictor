@@ -48,6 +48,20 @@
           <span v-if="isLoading">Loading fixture...</span>
           <span v-else-if="syncedAt && isCurrentSeason">Synced {{ timeAgo(syncedAt) }}</span>
         </div>
+        <div class="flex overflow-hidden rounded border border-gray-200 text-xs dark:border-gray-700">
+          <button
+            v-for="l in LEAGUE_OPTIONS"
+            :key="l"
+            @click="onLeagueChange(l)"
+            class="px-2 py-1 font-semibold transition-colors"
+            :class="
+              activeLeague === l
+                ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+            "
+            :title="`Switch to ${l.toUpperCase()}`"
+          >{{ l.toUpperCase() }}</button>
+        </div>
         <select
           v-if="availableSeasons.length > 1 && route.path !== '/'"
           :value="activeSeasonYear"
@@ -80,6 +94,8 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSeason } from '../composables/useSeason'
+import { useLeague } from '../composables/useLeague'
+import type { LeagueKey } from '../config/league'
 
 defineProps<{
   isLoading: boolean
@@ -96,6 +112,12 @@ const route = useRoute()
 const router = useRouter()
 
 const { seasons, activeSeasonYear, isCurrentSeason, switchSeason, currentSeasonYear } = useSeason()
+const { activeLeague, switchLeague } = useLeague()
+
+const LEAGUE_OPTIONS: LeagueKey[] = ['afl', 'aflw']
+function onLeagueChange(l: LeagueKey) {
+  if (l !== activeLeague.value) switchLeague(l)
+}
 
 // The deployed build only ships match-details/stats/team-stats for the current
 // season (scripts/prune-deploy-data.js strips them for every other season), so

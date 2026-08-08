@@ -31,18 +31,27 @@
  * for the next `npm run health-check` (or `npm run import-ratings`) run,
  * after `npm run fetch-stats` has refetched the file.
  *
+ * The rating-points and ratings-enrichment checks below are AFL-only: wheelo
+ * is a men's-AFL-specific third-party data source, and CFS may legitimately
+ * return null ratingPoints for every AFLW player rather than as a transient
+ * fetch glitch — so both are skipped entirely for --league=aflw (see the
+ * `LEAGUE.key === 'afl'` guards below).
+ *
  * Usage:
  *   npm run health-check                  # current season (from seasons.ts)
  *   npm run health-check -- --season=2025
  *   npm run health-check -- --dry-run      # report only, no writes/deletes/import
+ *   npm run health-check -- --league=aflw
  */
 
 import { execSync } from 'child_process'
 import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
+import { leagueFromArgv, dataDir, loadCurrentSeasonYear } from './lib/league.js'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
+const LEAGUE = leagueFromArgv()
 
 function arg(name) {
   const a = process.argv.find((x) => x.startsWith(`--${name}=`))
@@ -50,17 +59,15 @@ function arg(name) {
 }
 const DRY_RUN = process.argv.includes('--dry-run')
 
-const seasonsSource = readFileSync(join(ROOT, 'src/config/seasons.ts'), 'utf8')
-const currentYearMatch = seasonsSource.match(/CURRENT_SEASON_YEAR\s*=\s*'(\d+)'/)
-const SEASON = arg('season') ?? currentYearMatch?.[1] ?? '2026'
+const SEASON = arg('season') ?? loadCurrentSeasonYear(ROOT, LEAGUE) ?? '2026'
 
-const DATA_DIR = join(ROOT, `public/data/${SEASON}`)
+const DATA_DIR = dataDir(ROOT, LEAGUE, SEASON)
 const FIXTURE = join(DATA_DIR, 'fixture.json')
 const STATS_DIR = join(DATA_DIR, 'stats')
 const DETAILS_DIR = join(DATA_DIR, 'match-details')
 
 if (!existsSync(FIXTURE)) {
-  console.error(`No fixture.json for season ${SEASON} (${FIXTURE})`)
+  console.error(`No fixture.json for ${LEAGUE.key} season ${SEASON} (${FIXTURE})`)
   process.exit(1)
 }
 
@@ -69,7 +76,7 @@ const concluded = (fixture.matches ?? []).filter(
   (m) => (m.status === 'CONCLUDED' || m.status === 'POSTGAME') && m.providerId,
 )
 
-console.log(`[${SEASON}] health check: ${concluded.length} concluded match(es)\n`)
+console.log(`[${LEAGUE.key}/${SEASON}] health check: ${concluded.length} concluded match(es)\n`)
 
 let missingStatsFile = 0
 let missingDetailsFile = 0
@@ -100,7 +107,11 @@ for (const match of concluded) {
     }
 
     const corrupt = players === null
+    // AFL-only: CFS may legitimately return null ratingPoints for every AFLW
+    // player (not a transient fetch glitch), so this heuristic would delete
+    // every AFLW stats file on every run if applied there.
     const noRatingPoints =
+      LEAGUE.key === 'afl' &&
       !corrupt &&
       players.length > 0 &&
       players.every((p) => typeof p.playerStats?.stats?.ratingPoints !== 'number')
@@ -122,6 +133,8 @@ for (const match of concluded) {
     missingDetailsFile++
     continue
   }
+
+  if (LEAGUE.key !== 'afl') continue // wheelo ratings enrichment is AFL-only — see file header
 
   let details
   try {

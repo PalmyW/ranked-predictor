@@ -4,6 +4,7 @@ import { TEAMS } from './useAFLData'
 import { homeWinProbFromScore, type PalmyVariant } from '../utils/palmyWinProb'
 import { invNorm } from '../utils/normal'
 import { checkGpuSupport, createGpuSimContext, runGpuRangeBatch, destroyGpuSimContext, gpuMaxBatch } from './useGpuSimulation'
+import { LEAGUE_CONFIG } from '../config/league'
 
 export interface RangeEntry {
   teamId: number
@@ -45,18 +46,22 @@ interface SimulationOptions {
 // Each rank maps to a pseudo-Elo rating (rank 1 → 1550, rank 18 → 1250).
 // Home advantage is modelled as an additive +60 Elo points (~58.6% for equal teams).
 const ELO_TOP_RATING = 1550
-const ELO_SPREAD = 300      // total rating range across 18 teams
+const ELO_SPREAD = 300      // total rating range across TEAMS.length teams
 const ELO_HOME_ADV = 60     // additive home advantage in Elo points
 const ELO_DIVISOR = 400     // standard Elo scaling divisor
 
-const AVG_WIN_MARGIN = 32   // average AFL winning margin in points
-const AVG_AFL_SCORE  = 85   // average points per team per game
+// Scoring model constants — league-scoped (src/config/league.ts): AFL keeps
+// its long-established values, AFLW currently uses rough initial guesses
+// (shorter, lower-scoring games) pending recalibration against a full AFLW
+// backfill. See LEAGUE_CONFIG.sim's own TODO note.
+const AVG_WIN_MARGIN = LEAGUE_CONFIG.sim.avgWinMargin
+const AVG_AFL_SCORE  = LEAGUE_CONFIG.sim.avgScore
 // Fixed scores used only by the deterministic paths (predictedLadder's
 // non-random simulateMatches branch, buildPalmyLadder's no-prediction
 // fallback). Random simulations sample scores instead — see sampleMatchScores.
-const SIM_WIN_SCORE  = AVG_AFL_SCORE + Math.round(AVG_WIN_MARGIN / 2)  // 101
-const SIM_LOSS_SCORE = AVG_AFL_SCORE - Math.round(AVG_WIN_MARGIN / 2)  // 69
-const SIM_DRAW_SCORE = AVG_AFL_SCORE  // both teams score 85 in a drawn game
+const SIM_WIN_SCORE  = AVG_AFL_SCORE + Math.round(AVG_WIN_MARGIN / 2)
+const SIM_LOSS_SCORE = AVG_AFL_SCORE - Math.round(AVG_WIN_MARGIN / 2)
+const SIM_DRAW_SCORE = AVG_AFL_SCORE  // both teams score AVG_AFL_SCORE in a drawn game
 
 // Random-score model for the stochastic simulators. The home margin of each
 // simulated game is N(mu, MARGIN_SIGMA) with mu = MARGIN_SIGMA * invNorm(p),
@@ -65,8 +70,8 @@ const SIM_DRAW_SCORE = AVG_AFL_SCORE  // both teams score 85 in a drawn game
 // a game-level scoring midpoint of N(AVG_AFL_SCORE, MID_SIGMA), so per-team
 // scores still average out to AVG_AFL_SCORE across a run. Mirrored in the GPU
 // shader (useGpuSimulation.ts) — keep the two in sync.
-const MARGIN_SIGMA = 36   // SD of AFL game margins
-const MID_SIGMA = 15      // SD of the two teams' shared per-game scoring midpoint
+const MARGIN_SIGMA = LEAGUE_CONFIG.sim.marginSigma
+const MID_SIGMA = LEAGUE_CONFIG.sim.midSigma
 
 interface SimScores { winnerScore: number; loserScore: number }
 
@@ -98,8 +103,8 @@ export const DRAW_PROB = 0.009
 export const DRAW_RESULT = 0
 
 function homeWinProb(hRank: number, aRank: number): number {
-  const homeRating = ELO_TOP_RATING - (hRank - 1) * (ELO_SPREAD / 17) + ELO_HOME_ADV
-  const awayRating = ELO_TOP_RATING - (aRank - 1) * (ELO_SPREAD / 17)
+  const homeRating = ELO_TOP_RATING - (hRank - 1) * (ELO_SPREAD / (TEAMS.length - 1)) + ELO_HOME_ADV
+  const awayRating = ELO_TOP_RATING - (aRank - 1) * (ELO_SPREAD / (TEAMS.length - 1))
   const prob = 1 / (1 + Math.pow(10, (awayRating - homeRating) / ELO_DIVISOR))
   return Math.min(0.95, Math.max(0.05, prob))
 }
@@ -352,8 +357,8 @@ function createRangeAccumulator(matches: readonly AflMatch[]): RangeAccumulator 
   const counts: Record<number, number[]> = {}
   const winNextCounts: Record<number, number[]> = {}
   for (const team of TEAMS) {
-    counts[team.id] = new Array(18).fill(0)
-    winNextCounts[team.id] = new Array(18).fill(0)
+    counts[team.id] = new Array(TEAMS.length).fill(0)
+    winNextCounts[team.id] = new Array(TEAMS.length).fill(0)
   }
 
   // Each team's next game: the first upcoming (non-concluded) match they appear

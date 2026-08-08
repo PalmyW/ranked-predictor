@@ -8,6 +8,7 @@
     "build": "vue-tsc -b && vite build && node scripts/prune-deploy-data.js",
     "preview": "vite preview",
     "fetch-data": "curl -fsSL -H 'accept: */*' -H 'account: afl' -H 'origin: https://www.afl.com.au' -H 'referer: https://www.afl.com.au/' -H 'user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36' 'https://aflapi.afl.com.au/afl/v2/matches?pageSize=300&competitionId=1&compSeasonId=85' -o public/data/2026/fixture.json && echo 'Fixture data updated'",
+    "fetch-data:aflw": "mkdir -p public/data/aflw/2026 && curl -fsSL -H 'accept: */*' -H 'account: afl' -H 'origin: https://www.afl.com.au' -H 'referer: https://www.afl.com.au/' -H 'user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36' 'https://aflapi.afl.com.au/afl/v2/matches?pageSize=300&competitionId=3&compSeasonId=96' -o public/data/aflw/2026/fixture.json && echo 'AFLW fixture data updated'",
     "fetch-stats": "node scripts/fetch-stats.js",
     "fetch-squad-players": "node scripts/fetch-squad-players.js",
     "health-check": "node scripts/health-check.js",

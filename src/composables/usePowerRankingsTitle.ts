@@ -1,6 +1,7 @@
 import { ref } from 'vue'
+import { LEAGUE_CONFIG } from '../config/league'
 
-const LABELS_KEY = 'afl-power-rankings-labels-2026'
+const LABELS_KEY = `afl-power-rankings-labels-2026${LEAGUE_CONFIG.lsSuffix}`
 
 function readTitleFromStorage(): string {
   try {

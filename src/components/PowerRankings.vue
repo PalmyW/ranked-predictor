@@ -431,36 +431,41 @@ import {
 } from '../composables/usePowerRankingsTitle'
 import { useRanking } from '../composables/useRanking'
 import { getActiveSeasonYear } from '../config/seasons'
+import { LEAGUE_CONFIG } from '../config/league'
 
 const props = defineProps<{
   ranking: TeamRanking
   rankingHistory: Record<number, TeamRanking>
 }>()
 
-const LABELS_KEY = 'afl-power-rankings-labels-2026'
+const LABELS_KEY = `afl-power-rankings-labels-2026${LEAGUE_CONFIG.lsSuffix}`
 
 const teamMap = Object.fromEntries(TEAMS.map((t) => [t.id, t]))
 
 // --- Team brand colours (adjusted for dark background visibility) ---
-const TEAM_COLORS: Record<number, string> = {
-  1:  '#E6002D', // Adelaide Crows
-  2:  '#A52834', // Brisbane Lions
-  5:  '#1565C0', // Carlton
-  3:  '#C8C8C8', // Collingwood (black → light grey on dark bg)
-  12: '#FF4136', // Essendon
-  14: '#6A3688', // Fremantle
-  10: '#1E6EB5', // Geelong Cats
-  4:  '#FFB703', // Gold Coast SUNS
-  15: '#F15A22', // GWS GIANTS
-  9:  '#C8922A', // Hawthorn
-  17: '#CC0000', // Melbourne
-  6:  '#1E88E5', // North Melbourne
-  7:  '#00B2C8', // Port Adelaide
-  16: '#F4C430', // Richmond
-  11: '#D50000', // St Kilda
-  13: '#E53935', // Sydney Swans
-  18: '#EFAB00', // West Coast Eagles
-  8:  '#4469DE', // Western Bulldogs
+// Keyed by club abbreviation, not the numeric team id — AFL_TEAMS and
+// AFLW_TEAMS use different provider-derived ids for the same 18 clubs, but
+// share the same abbreviations, so one map serves both leagues.
+const TEAM_COLORS: Record<string, string> = {
+  ADEL: '#E6002D', // Adelaide Crows
+  BL:   '#A52834', // Brisbane Lions
+  CARL: '#1565C0', // Carlton
+  COLL: '#C8C8C8', // Collingwood (black → light grey on dark bg)
+  ESS:  '#FF4136', // Essendon
+  FRE:  '#6A3688', // Fremantle
+  GEEL: '#1E6EB5', // Geelong Cats
+  GCS:  '#FFB703', // Gold Coast SUNS (AFL abbreviation)
+  GCFC: '#FFB703', // Gold Coast SUNS (AFLW abbreviation)
+  GWS:  '#F15A22', // GWS GIANTS
+  HAW:  '#C8922A', // Hawthorn
+  MELB: '#CC0000', // Melbourne
+  NMFC: '#1E88E5', // North Melbourne
+  PORT: '#00B2C8', // Port Adelaide
+  RICH: '#F4C430', // Richmond
+  STK:  '#D50000', // St Kilda
+  SYD:  '#E53935', // Sydney Swans
+  WCE:  '#EFAB00', // West Coast Eagles
+  WB:   '#4469DE', // Western Bulldogs
 }
 
 // --- View toggle ---
@@ -767,7 +772,7 @@ const wormData = computed<WormTeam[]>(() => {
       if (posIdx === undefined || posIdx === -1) return
       points.push({ x: xScale(idx), y: yScale(posIdx + 1) })
     })
-    return { team, color: TEAM_COLORS[team.id] ?? '#888888', points }
+    return { team, color: TEAM_COLORS[team.abbreviation] ?? '#888888', points }
   }).filter((d) => d.points.length > 0)
 })
 

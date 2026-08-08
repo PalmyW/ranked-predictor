@@ -1,4 +1,10 @@
+import { LEAGUE } from './league'
+
 export interface SeasonConfig {
+  // Usually a 4-digit year, but AFLW 2022 had two seasons (Season 6 Jan-Apr,
+  // Season 7 Aug-Nov) — those are keyed '2022a'/'2022b' rather than
+  // colliding on one directory. Never derive this from a providerId or a
+  // compSeason name: Season 7's provider IDs fake year "2101".
   year: string
   compSeasonId: number
 }
@@ -272,7 +278,62 @@ export const SEASONS: SeasonConfig[] = [
 ]
 
 export function getActiveSeasonYear(): string {
-  if (typeof window === 'undefined') return CURRENT_SEASON_YEAR
+  if (typeof window === 'undefined') return ACTIVE_CURRENT_SEASON_YEAR
   const s = new URLSearchParams(window.location.search).get('season')
-  return s && SEASONS.some((x) => x.year === s) ? s : CURRENT_SEASON_YEAR
+  return s && ACTIVE_SEASONS.some((x) => x.year === s) ? s : ACTIVE_CURRENT_SEASON_YEAR
+}
+
+// ── AFLW ──────────────────────────────────────────────────────────────────
+// Node scripts (fetch-historical-season.js, health-check.js,
+// prune-deploy-data.js, scripts/lib/league.js) regex-scrape this file for
+// `export const <Name>` — kept anchored to that exact form (not just the bare
+// name) since "AFLW_SEASON_REGISTRY" contains "SEASON_REGISTRY" as a
+// substring and an unanchored scrape could pick up the wrong block.
+//
+// 2022 had two AFLW seasons (Season 6 Jan-Apr, Season 7 Aug-Nov) — kept as
+// separate '2022a'/'2022b' entries rather than merged, so round numbers and
+// the walk-forward form model don't blend two competitions together.
+export const AFLW_SEASON_REGISTRY: Record<string, number> = {
+  '2017': 13,
+  '2018': 16,
+  '2019': 19,
+  '2020': 22,
+  '2021': 32,
+  '2022a': 41,
+  '2022b': 51,
+  '2023': 61,
+  '2024': 72,
+  '2025': 84,
+  '2026': 96,
+}
+
+export const AFLW_CURRENT_SEASON_YEAR = '2026'
+
+export const AFLW_SEASONS: SeasonConfig[] = [
+  { year: '2017', compSeasonId: 13 },
+  { year: '2018', compSeasonId: 16 },
+  { year: '2019', compSeasonId: 19 },
+  { year: '2020', compSeasonId: 22 },
+  { year: '2021', compSeasonId: 32 },
+  { year: '2022a', compSeasonId: 41 },
+  { year: '2022b', compSeasonId: 51 },
+  { year: '2023', compSeasonId: 61 },
+  { year: '2024', compSeasonId: 72 },
+  { year: '2025', compSeasonId: 84 },
+  { year: '2026', compSeasonId: 96 },
+]
+
+// ── Active-league convenience exports ───────────────────────────────────────
+export const ACTIVE_SEASONS: SeasonConfig[] = LEAGUE === 'aflw' ? AFLW_SEASONS : SEASONS
+export const ACTIVE_CURRENT_SEASON_YEAR: string =
+  LEAGUE === 'aflw' ? AFLW_CURRENT_SEASON_YEAR : CURRENT_SEASON_YEAR
+
+// The season immediately before `year` in the active league's own ordered
+// season list — NOT `Number(year) - 1` (which NaNs on '2022a'/'2022b' and,
+// even for plain years, would be wrong if a league's calendar ever has a
+// gap). Returns null for the first season (no previous-season form to borrow).
+export function previousSeasonKey(year: string): string | null {
+  const idx = ACTIVE_SEASONS.findIndex((s) => s.year === year)
+  if (idx <= 0) return null
+  return ACTIVE_SEASONS[idx - 1].year
 }
