@@ -39,11 +39,22 @@ jobs:
             npx prettier --write 'public/data/2026/team-stats/*.json'
           fi
 
+      - name: Aggregate AFLW team season stats
+        run: node scripts/aggregate-team-stats.js --league=aflw
+
+      - name: Format AFLW team stats with prettier
+        run: |
+          shopt -s nullglob
+          files=(public/data/aflw/2026/team-stats/*.json)
+          if [ ${#files[@]} -gt 0 ]; then
+            npx prettier --write 'public/data/aflw/2026/team-stats/*.json'
+          fi
+
       - name: Commit to main
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/data/2026/team-stats/
+          git add public/data/2026/team-stats/ public/data/aflw/2026/team-stats/
           git diff --staged --quiet || git commit -m "chore: aggregate team season stats"
           git push
 

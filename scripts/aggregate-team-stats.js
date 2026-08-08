@@ -173,4 +173,4 @@ for (const [teamId, teamPlayers] of teams) {
   writeFileSync(join(OUTPUT_DIR, `${teamId}.json`), JSON.stringify(output, null, 2))
 }
 
-console.log(`Done. Wrote ${teams.size} team files to public/data/${season}/team-stats/`)
+console.log(`Done. Wrote ${teams.size} team files to ${OUTPUT_DIR}`)
