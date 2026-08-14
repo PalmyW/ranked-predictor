@@ -1,0 +1,170 @@
+{
+  "matchInfo" : {
+    "matchId" : "CD_M20190142403",
+    "matchStatus" : "Concluded",
+    "homeSquadId" : "CD_T70",
+    "homeSquadName" : "Geelong Cats",
+    "homeSquadNickname" : "Cats",
+    "homeSquadAbbr" : "GEEL",
+    "homeScore" : 51,
+    "awaySquadId" : "CD_T40",
+    "awaySquadName" : "Collingwood",
+    "awaySquadNickname" : "Magpies",
+    "awaySquadAbbr" : "COLL",
+    "awayScore" : 61,
+    "period" : 4,
+    "periodSecs" : 1575,
+    "periodComplete" : 4,
+    "venueId" : "CD_V40",
+    "venueName" : "MCG",
+    "venueCode" : "MCG",
+    "homeGoals" : 7,
+    "homeBehinds" : 9,
+    "awayGoals" : 9,
+    "awayBehinds" : 7
+  },
+  "reportName" : "matchTeamStats",
+  "aflScoreTypes" : {
+    "scoreTypes" : [ {
+      "squadId" : "CD_T40",
+      "leftBehind" : 2,
+      "leftBehindPost" : 0,
+      "rightBehind" : 1,
+      "rightBehindPost" : 1,
+      "touched" : 1,
+      "goal" : 9,
+      "rushed" : 2
+    }, {
+      "squadId" : "CD_T70",
+      "leftBehind" : 5,
+      "leftBehindPost" : 1,
+      "rightBehind" : 1,
+      "rightBehindPost" : 0,
+      "touched" : 1,
+      "goal" : 7,
+      "rushed" : 1
+    } ]
+  },
+  "scoreDetails" : {
+    "scoreDetails" : [ {
+      "squadId" : "CD_T70",
+      "biggestLead" : 0,
+      "biggestLeadPeriod" : 0,
+      "biggestLeadPeriodSecs" : 0,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 1298,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1513,
+      "lastScoreType" : "Behind",
+      "lastInLeadPeriod" : 1,
+      "lastInLeadPeriodSecs" : 214,
+      "timeInFrontSecs" : 0
+    }, {
+      "squadId" : "CD_T40",
+      "biggestLead" : 36,
+      "biggestLeadPeriod" : 2,
+      "biggestLeadPeriodSecs" : 1052,
+      "lastGoalPeriod" : 3,
+      "lastGoalPeriodSecs" : 1314,
+      "lastScorePeriod" : 3,
+      "lastScorePeriodSec" : 1314,
+      "lastScoreType" : "Goal",
+      "lastInLeadPeriod" : 4,
+      "lastInLeadPeriodSecs" : 1575,
+      "timeInFrontSecs" : 6797
+    } ]
+  },
+  "interchanges" : {
+    "interchanges" : [ {
+      "squadId" : "CD_T70",
+      "interchangesMade" : 68,
+      "interchangeLimit" : 90,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I281065",
+        "firstName" : "Mitch",
+        "surname" : "Duncan",
+        "timeOnBenchSecs" : 3994,
+        "interchangeReason" : "OUT",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I291357",
+        "firstName" : "Gary",
+        "surname" : "Rohan",
+        "timeOnBenchSecs" : 1289,
+        "interchangeReason" : "OUT",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I291526",
+        "firstName" : "Luke",
+        "surname" : "Dahlhaus",
+        "timeOnBenchSecs" : 397,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I999824",
+        "firstName" : "Quinton",
+        "surname" : "Narkle",
+        "timeOnBenchSecs" : 398,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    }, {
+      "squadId" : "CD_T40",
+      "interchangesMade" : 66,
+      "interchangeLimit" : 90,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I270861",
+        "firstName" : "Levi",
+        "surname" : "Greenwood",
+        "timeOnBenchSecs" : 3378,
+        "interchangeReason" : "OUT",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I994185",
+        "firstName" : "Jordan",
+        "surname" : "De Goey",
+        "timeOnBenchSecs" : 4588,
+        "interchangeReason" : "OUT",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I1000072",
+        "firstName" : "John",
+        "surname" : "Noble",
+        "timeOnBenchSecs" : 592,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I1002240",
+        "firstName" : "Jaidyn",
+        "surname" : "Stephenson",
+        "timeOnBenchSecs" : 247,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    } ]
+  },
+  "possession" : {
+    "periodInDisputePerc" : 19,
+    "last10InDisputePerc" : 30,
+    "matchInDisputePerc" : 19,
+    "squadPossessionList" : [ {
+      "squadId" : "CD_T70",
+      "periodPossessionPerc" : 38,
+      "last10PossessionPerc" : 37,
+      "matchPossessionPerc" : 39
+    }, {
+      "squadId" : "CD_T40",
+      "periodPossessionPerc" : 43,
+      "last10PossessionPerc" : 33,
+      "matchPossessionPerc" : 42
+    } ]
+  }
+}

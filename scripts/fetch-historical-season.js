@@ -3,7 +3,7 @@
  * Usage: node scripts/fetch-historical-season.js --year=2025 --compSeasonId=77
  *        node scripts/fetch-historical-season.js --league=aflw --year=2022a
  *
- * Creates public/data/[aflw/]{year}/ with fixture.json, stats/, and team-stats/.
+ * Creates public/data/[aflw/]{year}/ with fixture.json, stats/, match-team-stats/, and team-stats/.
  */
 
 import { execSync } from 'child_process'
@@ -39,6 +39,7 @@ console.log(`[${LEAGUE.key}] Season ${year} → compSeasonId=${compSeasonId}`)
 const DATA_DIR = dataDir(ROOT, LEAGUE, year)
 const FIXTURE = join(DATA_DIR, 'fixture.json')
 const STATS_DIR = join(DATA_DIR, 'stats')
+const MATCH_TEAM_STATS_DIR = join(DATA_DIR, 'match-team-stats')
 const TEAM_STATS_DIR = join(DATA_DIR, 'team-stats')
 
 mkdirSync(DATA_DIR, { recursive: true })
@@ -123,6 +124,51 @@ if (failed > 0) {
   process.exit(1)
 }
 console.log(`Stats: ${ok} fetched.`)
+
+// ─── Step 2b: Fetch match team stats ─────────────────────────────────────────
+
+mkdirSync(MATCH_TEAM_STATS_DIR, { recursive: true })
+
+const missingTeamStats = concluded.filter(
+  (m) => m.providerId && !existsSync(join(MATCH_TEAM_STATS_DIR, `${m.providerId}.json`)),
+)
+
+console.log(`\n${concluded.length} concluded matches, ${concluded.length - missingTeamStats.length} match team stats already fetched, ${missingTeamStats.length} to fetch.`)
+
+let okT = 0
+let failedT = 0
+
+for (const match of missingTeamStats) {
+  const id = match.providerId
+  const outFile = join(MATCH_TEAM_STATS_DIR, `${id}.json`)
+  const label = `${match.home?.team?.name ?? '?'} v ${match.away?.team?.name ?? '?'} (${id})`
+  process.stdout.write(`Fetching match team stats ${label}... `)
+  try {
+    execSync(
+      `curl -fsSL` +
+        ` -H 'accept: */*'` +
+        ` -H 'origin: https://www.afl.com.au'` +
+        ` -H 'referer: https://www.afl.com.au/'` +
+        ` -H 'user-agent: Mozilla/5.0 (compatible; ranked-predictor-ci/1.0)'` +
+        ` -H 'x-media-mis-token: ${TOKEN}'` +
+        ` 'https://api.afl.com.au/cfs/afl/coach/match/${id}/teamStats'` +
+        ` -o '${outFile}'`,
+      { stdio: ['ignore', 'ignore', 'pipe'] },
+    )
+    console.log('done')
+    okT++
+  } catch {
+    console.log('FAILED')
+    if (existsSync(outFile)) unlinkSync(outFile)
+    failedT++
+  }
+}
+
+if (failedT > 0) {
+  console.error(`\n${failedT} match team stats fetches failed. Fix and re-run — already-fetched files are skipped.`)
+  process.exit(1)
+}
+console.log(`Match team stats: ${okT} fetched.`)
 
 // ─── Step 3: Aggregate team stats ────────────────────────────────────────────
 

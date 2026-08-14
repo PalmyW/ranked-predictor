@@ -1,0 +1,170 @@
+{
+  "matchInfo" : {
+    "matchId" : "CD_M20140141807",
+    "matchStatus" : "Concluded",
+    "homeSquadId" : "CD_T20",
+    "homeSquadName" : "Brisbane Lions",
+    "homeSquadNickname" : "Lions",
+    "homeSquadAbbr" : "BL",
+    "homeScore" : 110,
+    "awaySquadId" : "CD_T1000",
+    "awaySquadName" : "Gold Coast SUNS",
+    "awaySquadNickname" : "SUNS",
+    "awaySquadAbbr" : "GCFC",
+    "awayScore" : 56,
+    "period" : 4,
+    "periodSecs" : 1694,
+    "periodComplete" : 4,
+    "venueId" : "CD_V20",
+    "venueName" : "Gabba",
+    "venueCode" : "G",
+    "homeGoals" : 16,
+    "homeBehinds" : 14,
+    "awayGoals" : 8,
+    "awayBehinds" : 8
+  },
+  "reportName" : "matchTeamStats",
+  "aflScoreTypes" : {
+    "scoreTypes" : [ {
+      "squadId" : "CD_T20",
+      "leftBehind" : 4,
+      "leftBehindPost" : 1,
+      "rightBehind" : 5,
+      "rightBehindPost" : 0,
+      "touched" : 0,
+      "goal" : 16,
+      "rushed" : 4
+    }, {
+      "squadId" : "CD_T1000",
+      "leftBehind" : 3,
+      "leftBehindPost" : 0,
+      "rightBehind" : 2,
+      "rightBehindPost" : 0,
+      "touched" : 1,
+      "goal" : 8,
+      "rushed" : 2
+    } ]
+  },
+  "scoreDetails" : {
+    "scoreDetails" : [ {
+      "squadId" : "CD_T20",
+      "biggestLead" : 62,
+      "biggestLeadPeriod" : 3,
+      "biggestLeadPeriodSecs" : 1777,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 1166,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1166,
+      "lastScoreType" : "Goal",
+      "lastInLeadPeriod" : 4,
+      "lastInLeadPeriodSecs" : 1694,
+      "timeInFrontSecs" : 7292
+    }, {
+      "squadId" : "CD_T1000",
+      "biggestLead" : 0,
+      "biggestLeadPeriod" : 0,
+      "biggestLeadPeriodSecs" : 0,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 1273,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1273,
+      "lastScoreType" : "Goal",
+      "lastInLeadPeriod" : 1,
+      "lastInLeadPeriodSecs" : 137,
+      "timeInFrontSecs" : 0
+    } ]
+  },
+  "interchanges" : {
+    "interchanges" : [ {
+      "squadId" : "CD_T20",
+      "interchangesMade" : 103,
+      "interchangeLimit" : 120,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I210013",
+        "firstName" : "Ashley",
+        "surname" : "McGrath",
+        "timeOnBenchSecs" : 76,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I281048",
+        "firstName" : "Ryan",
+        "surname" : "Harwood",
+        "timeOnBenchSecs" : 301,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I291548",
+        "firstName" : "Ryan",
+        "surname" : "Lester",
+        "timeOnBenchSecs" : 76,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I293603",
+        "firstName" : "Sam",
+        "surname" : "Mayes",
+        "timeOnBenchSecs" : 2174,
+        "interchangeReason" : "Sub Injured",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    }, {
+      "squadId" : "CD_T1000",
+      "interchangesMade" : 90,
+      "interchangeLimit" : 120,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I280711",
+        "firstName" : "Charlie",
+        "surname" : "Dixon",
+        "timeOnBenchSecs" : 5583,
+        "interchangeReason" : "Sub Tactical",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I280722",
+        "firstName" : "Zac",
+        "surname" : "Smith",
+        "timeOnBenchSecs" : 4508,
+        "interchangeReason" : "OUT",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I281025",
+        "firstName" : "Luke",
+        "surname" : "Russell",
+        "timeOnBenchSecs" : 41,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I290627",
+        "firstName" : "Dion",
+        "surname" : "Prestia",
+        "timeOnBenchSecs" : 385,
+        "interchangeReason" : "Injured",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    } ]
+  },
+  "possession" : {
+    "periodInDisputePerc" : 18,
+    "last10InDisputePerc" : 38,
+    "matchInDisputePerc" : 24,
+    "squadPossessionList" : [ {
+      "squadId" : "CD_T20",
+      "periodPossessionPerc" : 43,
+      "last10PossessionPerc" : 42,
+      "matchPossessionPerc" : 45
+    }, {
+      "squadId" : "CD_T1000",
+      "periodPossessionPerc" : 39,
+      "last10PossessionPerc" : 21,
+      "matchPossessionPerc" : 31
+    } ]
+  }
+}

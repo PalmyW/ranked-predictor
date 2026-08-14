@@ -1,0 +1,170 @@
+{
+  "matchInfo" : {
+    "matchId" : "CD_M20200140906",
+    "matchStatus" : "Concluded",
+    "homeSquadId" : "CD_T130",
+    "homeSquadName" : "St Kilda",
+    "homeSquadNickname" : "Saints",
+    "homeSquadAbbr" : "STK",
+    "homeScore" : 101,
+    "awaySquadId" : "CD_T160",
+    "awaySquadName" : "Sydney Swans",
+    "awaySquadNickname" : "Swans",
+    "awaySquadAbbr" : "SYD",
+    "awayScore" : 48,
+    "period" : 4,
+    "periodSecs" : 1697,
+    "periodComplete" : 4,
+    "venueId" : "CD_V20",
+    "venueName" : "Gabba",
+    "venueCode" : "G",
+    "homeGoals" : 15,
+    "homeBehinds" : 11,
+    "awayGoals" : 6,
+    "awayBehinds" : 12
+  },
+  "reportName" : "matchTeamStats",
+  "aflScoreTypes" : {
+    "scoreTypes" : [ {
+      "squadId" : "CD_T160",
+      "leftBehind" : 3,
+      "leftBehindPost" : 0,
+      "rightBehind" : 7,
+      "rightBehindPost" : 0,
+      "touched" : 0,
+      "goal" : 6,
+      "rushed" : 2
+    }, {
+      "squadId" : "CD_T130",
+      "leftBehind" : 4,
+      "leftBehindPost" : 0,
+      "rightBehind" : 5,
+      "rightBehindPost" : 1,
+      "touched" : 0,
+      "goal" : 15,
+      "rushed" : 1
+    } ]
+  },
+  "scoreDetails" : {
+    "scoreDetails" : [ {
+      "squadId" : "CD_T130",
+      "biggestLead" : 54,
+      "biggestLeadPeriod" : 4,
+      "biggestLeadPeriodSecs" : 1643,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 1074,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1643,
+      "lastScoreType" : "Behind",
+      "lastInLeadPeriod" : 4,
+      "lastInLeadPeriodSecs" : 1697,
+      "timeInFrontSecs" : 5966
+    }, {
+      "squadId" : "CD_T160",
+      "biggestLead" : 5,
+      "biggestLeadPeriod" : 1,
+      "biggestLeadPeriodSecs" : 964,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 695,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1681,
+      "lastScoreType" : "Behind",
+      "lastInLeadPeriod" : 1,
+      "lastInLeadPeriodSecs" : 1050,
+      "timeInFrontSecs" : 449
+    } ]
+  },
+  "interchanges" : {
+    "interchanges" : [ {
+      "squadId" : "CD_T130",
+      "interchangesMade" : 89,
+      "interchangeLimit" : 90,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I250267",
+        "firstName" : "Paddy",
+        "surname" : "Ryder",
+        "timeOnBenchSecs" : 727,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I260113",
+        "firstName" : "Jarryn",
+        "surname" : "Geary",
+        "timeOnBenchSecs" : 727,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I294596",
+        "firstName" : "Tim",
+        "surname" : "Membrey",
+        "timeOnBenchSecs" : 135,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I993480",
+        "firstName" : "Dougal",
+        "surname" : "Howard",
+        "timeOnBenchSecs" : 320,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    }, {
+      "squadId" : "CD_T160",
+      "interchangesMade" : 86,
+      "interchangeLimit" : 90,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I290188",
+        "firstName" : "Sam",
+        "surname" : "Reid",
+        "timeOnBenchSecs" : 391,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I290307",
+        "firstName" : "Dane",
+        "surname" : "Rampe",
+        "timeOnBenchSecs" : 316,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I290722",
+        "firstName" : "Sam",
+        "surname" : "Gray",
+        "timeOnBenchSecs" : 596,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I295342",
+        "firstName" : "Jake",
+        "surname" : "Lloyd",
+        "timeOnBenchSecs" : 700,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    } ]
+  },
+  "possession" : {
+    "periodInDisputePerc" : 21,
+    "last10InDisputePerc" : 40,
+    "matchInDisputePerc" : 22,
+    "squadPossessionList" : [ {
+      "squadId" : "CD_T130",
+      "periodPossessionPerc" : 45,
+      "last10PossessionPerc" : 32,
+      "matchPossessionPerc" : 38
+    }, {
+      "squadId" : "CD_T160",
+      "periodPossessionPerc" : 34,
+      "last10PossessionPerc" : 29,
+      "matchPossessionPerc" : 40
+    } ]
+  }
+}

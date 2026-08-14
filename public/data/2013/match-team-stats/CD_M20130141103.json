@@ -1,0 +1,170 @@
+{
+  "matchInfo" : {
+    "matchId" : "CD_M20130141103",
+    "matchStatus" : "Concluded",
+    "homeSquadId" : "CD_T10",
+    "homeSquadName" : "Adelaide Crows",
+    "homeSquadNickname" : "Crows",
+    "homeSquadAbbr" : "ADEL",
+    "homeScore" : 50,
+    "awaySquadId" : "CD_T160",
+    "awaySquadName" : "Sydney Swans",
+    "awaySquadNickname" : "Swans",
+    "awaySquadAbbr" : "SYD",
+    "awayScore" : 127,
+    "period" : 4,
+    "periodSecs" : 1576,
+    "periodComplete" : 4,
+    "venueId" : "CD_V10",
+    "venueName" : "AAMI Stadium",
+    "venueCode" : "AS",
+    "homeGoals" : 6,
+    "homeBehinds" : 14,
+    "awayGoals" : 19,
+    "awayBehinds" : 13
+  },
+  "reportName" : "matchTeamStats",
+  "aflScoreTypes" : {
+    "scoreTypes" : [ {
+      "squadId" : "CD_T10",
+      "leftBehind" : 6,
+      "leftBehindPost" : 0,
+      "rightBehind" : 5,
+      "rightBehindPost" : 2,
+      "touched" : 0,
+      "goal" : 6,
+      "rushed" : 1
+    }, {
+      "squadId" : "CD_T160",
+      "leftBehind" : 7,
+      "leftBehindPost" : 1,
+      "rightBehind" : 2,
+      "rightBehindPost" : 0,
+      "touched" : 1,
+      "goal" : 19,
+      "rushed" : 2
+    } ]
+  },
+  "scoreDetails" : {
+    "scoreDetails" : [ {
+      "squadId" : "CD_T10",
+      "biggestLead" : 2,
+      "biggestLeadPeriod" : 1,
+      "biggestLeadPeriodSecs" : 375,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 1247,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1560,
+      "lastScoreType" : "Behind",
+      "lastInLeadPeriod" : 1,
+      "lastInLeadPeriodSecs" : 467,
+      "timeInFrontSecs" : 209
+    }, {
+      "squadId" : "CD_T160",
+      "biggestLead" : 99,
+      "biggestLeadPeriod" : 4,
+      "biggestLeadPeriodSecs" : 364,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 364,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1083,
+      "lastScoreType" : "Behind",
+      "lastInLeadPeriod" : 4,
+      "lastInLeadPeriodSecs" : 1576,
+      "timeInFrontSecs" : 6305
+    } ]
+  },
+  "interchanges" : {
+    "interchanges" : [ {
+      "squadId" : "CD_T10",
+      "interchangesMade" : 0,
+      "interchangeLimit" : 0,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I261138",
+        "firstName" : "Jared",
+        "surname" : "Petrenko",
+        "timeOnBenchSecs" : 3364,
+        "interchangeReason" : "Substitute",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I270811",
+        "firstName" : "Sam",
+        "surname" : "Jacobs",
+        "timeOnBenchSecs" : 234,
+        "interchangeReason" : "Injured",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I270938",
+        "firstName" : "Tom",
+        "surname" : "Lynch",
+        "timeOnBenchSecs" : 62,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I294307",
+        "firstName" : "Brad",
+        "surname" : "Crouch",
+        "timeOnBenchSecs" : 67,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    }, {
+      "squadId" : "CD_T160",
+      "interchangesMade" : 0,
+      "interchangeLimit" : 0,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I230132",
+        "firstName" : "Nick",
+        "surname" : "Malceski",
+        "timeOnBenchSecs" : 37,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I240226",
+        "firstName" : "Kieren",
+        "surname" : "Jack",
+        "timeOnBenchSecs" : 161,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I280762",
+        "firstName" : "Shane",
+        "surname" : "Mumford",
+        "timeOnBenchSecs" : 1577,
+        "interchangeReason" : "Substitute",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I980073",
+        "firstName" : "Adam",
+        "surname" : "Goodes",
+        "timeOnBenchSecs" : 152,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    } ]
+  },
+  "possession" : {
+    "periodInDisputePerc" : 15,
+    "last10InDisputePerc" : 40,
+    "matchInDisputePerc" : 18,
+    "squadPossessionList" : [ {
+      "squadId" : "CD_T10",
+      "periodPossessionPerc" : 48,
+      "last10PossessionPerc" : 32,
+      "matchPossessionPerc" : 39
+    }, {
+      "squadId" : "CD_T160",
+      "periodPossessionPerc" : 37,
+      "last10PossessionPerc" : 28,
+      "matchPossessionPerc" : 43
+    } ]
+  }
+}

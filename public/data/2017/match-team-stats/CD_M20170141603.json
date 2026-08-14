@@ -1,0 +1,170 @@
+{
+  "matchInfo" : {
+    "matchId" : "CD_M20170141603",
+    "matchStatus" : "Concluded",
+    "homeSquadId" : "CD_T40",
+    "homeSquadName" : "Collingwood",
+    "homeSquadNickname" : "Magpies",
+    "homeSquadAbbr" : "COLL",
+    "homeScore" : 80,
+    "awaySquadId" : "CD_T50",
+    "awaySquadName" : "Essendon",
+    "awaySquadNickname" : "Bombers",
+    "awaySquadAbbr" : "ESS",
+    "awayScore" : 117,
+    "period" : 4,
+    "periodSecs" : 1739,
+    "periodComplete" : 4,
+    "venueId" : "CD_V40",
+    "venueName" : "MCG",
+    "venueCode" : "MCG",
+    "homeGoals" : 12,
+    "homeBehinds" : 8,
+    "awayGoals" : 18,
+    "awayBehinds" : 9
+  },
+  "reportName" : "matchTeamStats",
+  "aflScoreTypes" : {
+    "scoreTypes" : [ {
+      "squadId" : "CD_T40",
+      "leftBehind" : 3,
+      "leftBehindPost" : 0,
+      "rightBehind" : 3,
+      "rightBehindPost" : 0,
+      "touched" : 0,
+      "goal" : 12,
+      "rushed" : 2
+    }, {
+      "squadId" : "CD_T50",
+      "leftBehind" : 2,
+      "leftBehindPost" : 0,
+      "rightBehind" : 6,
+      "rightBehindPost" : 0,
+      "touched" : 0,
+      "goal" : 18,
+      "rushed" : 1
+    } ]
+  },
+  "scoreDetails" : {
+    "scoreDetails" : [ {
+      "squadId" : "CD_T40",
+      "biggestLead" : 13,
+      "biggestLeadPeriod" : 1,
+      "biggestLeadPeriodSecs" : 749,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 1234,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1234,
+      "lastScoreType" : "Goal",
+      "lastInLeadPeriod" : 1,
+      "lastInLeadPeriodSecs" : 1129,
+      "timeInFrontSecs" : 776
+    }, {
+      "squadId" : "CD_T50",
+      "biggestLead" : 43,
+      "biggestLeadPeriod" : 4,
+      "biggestLeadPeriodSecs" : 366,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 1429,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1429,
+      "lastScoreType" : "Goal",
+      "lastInLeadPeriod" : 4,
+      "lastInLeadPeriodSecs" : 1739,
+      "timeInFrontSecs" : 5936
+    } ]
+  },
+  "interchanges" : {
+    "interchanges" : [ {
+      "squadId" : "CD_T40",
+      "interchangesMade" : 90,
+      "interchangeLimit" : 90,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I250290",
+        "firstName" : "Travis",
+        "surname" : "Varcoe",
+        "timeOnBenchSecs" : 280,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I291790",
+        "firstName" : "Adam",
+        "surname" : "Treloar",
+        "timeOnBenchSecs" : 174,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I294650",
+        "firstName" : "Josh",
+        "surname" : "Smith",
+        "timeOnBenchSecs" : 360,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I998647",
+        "firstName" : "Mason",
+        "surname" : "Cox",
+        "timeOnBenchSecs" : 176,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    }, {
+      "squadId" : "CD_T50",
+      "interchangesMade" : 90,
+      "interchangeLimit" : 90,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I261320",
+        "firstName" : "Tom",
+        "surname" : "Bellchambers",
+        "timeOnBenchSecs" : 42,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I290629",
+        "firstName" : "Dyson",
+        "surname" : "Heppell",
+        "timeOnBenchSecs" : 102,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I296334",
+        "firstName" : "Orazio",
+        "surname" : "Fantasia",
+        "timeOnBenchSecs" : 657,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I297438",
+        "firstName" : "Martin",
+        "surname" : "Gleeson",
+        "timeOnBenchSecs" : 284,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    } ]
+  },
+  "possession" : {
+    "periodInDisputePerc" : 13,
+    "last10InDisputePerc" : 26,
+    "matchInDisputePerc" : 15,
+    "squadPossessionList" : [ {
+      "squadId" : "CD_T40",
+      "periodPossessionPerc" : 38,
+      "last10PossessionPerc" : 32,
+      "matchPossessionPerc" : 41
+    }, {
+      "squadId" : "CD_T50",
+      "periodPossessionPerc" : 49,
+      "last10PossessionPerc" : 42,
+      "matchPossessionPerc" : 44
+    } ]
+  }
+}

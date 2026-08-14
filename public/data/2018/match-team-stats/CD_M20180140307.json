@@ -1,0 +1,170 @@
+{
+  "matchInfo" : {
+    "matchId" : "CD_M20180140307",
+    "matchStatus" : "Concluded",
+    "homeSquadId" : "CD_T120",
+    "homeSquadName" : "Richmond",
+    "homeSquadNickname" : "Tigers",
+    "homeSquadAbbr" : "RICH",
+    "homeScore" : 102,
+    "awaySquadId" : "CD_T80",
+    "awaySquadName" : "Hawthorn",
+    "awaySquadNickname" : "Hawks",
+    "awaySquadAbbr" : "HAW",
+    "awayScore" : 89,
+    "period" : 4,
+    "periodSecs" : 1855,
+    "periodComplete" : 4,
+    "venueId" : "CD_V40",
+    "venueName" : "MCG",
+    "venueCode" : "MCG",
+    "homeGoals" : 15,
+    "homeBehinds" : 12,
+    "awayGoals" : 13,
+    "awayBehinds" : 11
+  },
+  "reportName" : "matchTeamStats",
+  "aflScoreTypes" : {
+    "scoreTypes" : [ {
+      "squadId" : "CD_T120",
+      "leftBehind" : 2,
+      "leftBehindPost" : 1,
+      "rightBehind" : 4,
+      "rightBehindPost" : 0,
+      "touched" : 0,
+      "goal" : 15,
+      "rushed" : 5
+    }, {
+      "squadId" : "CD_T80",
+      "leftBehind" : 5,
+      "leftBehindPost" : 0,
+      "rightBehind" : 4,
+      "rightBehindPost" : 0,
+      "touched" : 0,
+      "goal" : 13,
+      "rushed" : 2
+    } ]
+  },
+  "scoreDetails" : {
+    "scoreDetails" : [ {
+      "squadId" : "CD_T120",
+      "biggestLead" : 39,
+      "biggestLeadPeriod" : 4,
+      "biggestLeadPeriodSecs" : 87,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 1134,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1353,
+      "lastScoreType" : "Behind",
+      "lastInLeadPeriod" : 4,
+      "lastInLeadPeriodSecs" : 1855,
+      "timeInFrontSecs" : 6910
+    }, {
+      "squadId" : "CD_T80",
+      "biggestLead" : 1,
+      "biggestLeadPeriod" : 1,
+      "biggestLeadPeriodSecs" : 110,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 1650,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1794,
+      "lastScoreType" : "Behind",
+      "lastInLeadPeriod" : 1,
+      "lastInLeadPeriodSecs" : 769,
+      "timeInFrontSecs" : 320
+    } ]
+  },
+  "interchanges" : {
+    "interchanges" : [ {
+      "squadId" : "CD_T120",
+      "interchangesMade" : 87,
+      "interchangeLimit" : 90,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I290032",
+        "firstName" : "Kane",
+        "surname" : "Lambert",
+        "timeOnBenchSecs" : 211,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I290073",
+        "firstName" : "Sam",
+        "surname" : "Lloyd",
+        "timeOnBenchSecs" : 55,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I990827",
+        "firstName" : "Jack",
+        "surname" : "Graham",
+        "timeOnBenchSecs" : 139,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I992049",
+        "firstName" : "Jayden",
+        "surname" : "Short",
+        "timeOnBenchSecs" : 112,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    }, {
+      "squadId" : "CD_T80",
+      "interchangesMade" : 87,
+      "interchangeLimit" : 90,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I280737",
+        "firstName" : "Liam",
+        "surname" : "Shiels",
+        "timeOnBenchSecs" : 702,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I290683",
+        "firstName" : "Will",
+        "surname" : "Langford",
+        "timeOnBenchSecs" : 753,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I992128",
+        "firstName" : "Ryan",
+        "surname" : "Burton",
+        "timeOnBenchSecs" : 390,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I1000963",
+        "firstName" : "Harry",
+        "surname" : "Morrison",
+        "timeOnBenchSecs" : 943,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    } ]
+  },
+  "possession" : {
+    "periodInDisputePerc" : 12,
+    "last10InDisputePerc" : 29,
+    "matchInDisputePerc" : 18,
+    "squadPossessionList" : [ {
+      "squadId" : "CD_T120",
+      "periodPossessionPerc" : 39,
+      "last10PossessionPerc" : 28,
+      "matchPossessionPerc" : 43
+    }, {
+      "squadId" : "CD_T80",
+      "periodPossessionPerc" : 49,
+      "last10PossessionPerc" : 44,
+      "matchPossessionPerc" : 39
+    } ]
+  }
+}

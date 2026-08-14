@@ -1,0 +1,170 @@
+{
+  "matchInfo" : {
+    "matchId" : "CD_M20190141703",
+    "matchStatus" : "Concluded",
+    "homeSquadId" : "CD_T80",
+    "homeSquadName" : "Hawthorn",
+    "homeSquadNickname" : "Hawks",
+    "homeSquadAbbr" : "HAW",
+    "homeScore" : 84,
+    "awaySquadId" : "CD_T60",
+    "awaySquadName" : "Fremantle",
+    "awaySquadNickname" : "Dockers",
+    "awaySquadAbbr" : "FRE",
+    "awayScore" : 53,
+    "period" : 4,
+    "periodSecs" : 1739,
+    "periodComplete" : 4,
+    "venueId" : "CD_V200",
+    "venueName" : "University of Tasmania Stadium",
+    "venueCode" : "UTAS",
+    "homeGoals" : 12,
+    "homeBehinds" : 12,
+    "awayGoals" : 8,
+    "awayBehinds" : 5
+  },
+  "reportName" : "matchTeamStats",
+  "aflScoreTypes" : {
+    "scoreTypes" : [ {
+      "squadId" : "CD_T80",
+      "leftBehind" : 2,
+      "leftBehindPost" : 0,
+      "rightBehind" : 4,
+      "rightBehindPost" : 1,
+      "touched" : 1,
+      "goal" : 12,
+      "rushed" : 4
+    }, {
+      "squadId" : "CD_T60",
+      "leftBehind" : 1,
+      "leftBehindPost" : 1,
+      "rightBehind" : 3,
+      "rightBehindPost" : 0,
+      "touched" : 0,
+      "goal" : 8,
+      "rushed" : 0
+    } ]
+  },
+  "scoreDetails" : {
+    "scoreDetails" : [ {
+      "squadId" : "CD_T80",
+      "biggestLead" : 31,
+      "biggestLeadPeriod" : 4,
+      "biggestLeadPeriodSecs" : 1369,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 1606,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1606,
+      "lastScoreType" : "Goal",
+      "lastInLeadPeriod" : 4,
+      "lastInLeadPeriodSecs" : 1739,
+      "timeInFrontSecs" : 6351
+    }, {
+      "squadId" : "CD_T60",
+      "biggestLead" : 1,
+      "biggestLeadPeriod" : 1,
+      "biggestLeadPeriodSecs" : 724,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 1514,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1514,
+      "lastScoreType" : "Goal",
+      "lastInLeadPeriod" : 1,
+      "lastInLeadPeriodSecs" : 1035,
+      "timeInFrontSecs" : 311
+    } ]
+  },
+  "interchanges" : {
+    "interchanges" : [ {
+      "squadId" : "CD_T80",
+      "interchangesMade" : 88,
+      "interchangeLimit" : 90,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I210012",
+        "firstName" : "Shaun",
+        "surname" : "Burgoyne",
+        "timeOnBenchSecs" : 396,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I240302",
+        "firstName" : "Grant",
+        "surname" : "Birchall",
+        "timeOnBenchSecs" : 372,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I261323",
+        "firstName" : "Ben",
+        "surname" : "McEvoy",
+        "timeOnBenchSecs" : 275,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I291962",
+        "firstName" : "Chad",
+        "surname" : "Wingard",
+        "timeOnBenchSecs" : 388,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    }, {
+      "squadId" : "CD_T60",
+      "interchangesMade" : 86,
+      "interchangeLimit" : 90,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I280336",
+        "firstName" : "Stephen",
+        "surname" : "Hill",
+        "timeOnBenchSecs" : 652,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I290817",
+        "firstName" : "Brandon",
+        "surname" : "Matera",
+        "timeOnBenchSecs" : 390,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I291570",
+        "firstName" : "Nat",
+        "surname" : "Fyfe",
+        "timeOnBenchSecs" : 409,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I298264",
+        "firstName" : "Ed",
+        "surname" : "Langdon",
+        "timeOnBenchSecs" : 385,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    } ]
+  },
+  "possession" : {
+    "periodInDisputePerc" : 14,
+    "last10InDisputePerc" : 53,
+    "matchInDisputePerc" : 19,
+    "squadPossessionList" : [ {
+      "squadId" : "CD_T80",
+      "periodPossessionPerc" : 52,
+      "last10PossessionPerc" : 29,
+      "matchPossessionPerc" : 43
+    }, {
+      "squadId" : "CD_T60",
+      "periodPossessionPerc" : 34,
+      "last10PossessionPerc" : 18,
+      "matchPossessionPerc" : 38
+    } ]
+  }
+}

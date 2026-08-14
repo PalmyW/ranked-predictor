@@ -1,0 +1,170 @@
+{
+  "matchInfo" : {
+    "matchId" : "CD_M20200140203",
+    "matchStatus" : "Concluded",
+    "homeSquadId" : "CD_T20",
+    "homeSquadName" : "Brisbane Lions",
+    "homeSquadNickname" : "Lions",
+    "homeSquadAbbr" : "BL",
+    "homeScore" : 81,
+    "awaySquadId" : "CD_T60",
+    "awaySquadName" : "Fremantle",
+    "awaySquadNickname" : "Dockers",
+    "awaySquadAbbr" : "FRE",
+    "awayScore" : 69,
+    "period" : 4,
+    "periodSecs" : 1479,
+    "periodComplete" : 4,
+    "venueId" : "CD_V20",
+    "venueName" : "Gabba",
+    "venueCode" : "G",
+    "homeGoals" : 12,
+    "homeBehinds" : 9,
+    "awayGoals" : 10,
+    "awayBehinds" : 9
+  },
+  "reportName" : "matchTeamStats",
+  "aflScoreTypes" : {
+    "scoreTypes" : [ {
+      "squadId" : "CD_T20",
+      "leftBehind" : 3,
+      "leftBehindPost" : 0,
+      "rightBehind" : 3,
+      "rightBehindPost" : 1,
+      "touched" : 0,
+      "goal" : 12,
+      "rushed" : 2
+    }, {
+      "squadId" : "CD_T60",
+      "leftBehind" : 1,
+      "leftBehindPost" : 1,
+      "rightBehind" : 3,
+      "rightBehindPost" : 0,
+      "touched" : 1,
+      "goal" : 10,
+      "rushed" : 3
+    } ]
+  },
+  "scoreDetails" : {
+    "scoreDetails" : [ {
+      "squadId" : "CD_T20",
+      "biggestLead" : 25,
+      "biggestLeadPeriod" : 3,
+      "biggestLeadPeriodSecs" : 987,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 1400,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1400,
+      "lastScoreType" : "Goal",
+      "lastInLeadPeriod" : 4,
+      "lastInLeadPeriodSecs" : 1479,
+      "timeInFrontSecs" : 6447
+    }, {
+      "squadId" : "CD_T60",
+      "biggestLead" : 0,
+      "biggestLeadPeriod" : 0,
+      "biggestLeadPeriodSecs" : 0,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 1037,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1037,
+      "lastScoreType" : "Goal",
+      "lastInLeadPeriod" : 2,
+      "lastInLeadPeriodSecs" : 1197,
+      "timeInFrontSecs" : 0
+    } ]
+  },
+  "interchanges" : {
+    "interchanges" : [ {
+      "squadId" : "CD_T20",
+      "interchangesMade" : 76,
+      "interchangeLimit" : 90,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I280763",
+        "firstName" : "Stefan",
+        "surname" : "Martin",
+        "timeOnBenchSecs" : 535,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I298437",
+        "firstName" : "Callum",
+        "surname" : "Ah Chee",
+        "timeOnBenchSecs" : 431,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I993953",
+        "firstName" : "Eric",
+        "surname" : "Hipwood",
+        "timeOnBenchSecs" : 438,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I1002235",
+        "firstName" : "Cam",
+        "surname" : "Rayner",
+        "timeOnBenchSecs" : 470,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    }, {
+      "squadId" : "CD_T60",
+      "interchangesMade" : 74,
+      "interchangeLimit" : 90,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I290817",
+        "firstName" : "Brandon",
+        "surname" : "Matera",
+        "timeOnBenchSecs" : 233,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I998115",
+        "firstName" : "Taylin",
+        "surname" : "Duman",
+        "timeOnBenchSecs" : 441,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I998145",
+        "firstName" : "Sean",
+        "surname" : "Darcy",
+        "timeOnBenchSecs" : 2716,
+        "interchangeReason" : "OUT",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I1002239",
+        "firstName" : "Adam",
+        "surname" : "Cerra",
+        "timeOnBenchSecs" : 224,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    } ]
+  },
+  "possession" : {
+    "periodInDisputePerc" : 18,
+    "last10InDisputePerc" : 48,
+    "matchInDisputePerc" : 18,
+    "squadPossessionList" : [ {
+      "squadId" : "CD_T20",
+      "periodPossessionPerc" : 51,
+      "last10PossessionPerc" : 39,
+      "matchPossessionPerc" : 41
+    }, {
+      "squadId" : "CD_T60",
+      "periodPossessionPerc" : 31,
+      "last10PossessionPerc" : 13,
+      "matchPossessionPerc" : 41
+    } ]
+  }
+}

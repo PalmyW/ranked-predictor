@@ -1,0 +1,170 @@
+{
+  "matchInfo" : {
+    "matchId" : "CD_M20180142104",
+    "matchStatus" : "Concluded",
+    "homeSquadId" : "CD_T110",
+    "homeSquadName" : "Port Adelaide",
+    "homeSquadNickname" : "Power",
+    "homeSquadAbbr" : "PORT",
+    "homeScore" : 58,
+    "awaySquadId" : "CD_T150",
+    "awaySquadName" : "West Coast Eagles",
+    "awaySquadNickname" : "Eagles",
+    "awaySquadAbbr" : "WCE",
+    "awayScore" : 62,
+    "period" : 4,
+    "periodSecs" : 1596,
+    "periodComplete" : 4,
+    "venueId" : "CD_V6",
+    "venueName" : "Adelaide Oval",
+    "venueCode" : "AO",
+    "homeGoals" : 9,
+    "homeBehinds" : 4,
+    "awayGoals" : 9,
+    "awayBehinds" : 8
+  },
+  "reportName" : "matchTeamStats",
+  "aflScoreTypes" : {
+    "scoreTypes" : [ {
+      "squadId" : "CD_T110",
+      "leftBehind" : 3,
+      "leftBehindPost" : 0,
+      "rightBehind" : 1,
+      "rightBehindPost" : 0,
+      "touched" : 0,
+      "goal" : 9,
+      "rushed" : 0
+    }, {
+      "squadId" : "CD_T150",
+      "leftBehind" : 1,
+      "leftBehindPost" : 0,
+      "rightBehind" : 3,
+      "rightBehindPost" : 2,
+      "touched" : 0,
+      "goal" : 9,
+      "rushed" : 2
+    } ]
+  },
+  "scoreDetails" : {
+    "scoreDetails" : [ {
+      "squadId" : "CD_T110",
+      "biggestLead" : 28,
+      "biggestLeadPeriod" : 3,
+      "biggestLeadPeriodSecs" : 566,
+      "lastGoalPeriod" : 3,
+      "lastGoalPeriodSecs" : 566,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1360,
+      "lastScoreType" : "Behind",
+      "lastInLeadPeriod" : 4,
+      "lastInLeadPeriodSecs" : 1592,
+      "timeInFrontSecs" : 7018
+    }, {
+      "squadId" : "CD_T150",
+      "biggestLead" : 4,
+      "biggestLeadPeriod" : 4,
+      "biggestLeadPeriodSecs" : 1592,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 1592,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1592,
+      "lastScoreType" : "Goal",
+      "lastInLeadPeriod" : 4,
+      "lastInLeadPeriodSecs" : 1596,
+      "timeInFrontSecs" : 4
+    } ]
+  },
+  "interchanges" : {
+    "interchanges" : [ {
+      "squadId" : "CD_T110",
+      "interchangesMade" : 63,
+      "interchangeLimit" : 90,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I250267",
+        "firstName" : "Paddy",
+        "surname" : "Ryder",
+        "timeOnBenchSecs" : 2780,
+        "interchangeReason" : "OUT",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I280711",
+        "firstName" : "Charlie",
+        "surname" : "Dixon",
+        "timeOnBenchSecs" : 1931,
+        "interchangeReason" : "OUT",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I290722",
+        "firstName" : "Sam",
+        "surname" : "Gray",
+        "timeOnBenchSecs" : 408,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I994295",
+        "firstName" : "Dan",
+        "surname" : "Houston",
+        "timeOnBenchSecs" : 2022,
+        "interchangeReason" : "OUT",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    }, {
+      "squadId" : "CD_T150",
+      "interchangesMade" : 81,
+      "interchangeLimit" : 90,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I291947",
+        "firstName" : "Brendon",
+        "surname" : "Ah Chee",
+        "timeOnBenchSecs" : 462,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I296296",
+        "firstName" : "Dom",
+        "surname" : "Sheed",
+        "timeOnBenchSecs" : 247,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I993820",
+        "firstName" : "Tom",
+        "surname" : "Cole",
+        "timeOnBenchSecs" : 254,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I998414",
+        "firstName" : "Daniel",
+        "surname" : "Venables",
+        "timeOnBenchSecs" : 326,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    } ]
+  },
+  "possession" : {
+    "periodInDisputePerc" : 16,
+    "last10InDisputePerc" : 24,
+    "matchInDisputePerc" : 18,
+    "squadPossessionList" : [ {
+      "squadId" : "CD_T110",
+      "periodPossessionPerc" : 39,
+      "last10PossessionPerc" : 35,
+      "matchPossessionPerc" : 44
+    }, {
+      "squadId" : "CD_T150",
+      "periodPossessionPerc" : 45,
+      "last10PossessionPerc" : 42,
+      "matchPossessionPerc" : 38
+    } ]
+  }
+}

@@ -1,0 +1,186 @@
+{
+  "matchInfo" : {
+    "matchId" : "CD_M20230141009",
+    "matchStatus" : "Concluded",
+    "homeSquadId" : "CD_T1010",
+    "homeSquadName" : "GWS GIANTS",
+    "homeSquadNickname" : "GIANTS",
+    "homeSquadAbbr" : "GWS",
+    "homeScore" : 80,
+    "awaySquadId" : "CD_T130",
+    "awaySquadName" : "St Kilda",
+    "awaySquadNickname" : "Saints",
+    "awaySquadAbbr" : "STK",
+    "awayScore" : 92,
+    "period" : 4,
+    "periodSecs" : 1730,
+    "periodComplete" : 4,
+    "venueId" : "CD_V43",
+    "venueName" : "GIANTS Stadium",
+    "venueCode" : "GS",
+    "homeGoals" : 12,
+    "homeBehinds" : 8,
+    "awayGoals" : 13,
+    "awayBehinds" : 14
+  },
+  "reportName" : "matchTeamStats",
+  "aflScoreTypes" : {
+    "scoreTypes" : [ {
+      "squadId" : "CD_T130",
+      "leftBehind" : 5,
+      "leftBehindPost" : 1,
+      "rightBehind" : 2,
+      "rightBehindPost" : 0,
+      "touched" : 0,
+      "goal" : 13,
+      "rushed" : 6
+    }, {
+      "squadId" : "CD_T1010",
+      "leftBehind" : 4,
+      "leftBehindPost" : 0,
+      "rightBehind" : 2,
+      "rightBehindPost" : 0,
+      "touched" : 0,
+      "goal" : 12,
+      "rushed" : 2
+    } ]
+  },
+  "scoreDetails" : {
+    "scoreDetails" : [ {
+      "squadId" : "CD_T1010",
+      "biggestLead" : 13,
+      "biggestLeadPeriod" : 1,
+      "biggestLeadPeriodSecs" : 667,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 115,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1228,
+      "lastScoreType" : "Behind",
+      "lastInLeadPeriod" : 4,
+      "lastInLeadPeriodSecs" : 239,
+      "timeInFrontSecs" : 2158
+    }, {
+      "squadId" : "CD_T130",
+      "biggestLead" : 12,
+      "biggestLeadPeriod" : 4,
+      "biggestLeadPeriodSecs" : 1723,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 365,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1723,
+      "lastScoreType" : "Behind",
+      "lastInLeadPeriod" : 4,
+      "lastInLeadPeriodSecs" : 1730,
+      "timeInFrontSecs" : 4363
+    } ]
+  },
+  "interchanges" : {
+    "interchanges" : [ {
+      "squadId" : "CD_T1010",
+      "interchangesMade" : 64,
+      "interchangeLimit" : 75,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I295265",
+        "firstName" : "Nick",
+        "surname" : "Haynes",
+        "timeOnBenchSecs" : 5254,
+        "interchangeReason" : "Sub Injured",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I993107",
+        "firstName" : "Harry",
+        "surname" : "Himmelberg",
+        "timeOnBenchSecs" : 4574,
+        "interchangeReason" : "OUT",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I1008123",
+        "firstName" : "Jake",
+        "surname" : "Riccardi",
+        "timeOnBenchSecs" : 74,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I1012863",
+        "firstName" : "Cameron",
+        "surname" : "Fleeton",
+        "timeOnBenchSecs" : 209,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I1015777",
+        "firstName" : "Ryan",
+        "surname" : "Angwin",
+        "timeOnBenchSecs" : 123,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    }, {
+      "squadId" : "CD_T130",
+      "interchangesMade" : 70,
+      "interchangeLimit" : 75,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I293846",
+        "firstName" : "Sebastian",
+        "surname" : "Ross",
+        "timeOnBenchSecs" : 594,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I1002227",
+        "firstName" : "Jack",
+        "surname" : "Higgins",
+        "timeOnBenchSecs" : 146,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I1002264",
+        "firstName" : "Hunter",
+        "surname" : "Clark",
+        "timeOnBenchSecs" : 280,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I1008312",
+        "firstName" : "Liam",
+        "surname" : "Stocker",
+        "timeOnBenchSecs" : 141,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I1023272",
+        "firstName" : "Mitch",
+        "surname" : "Owens",
+        "timeOnBenchSecs" : 4423,
+        "interchangeReason" : "Sub Injured",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    } ]
+  },
+  "possession" : {
+    "periodInDisputePerc" : 16,
+    "last10InDisputePerc" : 37,
+    "matchInDisputePerc" : 17,
+    "squadPossessionList" : [ {
+      "squadId" : "CD_T1010",
+      "periodPossessionPerc" : 32,
+      "last10PossessionPerc" : 29,
+      "matchPossessionPerc" : 36
+    }, {
+      "squadId" : "CD_T130",
+      "periodPossessionPerc" : 52,
+      "last10PossessionPerc" : 34,
+      "matchPossessionPerc" : 47
+    } ]
+  }
+}

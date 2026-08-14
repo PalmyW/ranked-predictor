@@ -1,0 +1,170 @@
+{
+  "matchInfo" : {
+    "matchId" : "CD_M20180140809",
+    "matchStatus" : "Concluded",
+    "homeSquadId" : "CD_T40",
+    "homeSquadName" : "Collingwood",
+    "homeSquadNickname" : "Magpies",
+    "homeSquadAbbr" : "COLL",
+    "homeScore" : 45,
+    "awaySquadId" : "CD_T70",
+    "awaySquadName" : "Geelong Cats",
+    "awaySquadNickname" : "Cats",
+    "awaySquadAbbr" : "GEEL",
+    "awayScore" : 66,
+    "period" : 4,
+    "periodSecs" : 1659,
+    "periodComplete" : 4,
+    "venueId" : "CD_V40",
+    "venueName" : "MCG",
+    "venueCode" : "MCG",
+    "homeGoals" : 5,
+    "homeBehinds" : 15,
+    "awayGoals" : 9,
+    "awayBehinds" : 12
+  },
+  "reportName" : "matchTeamStats",
+  "aflScoreTypes" : {
+    "scoreTypes" : [ {
+      "squadId" : "CD_T70",
+      "leftBehind" : 5,
+      "leftBehindPost" : 0,
+      "rightBehind" : 4,
+      "rightBehindPost" : 1,
+      "touched" : 0,
+      "goal" : 9,
+      "rushed" : 2
+    }, {
+      "squadId" : "CD_T40",
+      "leftBehind" : 9,
+      "leftBehindPost" : 1,
+      "rightBehind" : 2,
+      "rightBehindPost" : 0,
+      "touched" : 0,
+      "goal" : 5,
+      "rushed" : 3
+    } ]
+  },
+  "scoreDetails" : {
+    "scoreDetails" : [ {
+      "squadId" : "CD_T40",
+      "biggestLead" : 0,
+      "biggestLeadPeriod" : 0,
+      "biggestLeadPeriodSecs" : 0,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 847,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 847,
+      "lastScoreType" : "Goal",
+      "lastInLeadPeriod" : 1,
+      "lastInLeadPeriodSecs" : 536,
+      "timeInFrontSecs" : 0
+    }, {
+      "squadId" : "CD_T70",
+      "biggestLead" : 27,
+      "biggestLeadPeriod" : 3,
+      "biggestLeadPeriodSecs" : 1174,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 662,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1056,
+      "lastScoreType" : "Behind",
+      "lastInLeadPeriod" : 4,
+      "lastInLeadPeriodSecs" : 1659,
+      "timeInFrontSecs" : 6292
+    } ]
+  },
+  "interchanges" : {
+    "interchanges" : [ {
+      "squadId" : "CD_T40",
+      "interchangesMade" : 65,
+      "interchangeLimit" : 90,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I230232",
+        "firstName" : "Daniel",
+        "surname" : "Wells",
+        "timeOnBenchSecs" : 567,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I298288",
+        "firstName" : "Darcy",
+        "surname" : "Moore",
+        "timeOnBenchSecs" : 4903,
+        "interchangeReason" : "OUT",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I993796",
+        "firstName" : "Ben",
+        "surname" : "Crocker",
+        "timeOnBenchSecs" : 71,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I996487",
+        "firstName" : "Tom",
+        "surname" : "Phillips",
+        "timeOnBenchSecs" : 3199,
+        "interchangeReason" : "OUT",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    }, {
+      "squadId" : "CD_T70",
+      "interchangesMade" : 81,
+      "interchangeLimit" : 90,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I280722",
+        "firstName" : "Zac",
+        "surname" : "Smith",
+        "timeOnBenchSecs" : 315,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I293255",
+        "firstName" : "George",
+        "surname" : "Horlin-Smith",
+        "timeOnBenchSecs" : 324,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I293883",
+        "firstName" : "Jed",
+        "surname" : "Bews",
+        "timeOnBenchSecs" : 829,
+        "interchangeReason" : "OUT",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I296291",
+        "firstName" : "Jake",
+        "surname" : "Kolodjashnij",
+        "timeOnBenchSecs" : 178,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    } ]
+  },
+  "possession" : {
+    "periodInDisputePerc" : 19,
+    "last10InDisputePerc" : 29,
+    "matchInDisputePerc" : 18,
+    "squadPossessionList" : [ {
+      "squadId" : "CD_T40",
+      "periodPossessionPerc" : 39,
+      "last10PossessionPerc" : 36,
+      "matchPossessionPerc" : 42
+    }, {
+      "squadId" : "CD_T70",
+      "periodPossessionPerc" : 42,
+      "last10PossessionPerc" : 35,
+      "matchPossessionPerc" : 40
+    } ]
+  }
+}

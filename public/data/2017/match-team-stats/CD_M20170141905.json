@@ -1,0 +1,170 @@
+{
+  "matchInfo" : {
+    "matchId" : "CD_M20170141905",
+    "matchStatus" : "Concluded",
+    "homeSquadId" : "CD_T1000",
+    "homeSquadName" : "Gold Coast SUNS",
+    "homeSquadNickname" : "SUNS",
+    "homeSquadAbbr" : "GCFC",
+    "homeScore" : 65,
+    "awaySquadId" : "CD_T120",
+    "awaySquadName" : "Richmond",
+    "awaySquadNickname" : "Tigers",
+    "awaySquadAbbr" : "RICH",
+    "awayScore" : 98,
+    "period" : 4,
+    "periodSecs" : 1777,
+    "periodComplete" : 4,
+    "venueId" : "CD_V81",
+    "venueName" : "Metricon Stadium",
+    "venueCode" : "MS",
+    "homeGoals" : 10,
+    "homeBehinds" : 5,
+    "awayGoals" : 14,
+    "awayBehinds" : 14
+  },
+  "reportName" : "matchTeamStats",
+  "aflScoreTypes" : {
+    "scoreTypes" : [ {
+      "squadId" : "CD_T1000",
+      "leftBehind" : 1,
+      "leftBehindPost" : 1,
+      "rightBehind" : 1,
+      "rightBehindPost" : 0,
+      "touched" : 0,
+      "goal" : 10,
+      "rushed" : 2
+    }, {
+      "squadId" : "CD_T120",
+      "leftBehind" : 5,
+      "leftBehindPost" : 0,
+      "rightBehind" : 7,
+      "rightBehindPost" : 0,
+      "touched" : 0,
+      "goal" : 14,
+      "rushed" : 2
+    } ]
+  },
+  "scoreDetails" : {
+    "scoreDetails" : [ {
+      "squadId" : "CD_T1000",
+      "biggestLead" : 12,
+      "biggestLeadPeriod" : 1,
+      "biggestLeadPeriodSecs" : 119,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 1347,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1347,
+      "lastScoreType" : "Goal",
+      "lastInLeadPeriod" : 2,
+      "lastInLeadPeriodSecs" : 58,
+      "timeInFrontSecs" : 1768
+    }, {
+      "squadId" : "CD_T120",
+      "biggestLead" : 33,
+      "biggestLeadPeriod" : 4,
+      "biggestLeadPeriodSecs" : 1102,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 1729,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1729,
+      "lastScoreType" : "Goal",
+      "lastInLeadPeriod" : 4,
+      "lastInLeadPeriodSecs" : 1777,
+      "timeInFrontSecs" : 5383
+    } ]
+  },
+  "interchanges" : {
+    "interchanges" : [ {
+      "squadId" : "CD_T1000",
+      "interchangesMade" : 62,
+      "interchangeLimit" : 90,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I250111",
+        "firstName" : "Matt",
+        "surname" : "Rosa",
+        "timeOnBenchSecs" : 157,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I294643",
+        "firstName" : "Alex",
+        "surname" : "Sexton",
+        "timeOnBenchSecs" : 3659,
+        "interchangeReason" : "OUT",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I298437",
+        "firstName" : "Callum",
+        "surname" : "Ah Chee",
+        "timeOnBenchSecs" : 4497,
+        "interchangeReason" : "OUT",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I998130",
+        "firstName" : "Ben",
+        "surname" : "Ainsworth",
+        "timeOnBenchSecs" : 2802,
+        "interchangeReason" : "OUT",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    }, {
+      "squadId" : "CD_T120",
+      "interchangesMade" : 89,
+      "interchangeLimit" : 90,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I261362",
+        "firstName" : "Alex",
+        "surname" : "Rance",
+        "timeOnBenchSecs" : 161,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I290847",
+        "firstName" : "Dustin",
+        "surname" : "Martin",
+        "timeOnBenchSecs" : 152,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I992374",
+        "firstName" : "Dan",
+        "surname" : "Butler",
+        "timeOnBenchSecs" : 201,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I1000981",
+        "firstName" : "Daniel",
+        "surname" : "Rioli",
+        "timeOnBenchSecs" : 165,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    } ]
+  },
+  "possession" : {
+    "periodInDisputePerc" : 16,
+    "last10InDisputePerc" : 24,
+    "matchInDisputePerc" : 15,
+    "squadPossessionList" : [ {
+      "squadId" : "CD_T1000",
+      "periodPossessionPerc" : 38,
+      "last10PossessionPerc" : 36,
+      "matchPossessionPerc" : 41
+    }, {
+      "squadId" : "CD_T120",
+      "periodPossessionPerc" : 46,
+      "last10PossessionPerc" : 41,
+      "matchPossessionPerc" : 44
+    } ]
+  }
+}

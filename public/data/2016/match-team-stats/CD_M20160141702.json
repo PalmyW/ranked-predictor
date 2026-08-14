@@ -1,0 +1,170 @@
+{
+  "matchInfo" : {
+    "matchId" : "CD_M20160141702",
+    "matchStatus" : "Concluded",
+    "homeSquadId" : "CD_T60",
+    "homeSquadName" : "Fremantle",
+    "homeSquadNickname" : "Dockers",
+    "homeSquadAbbr" : "FRE",
+    "homeScore" : 61,
+    "awaySquadId" : "CD_T70",
+    "awaySquadName" : "Geelong Cats",
+    "awaySquadNickname" : "Cats",
+    "awaySquadAbbr" : "GEEL",
+    "awayScore" : 78,
+    "period" : 4,
+    "periodSecs" : 1940,
+    "periodComplete" : 4,
+    "venueId" : "CD_V70",
+    "venueName" : "Domain Stadium",
+    "venueCode" : "DS",
+    "homeGoals" : 9,
+    "homeBehinds" : 7,
+    "awayGoals" : 11,
+    "awayBehinds" : 12
+  },
+  "reportName" : "matchTeamStats",
+  "aflScoreTypes" : {
+    "scoreTypes" : [ {
+      "squadId" : "CD_T70",
+      "leftBehind" : 4,
+      "leftBehindPost" : 2,
+      "rightBehind" : 3,
+      "rightBehindPost" : 0,
+      "touched" : 0,
+      "goal" : 11,
+      "rushed" : 3
+    }, {
+      "squadId" : "CD_T60",
+      "leftBehind" : 2,
+      "leftBehindPost" : 0,
+      "rightBehind" : 1,
+      "rightBehindPost" : 1,
+      "touched" : 0,
+      "goal" : 9,
+      "rushed" : 3
+    } ]
+  },
+  "scoreDetails" : {
+    "scoreDetails" : [ {
+      "squadId" : "CD_T60",
+      "biggestLead" : 17,
+      "biggestLeadPeriod" : 1,
+      "biggestLeadPeriodSecs" : 1492,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 1549,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1549,
+      "lastScoreType" : "Goal",
+      "lastInLeadPeriod" : 3,
+      "lastInLeadPeriodSecs" : 510,
+      "timeInFrontSecs" : 3327
+    }, {
+      "squadId" : "CD_T70",
+      "biggestLead" : 17,
+      "biggestLeadPeriod" : 4,
+      "biggestLeadPeriodSecs" : 1012,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 1934,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1934,
+      "lastScoreType" : "Goal",
+      "lastInLeadPeriod" : 4,
+      "lastInLeadPeriodSecs" : 1940,
+      "timeInFrontSecs" : 3470
+    } ]
+  },
+  "interchanges" : {
+    "interchanges" : [ {
+      "squadId" : "CD_T60",
+      "interchangesMade" : 80,
+      "interchangeLimit" : 90,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I260069",
+        "firstName" : "Hayden",
+        "surname" : "Ballantyne",
+        "timeOnBenchSecs" : 379,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I292026",
+        "firstName" : "Michael",
+        "surname" : "Barlow",
+        "timeOnBenchSecs" : 3713,
+        "interchangeReason" : "OUT",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I293651",
+        "firstName" : "Hayden",
+        "surname" : "Crozier",
+        "timeOnBenchSecs" : 650,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I298450",
+        "firstName" : "Connor",
+        "surname" : "Blakely",
+        "timeOnBenchSecs" : 395,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    }, {
+      "squadId" : "CD_T70",
+      "interchangesMade" : 87,
+      "interchangeLimit" : 90,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I270326",
+        "firstName" : "Lachie",
+        "surname" : "Henderson",
+        "timeOnBenchSecs" : 2862,
+        "interchangeReason" : "OUT",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I280722",
+        "firstName" : "Zac",
+        "surname" : "Smith",
+        "timeOnBenchSecs" : 177,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I290106",
+        "firstName" : "Josh",
+        "surname" : "Cowan",
+        "timeOnBenchSecs" : 386,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I298336",
+        "firstName" : "Nakia",
+        "surname" : "Cockatoo",
+        "timeOnBenchSecs" : 392,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    } ]
+  },
+  "possession" : {
+    "periodInDisputePerc" : 22,
+    "last10InDisputePerc" : 35,
+    "matchInDisputePerc" : 18,
+    "squadPossessionList" : [ {
+      "squadId" : "CD_T60",
+      "periodPossessionPerc" : 35,
+      "last10PossessionPerc" : 15,
+      "matchPossessionPerc" : 40
+    }, {
+      "squadId" : "CD_T70",
+      "periodPossessionPerc" : 43,
+      "last10PossessionPerc" : 50,
+      "matchPossessionPerc" : 42
+    } ]
+  }
+}

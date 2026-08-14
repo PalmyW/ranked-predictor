@@ -1,0 +1,170 @@
+{
+  "matchInfo" : {
+    "matchId" : "CD_M20130141401",
+    "matchStatus" : "Concluded",
+    "homeSquadId" : "CD_T150",
+    "homeSquadName" : "West Coast Eagles",
+    "homeSquadNickname" : "Eagles",
+    "homeSquadAbbr" : "WCE",
+    "homeScore" : 91,
+    "awaySquadId" : "CD_T50",
+    "awaySquadName" : "Essendon",
+    "awaySquadNickname" : "Bombers",
+    "awaySquadAbbr" : "ESS",
+    "awayScore" : 98,
+    "period" : 4,
+    "periodSecs" : 1815,
+    "periodComplete" : 4,
+    "venueId" : "CD_V70",
+    "venueName" : "Patersons Stadium",
+    "venueCode" : "PS",
+    "homeGoals" : 13,
+    "homeBehinds" : 13,
+    "awayGoals" : 15,
+    "awayBehinds" : 8
+  },
+  "reportName" : "matchTeamStats",
+  "aflScoreTypes" : {
+    "scoreTypes" : [ {
+      "squadId" : "CD_T50",
+      "leftBehind" : 2,
+      "leftBehindPost" : 1,
+      "rightBehind" : 4,
+      "rightBehindPost" : 0,
+      "touched" : 0,
+      "goal" : 15,
+      "rushed" : 1
+    }, {
+      "squadId" : "CD_T150",
+      "leftBehind" : 4,
+      "leftBehindPost" : 1,
+      "rightBehind" : 3,
+      "rightBehindPost" : 0,
+      "touched" : 0,
+      "goal" : 13,
+      "rushed" : 5
+    } ]
+  },
+  "scoreDetails" : {
+    "scoreDetails" : [ {
+      "squadId" : "CD_T150",
+      "biggestLead" : 23,
+      "biggestLeadPeriod" : 3,
+      "biggestLeadPeriodSecs" : 1700,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 1329,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1329,
+      "lastScoreType" : "Goal",
+      "lastInLeadPeriod" : 4,
+      "lastInLeadPeriodSecs" : 1642,
+      "timeInFrontSecs" : 3356
+    }, {
+      "squadId" : "CD_T50",
+      "biggestLead" : 18,
+      "biggestLeadPeriod" : 1,
+      "biggestLeadPeriodSecs" : 893,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 1762,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1762,
+      "lastScoreType" : "Goal",
+      "lastInLeadPeriod" : 4,
+      "lastInLeadPeriodSecs" : 1815,
+      "timeInFrontSecs" : 3447
+    } ]
+  },
+  "interchanges" : {
+    "interchanges" : [ {
+      "squadId" : "CD_T150",
+      "interchangesMade" : 0,
+      "interchangeLimit" : 0,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I240119",
+        "firstName" : "Mark",
+        "surname" : "LeCras",
+        "timeOnBenchSecs" : 467,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I240124",
+        "firstName" : "Matthew",
+        "surname" : "Priddis",
+        "timeOnBenchSecs" : 472,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I261214",
+        "firstName" : "Will",
+        "surname" : "Schofield",
+        "timeOnBenchSecs" : 483,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I281080",
+        "firstName" : "Brad",
+        "surname" : "Sheppard",
+        "timeOnBenchSecs" : 1430,
+        "interchangeReason" : "Substitute",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    }, {
+      "squadId" : "CD_T50",
+      "interchangesMade" : 0,
+      "interchangeLimit" : 0,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I261320",
+        "firstName" : "Tom",
+        "surname" : "Bellchambers",
+        "timeOnBenchSecs" : 3256,
+        "interchangeReason" : "Substitute",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I271022",
+        "firstName" : "Tayte",
+        "surname" : "Pears",
+        "timeOnBenchSecs" : 464,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I291686",
+        "firstName" : "Nick",
+        "surname" : "Kommer",
+        "timeOnBenchSecs" : 260,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I292503",
+        "firstName" : "Stewart",
+        "surname" : "Crameri",
+        "timeOnBenchSecs" : 2425,
+        "interchangeReason" : "OUT",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    } ]
+  },
+  "possession" : {
+    "periodInDisputePerc" : 20,
+    "last10InDisputePerc" : 57,
+    "matchInDisputePerc" : 19,
+    "squadPossessionList" : [ {
+      "squadId" : "CD_T150",
+      "periodPossessionPerc" : 41,
+      "last10PossessionPerc" : 20,
+      "matchPossessionPerc" : 44
+    }, {
+      "squadId" : "CD_T50",
+      "periodPossessionPerc" : 39,
+      "last10PossessionPerc" : 23,
+      "matchPossessionPerc" : 37
+    } ]
+  }
+}

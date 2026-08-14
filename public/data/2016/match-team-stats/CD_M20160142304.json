@@ -1,0 +1,170 @@
+{
+  "matchInfo" : {
+    "matchId" : "CD_M20160142304",
+    "matchStatus" : "Concluded",
+    "homeSquadId" : "CD_T50",
+    "homeSquadName" : "Essendon",
+    "homeSquadNickname" : "Bombers",
+    "homeSquadAbbr" : "ESS",
+    "homeScore" : 103,
+    "awaySquadId" : "CD_T30",
+    "awaySquadName" : "Carlton",
+    "awaySquadNickname" : "Blues",
+    "awaySquadAbbr" : "CARL",
+    "awayScore" : 79,
+    "period" : 4,
+    "periodSecs" : 1680,
+    "periodComplete" : 4,
+    "venueId" : "CD_V40",
+    "venueName" : "MCG",
+    "venueCode" : "MCG",
+    "homeGoals" : 15,
+    "homeBehinds" : 13,
+    "awayGoals" : 10,
+    "awayBehinds" : 19
+  },
+  "reportName" : "matchTeamStats",
+  "aflScoreTypes" : {
+    "scoreTypes" : [ {
+      "squadId" : "CD_T30",
+      "leftBehind" : 7,
+      "leftBehindPost" : 1,
+      "rightBehind" : 6,
+      "rightBehindPost" : 2,
+      "touched" : 1,
+      "goal" : 10,
+      "rushed" : 2
+    }, {
+      "squadId" : "CD_T50",
+      "leftBehind" : 5,
+      "leftBehindPost" : 2,
+      "rightBehind" : 3,
+      "rightBehindPost" : 0,
+      "touched" : 1,
+      "goal" : 15,
+      "rushed" : 2
+    } ]
+  },
+  "scoreDetails" : {
+    "scoreDetails" : [ {
+      "squadId" : "CD_T50",
+      "biggestLead" : 49,
+      "biggestLeadPeriod" : 3,
+      "biggestLeadPeriodSecs" : 1227,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 916,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1319,
+      "lastScoreType" : "Behind",
+      "lastInLeadPeriod" : 4,
+      "lastInLeadPeriodSecs" : 1680,
+      "timeInFrontSecs" : 5826
+    }, {
+      "squadId" : "CD_T30",
+      "biggestLead" : 13,
+      "biggestLeadPeriod" : 1,
+      "biggestLeadPeriodSecs" : 315,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 1593,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1593,
+      "lastScoreType" : "Goal",
+      "lastInLeadPeriod" : 1,
+      "lastInLeadPeriodSecs" : 1000,
+      "timeInFrontSecs" : 749
+    } ]
+  },
+  "interchanges" : {
+    "interchanges" : [ {
+      "squadId" : "CD_T50",
+      "interchangesMade" : 86,
+      "interchangeLimit" : 90,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I240245",
+        "firstName" : "Courtenay",
+        "surname" : "Dempsey",
+        "timeOnBenchSecs" : 339,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I261212",
+        "firstName" : "Craig",
+        "surname" : "Bird",
+        "timeOnBenchSecs" : 188,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I280038",
+        "firstName" : "Shaun",
+        "surname" : "McKernan",
+        "timeOnBenchSecs" : 319,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I290622",
+        "firstName" : "Mitch",
+        "surname" : "Brown",
+        "timeOnBenchSecs" : 70,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    }, {
+      "squadId" : "CD_T30",
+      "interchangesMade" : 89,
+      "interchangeLimit" : 90,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I261299",
+        "firstName" : "Matthew",
+        "surname" : "Kreuzer",
+        "timeOnBenchSecs" : 280,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I270637",
+        "firstName" : "Simon",
+        "surname" : "White",
+        "timeOnBenchSecs" : 147,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I293662",
+        "firstName" : "Liam",
+        "surname" : "Sumner",
+        "timeOnBenchSecs" : 151,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I1001028",
+        "firstName" : "Jack",
+        "surname" : "Silvagni",
+        "timeOnBenchSecs" : 149,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    } ]
+  },
+  "possession" : {
+    "periodInDisputePerc" : 14,
+    "last10InDisputePerc" : 24,
+    "matchInDisputePerc" : 14,
+    "squadPossessionList" : [ {
+      "squadId" : "CD_T50",
+      "periodPossessionPerc" : 37,
+      "last10PossessionPerc" : 36,
+      "matchPossessionPerc" : 45
+    }, {
+      "squadId" : "CD_T30",
+      "periodPossessionPerc" : 49,
+      "last10PossessionPerc" : 40,
+      "matchPossessionPerc" : 41
+    } ]
+  }
+}

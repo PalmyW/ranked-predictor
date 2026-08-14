@@ -1,0 +1,170 @@
+{
+  "matchInfo" : {
+    "matchId" : "CD_M20170141706",
+    "matchStatus" : "Concluded",
+    "homeSquadId" : "CD_T90",
+    "homeSquadName" : "Melbourne",
+    "homeSquadNickname" : "Demons",
+    "homeSquadAbbr" : "MELB",
+    "homeScore" : 70,
+    "awaySquadId" : "CD_T10",
+    "awaySquadName" : "Adelaide Crows",
+    "awaySquadNickname" : "Crows",
+    "awaySquadAbbr" : "ADEL",
+    "awayScore" : 116,
+    "period" : 4,
+    "periodSecs" : 1912,
+    "periodComplete" : 4,
+    "venueId" : "CD_V160",
+    "venueName" : "TIO Stadium",
+    "venueCode" : "TIO",
+    "homeGoals" : 10,
+    "homeBehinds" : 10,
+    "awayGoals" : 17,
+    "awayBehinds" : 14
+  },
+  "reportName" : "matchTeamStats",
+  "aflScoreTypes" : {
+    "scoreTypes" : [ {
+      "squadId" : "CD_T10",
+      "leftBehind" : 6,
+      "leftBehindPost" : 0,
+      "rightBehind" : 4,
+      "rightBehindPost" : 1,
+      "touched" : 2,
+      "goal" : 17,
+      "rushed" : 1
+    }, {
+      "squadId" : "CD_T90",
+      "leftBehind" : 3,
+      "leftBehindPost" : 1,
+      "rightBehind" : 3,
+      "rightBehindPost" : 2,
+      "touched" : 0,
+      "goal" : 10,
+      "rushed" : 1
+    } ]
+  },
+  "scoreDetails" : {
+    "scoreDetails" : [ {
+      "squadId" : "CD_T90",
+      "biggestLead" : 0,
+      "biggestLeadPeriod" : 0,
+      "biggestLeadPeriodSecs" : 0,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 423,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1326,
+      "lastScoreType" : "Behind",
+      "lastInLeadPeriod" : 1,
+      "lastInLeadPeriodSecs" : 177,
+      "timeInFrontSecs" : 0
+    }, {
+      "squadId" : "CD_T10",
+      "biggestLead" : 47,
+      "biggestLeadPeriod" : 3,
+      "biggestLeadPeriodSecs" : 443,
+      "lastGoalPeriod" : 4,
+      "lastGoalPeriodSecs" : 1496,
+      "lastScorePeriod" : 4,
+      "lastScorePeriodSec" : 1905,
+      "lastScoreType" : "Behind",
+      "lastInLeadPeriod" : 4,
+      "lastInLeadPeriodSecs" : 1912,
+      "timeInFrontSecs" : 7358
+    } ]
+  },
+  "interchanges" : {
+    "interchanges" : [ {
+      "squadId" : "CD_T90",
+      "interchangesMade" : 89,
+      "interchangeLimit" : 90,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I292029",
+        "firstName" : "Cameron",
+        "surname" : "Pedersen",
+        "timeOnBenchSecs" : 248,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I294570",
+        "firstName" : "Dean",
+        "surname" : "Kent",
+        "timeOnBenchSecs" : 1966,
+        "interchangeReason" : "OUT",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I296324",
+        "firstName" : "Jesse",
+        "surname" : "Hogan",
+        "timeOnBenchSecs" : 148,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I1003546",
+        "firstName" : "Joel",
+        "surname" : "Smith",
+        "timeOnBenchSecs" : 167,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    }, {
+      "squadId" : "CD_T10",
+      "interchangesMade" : 84,
+      "interchangeLimit" : 90,
+      "playerInterchangeList" : [ {
+        "playerId" : "CD_I270963",
+        "firstName" : "Rory",
+        "surname" : "Sloane",
+        "timeOnBenchSecs" : 2460,
+        "interchangeReason" : "OUT",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I293222",
+        "firstName" : "Rory",
+        "surname" : "Laird",
+        "timeOnBenchSecs" : 142,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I295103",
+        "firstName" : "Riley",
+        "surname" : "Knight",
+        "timeOnBenchSecs" : 273,
+        "interchangeReason" : "Normal",
+        "subbedOff" : false,
+        "currentSub" : false
+      }, {
+        "playerId" : "CD_I298281",
+        "firstName" : "Jake",
+        "surname" : "Lever",
+        "timeOnBenchSecs" : 1912,
+        "interchangeReason" : "OUT",
+        "subbedOff" : false,
+        "currentSub" : false
+      } ]
+    } ]
+  },
+  "possession" : {
+    "periodInDisputePerc" : 17,
+    "last10InDisputePerc" : 45,
+    "matchInDisputePerc" : 17,
+    "squadPossessionList" : [ {
+      "squadId" : "CD_T90",
+      "periodPossessionPerc" : 33,
+      "last10PossessionPerc" : 16,
+      "matchPossessionPerc" : 41
+    }, {
+      "squadId" : "CD_T10",
+      "periodPossessionPerc" : 50,
+      "last10PossessionPerc" : 40,
+      "matchPossessionPerc" : 42
+    } ]
+  }
+}

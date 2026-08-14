@@ -12,8 +12,8 @@
  * for all-time team records.
  *
  * Dropped for every non-current season, in both leagues: match-details/,
- * stats/, team-stats/ — the bulk of the file count, only reachable today via
- * the undocumented ?season= override on the stats browser.
+ * stats/, team-stats/, match-team-stats/ — the bulk of the file count, only
+ * reachable today via the undocumented ?season= override on the stats browser.
  *
  * Dropped entirely, in both leagues: players/ — a data-pipeline artifact
  * (fetch-stats.js, ratings enrichment) that nothing in src/ fetches at runtime.
@@ -74,7 +74,7 @@ function pruneLeague(league) {
     if (entry.name === currentYear) continue
 
     const seasonDir = join(distRoot, entry.name)
-    for (const sub of ['match-details', 'stats', 'team-stats']) {
+    for (const sub of ['match-details', 'stats', 'team-stats', 'match-team-stats']) {
       const subDir = join(seasonDir, sub)
       if (!existsSync(subDir)) continue
       seasonFilesRemoved += countFiles(subDir)
@@ -85,7 +85,7 @@ function pruneLeague(league) {
 
   console.log(`[${league.key}] current season: ${currentYear}`)
   console.log(`  players/ removed: ${playersRemoved} files`)
-  console.log(`  ${seasonsPruned} past season(s) pruned (match-details/stats/team-stats): ${seasonFilesRemoved} files`)
+  console.log(`  ${seasonsPruned} past season(s) pruned (match-details/stats/team-stats/match-team-stats): ${seasonFilesRemoved} files`)
 
   return { playersRemoved, seasonsPruned, seasonFilesRemoved }
 }

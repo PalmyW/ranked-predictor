@@ -77,6 +77,52 @@ if (missing.length === 0) {
   if (failed > 0) process.exit(1)
 }
 
+// --- Match team stats (coach teamStats) ---
+const MATCH_TEAM_STATS_DIR = join(dataDir(ROOT, LEAGUE, season), 'match-team-stats')
+mkdirSync(MATCH_TEAM_STATS_DIR, { recursive: true })
+
+const missingTeamStats = concluded.filter(
+  (m) => m.providerId && !existsSync(join(MATCH_TEAM_STATS_DIR, `${m.providerId}.json`)),
+)
+
+console.log(`\n${concluded.length} concluded matches, ${concluded.length - missingTeamStats.length} match team stats already fetched, ${missingTeamStats.length} to fetch.`)
+
+let okT = 0
+let failedT = 0
+
+if (missingTeamStats.length === 0) {
+  console.log('Nothing to do.')
+} else {
+  for (const match of missingTeamStats) {
+    const id = match.providerId
+    const outFile = join(MATCH_TEAM_STATS_DIR, `${id}.json`)
+    const label = `${match.home?.team?.name ?? '?'} v ${match.away?.team?.name ?? '?'} (${id})`
+    process.stdout.write(`Fetching match team stats ${label}... `)
+    try {
+      execSync(
+        `curl -fsSL` +
+          ` -H 'accept: */*'` +
+          ` -H 'origin: https://www.afl.com.au'` +
+          ` -H 'referer: https://www.afl.com.au/'` +
+          ` -H 'user-agent: Mozilla/5.0 (compatible; ranked-predictor-ci/1.0)'` +
+          ` -H 'x-media-mis-token: ${TOKEN}'` +
+          ` 'https://api.afl.com.au/cfs/afl/coach/match/${id}/teamStats'` +
+          ` -o '${outFile}'`,
+        { stdio: ['ignore', 'ignore', 'pipe'] },
+      )
+      console.log('done')
+      okT++
+    } catch (e) {
+      console.log('FAILED')
+      if (existsSync(outFile)) unlinkSync(outFile)
+      failedT++
+    }
+  }
+
+  console.log(`\nDone. ${okT} fetched, ${failedT} failed.`)
+  if (failedT > 0) process.exit(1)
+}
+
 // --- Match details (matchItem) ---
 const MATCH_DETAILS_DIR = join(dataDir(ROOT, LEAGUE, season), 'match-details')
 mkdirSync(MATCH_DETAILS_DIR, { recursive: true })
