@@ -1,6 +1,6 @@
 <template>
   <div>
-    <RoundBanner v-if="!isLoading && matches.length > 0" :matches="matches" :ranking="ranking" :simulatedMatchWinners="simulatedMatchWinners" />
+    <RoundBanner v-if="!isLoading && matches.length > 0" :matches="seasonMatches" :ranking="ranking" :simulatedMatchWinners="simulatedMatchWinners" />
 
     <main class="max-w-6xl mx-auto px-4 py-6">
       <!-- Error banner -->
@@ -111,7 +111,7 @@
       <!-- Full Fixture -->
       <section v-if="!isLoading && matches.length > 0" class="mt-6 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-4">
         <MatchList
-          :matches="matches"
+          :matches="seasonMatches"
           :ranking="ranking"
           :simulated-match-winners="simulatedMatchWinners"
         />
@@ -126,6 +126,7 @@ import { useAFLData } from '../composables/useAFLData'
 import { useRanking } from '../composables/useRanking'
 import { useAlgorithmRankings, ALGORITHMS } from '../composables/useAlgorithmRankings'
 import { useSimulation, buildPalmyLadder } from '../composables/useSimulation'
+import { isFinalsMatch } from '../composables/useFinals'
 import { usePredictionsStore } from '../stores/predictions'
 import { useAnalytics } from '../composables/useAnalytics'
 import { useSeason } from '../composables/useSeason'
@@ -136,6 +137,9 @@ import ShareBar from '../components/ShareBar.vue'
 import MatchList from '../components/MatchList.vue'
 
 const { matches, teams, isLoading, error } = useAFLData()
+// Round-banner/full-fixture display exclude finals placeholder rows — those
+// have their own dedicated view at /finals.
+const seasonMatches = computed(() => matches.value.filter((m) => !isFinalsMatch(m)))
 const { isCurrentSeason, activeSeasonYear, enforceCurrentSeason } = useSeason()
 onMounted(enforceCurrentSeason)
 const { ranking, tierSizes, shareUrl, rankedFromUrl, rankedFromStorage, ladderSource, savedState, rankingHistory, setRanking, setTierSizes, resetToLadder, loadSavedRanking, saveToMyLadder, importRanking, revertImport, seedHistoryFromSavedRanking, snapshotRoundRanking, updateRoundSnapshot } = useRanking()

@@ -129,11 +129,15 @@ export function parseMatch(raw: Record<string, unknown>): AflMatch | null {
   const byes = round.byes as Array<{ id: number }> | undefined
   const byeTeamIds = byes?.map(b => b.id) ?? []
 
+  const venue = raw.venue as Record<string, unknown> | undefined
+  const metadata = raw.metadata as Record<string, unknown> | undefined
+
   return {
     id: raw.id as number,
     providerId: raw.providerId as string,
     roundNumber: round.roundNumber as number,
     roundName: round.name as string,
+    roundAbbreviation: (round.abbreviation as string) ?? '',
     homeTeamId: homeId,
     homeTeamName: homeTeam?.name as string,
     awayTeamId: awayId,
@@ -142,6 +146,8 @@ export function parseMatch(raw: Record<string, unknown>): AflMatch | null {
     awayScore: awayScore ?? null,
     status: resolvedStatus,
     utcStartTime,
+    venueName: (venue?.name as string) ?? null,
+    finalsMatchLabel: (metadata?.finals_match_label as string) ?? null,
     byeTeamIds,
   }
 }

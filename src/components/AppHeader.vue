@@ -158,5 +158,6 @@ const TABS = [
   { path: '/season-stats', label: 'Season Stats' },
   { path: '/rankings', label: 'Over complicated Ladders' },
   { path: '/score-predictor', label: 'PalmyScore™' },
+  { path: '/finals', label: 'Finals' },
 ]
 </script>

@@ -59,8 +59,8 @@ const AVG_AFL_SCORE  = LEAGUE_CONFIG.sim.avgScore
 // Fixed scores used only by the deterministic paths (predictedLadder's
 // non-random simulateMatches branch, buildPalmyLadder's no-prediction
 // fallback). Random simulations sample scores instead — see sampleMatchScores.
-const SIM_WIN_SCORE  = AVG_AFL_SCORE + Math.round(AVG_WIN_MARGIN / 2)
-const SIM_LOSS_SCORE = AVG_AFL_SCORE - Math.round(AVG_WIN_MARGIN / 2)
+export const SIM_WIN_SCORE  = AVG_AFL_SCORE + Math.round(AVG_WIN_MARGIN / 2)
+export const SIM_LOSS_SCORE = AVG_AFL_SCORE - Math.round(AVG_WIN_MARGIN / 2)
 const SIM_DRAW_SCORE = AVG_AFL_SCORE  // both teams score AVG_AFL_SCORE in a drawn game
 
 // Random-score model for the stochastic simulators. The home margin of each
@@ -79,7 +79,7 @@ interface SimScores { winnerScore: number; loserScore: number }
 // decided the winner (u < p means home won), so the sampled margin's sign is
 // consistent with that decision by construction; only its magnitude is new
 // randomness (plus the shared midpoint draw).
-function sampleMatchScores(u: number, p: number): SimScores {
+export function sampleMatchScores(u: number, p: number): SimScores {
   const homeMargin = MARGIN_SIGMA * (invNorm(p) + invNorm(1 - u))
   const absMargin = Math.max(1, Math.round(Math.abs(homeMargin)))
   const mid = AVG_AFL_SCORE + MID_SIGMA * invNorm(Math.random())
@@ -590,6 +590,18 @@ function simulateMatches(
   return statsToLadder(simStats, matches, rankMap)
 }
 
+// Module-level singleton (not per-call state) so every caller — the
+// Predictor page's Simulated tab and the Finals view alike — reads the exact
+// same last-simulated result, letting Finals be "launched from Simulate"
+// rather than running its own independent season simulation.
+const simulatedLadder = ref<LadderRow[] | null>(null)
+// matchId → winning teamId from last random simulation
+const simulatedMatchWinners = ref<Record<number, number> | null>(null)
+// matchId → sampled scores from the same simulation, so the ladder build and
+// the round-by-round replay (getSimulationFrames) reuse identical scores.
+// Internal only — the UI reads just the winners map.
+const simulatedMatchScores = ref<Record<number, { home: number; away: number }> | null>(null)
+
 export function useSimulation(ranking: RankingRef, matches: MatchesRef, options?: SimulationOptions) {
   const palmyPredMap = (): Map<number, MatchScorePrediction> | null => {
     const arr = options?.palmyPredictions?.value
@@ -619,13 +631,6 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef, options?
     return simulateMatches(matches.value, rankMap, false)
   })
 
-  const simulatedLadder = ref<LadderRow[] | null>(null)
-  // matchId → winning teamId from last random simulation
-  const simulatedMatchWinners = ref<Record<number, number> | null>(null)
-  // matchId → sampled scores from the same simulation, so the ladder build and
-  // the round-by-round replay (getSimulationFrames) reuse identical scores.
-  // Internal only — the UI reads just the winners map.
-  const simulatedMatchScores = ref<Record<number, { home: number; away: number }> | null>(null)
   const rangeResults = ref<RangeEntry[] | null>(null)
   const rangeTotal = ref(0)
   const simStats = ref<SimulationStats | null>(null)

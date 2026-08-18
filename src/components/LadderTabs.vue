@@ -70,7 +70,7 @@
       <!-- Simulated -->
       <div v-else-if="activeTab === 'simulated'">
        <div ref="simulatedCaptureEl">
-        <div class="flex items-center justify-between mb-3">
+        <div class="flex flex-wrap items-center justify-between gap-y-2 mb-3">
           <div>
             <div class="flex items-center gap-1">
               <h2 class="text-lg font-bold text-gray-800 dark:text-gray-100">Simulated Ladder</h2>
@@ -108,9 +108,9 @@
               <template v-else>Win chance scales 60–95% by rank gap, home team +5%</template>
             </p>
           </div>
-          <div v-if="!capturing" class="flex items-center gap-2">
+          <div v-if="!capturing" class="flex flex-wrap items-center justify-end gap-2">
             <!-- Venue-adjust checkbox (only affects PalmyScore win model) -->
-            <label v-if="usePalmyProb" class="flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold text-gray-600 dark:text-gray-300 cursor-pointer">
+            <label v-if="usePalmyProb" class="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs font-semibold text-gray-600 dark:text-gray-300 cursor-pointer">
               <input
                 type="checkbox"
                 :checked="simVenueAdjusted"
@@ -120,17 +120,17 @@
               Venue adjust
             </label>
             <!-- Win model: team ranking vs PalmyScore predicted-margin calibration -->
-            <div class="flex overflow-hidden rounded border border-gray-300 text-xs font-semibold dark:border-gray-600">
+            <div class="flex shrink-0 overflow-hidden rounded border border-gray-300 text-xs font-semibold dark:border-gray-600">
               <button
                 @click="emit('update:usePalmyProb', false)"
-                class="px-2.5 py-1 transition-colors"
+                class="px-2.5 py-1 whitespace-nowrap transition-colors"
                 :class="!usePalmyProb
                   ? 'bg-blue-600 text-white'
                   : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'"
               >Ranking</button>
               <button
                 @click="emit('update:usePalmyProb', true)"
-                class="px-2.5 py-1 transition-colors"
+                class="px-2.5 py-1 whitespace-nowrap transition-colors"
                 :class="usePalmyProb
                   ? 'bg-blue-600 text-white'
                   : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'"
@@ -138,12 +138,18 @@
             </div>
             <ScreenshotButton
               v-if="simulatedLadder && !simulating"
+              class="shrink-0"
               @click="screenshot(simulatedCaptureEl, 'simulated-ladder.png')"
             />
             <button
+              v-if="simulatedLadder && !simulating"
+              @click="router.push('/finals')"
+              class="shrink-0 whitespace-nowrap px-3 py-2 text-sm font-semibold rounded-lg border border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-700 dark:text-purple-400 dark:hover:bg-purple-900/30 transition-colors"
+            >View Finals</button>
+            <button
               @click="handleSimulate"
               :disabled="simulating || isLoading || !hasMatches"
-              class="px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-w-[90px]"
+              class="shrink-0 whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-w-[90px]"
             >
               {{ simulating ? 'Running...' : 'Simulate' }}
             </button>
@@ -284,6 +290,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import type { LadderRow, TeamRanking } from '../types/afl'
 import type { RangeEntry, SimulationStats } from '../composables/useSimulation'
 import LadderTable from './LadderTable.vue'
@@ -480,6 +487,7 @@ const TABS = computed(() =>
 )
 
 const analytics = useAnalytics()
+const router = useRouter()
 
 const TAB_TOUR_IDS: Record<string, string> = {
   predicted: 'predicted-tab',

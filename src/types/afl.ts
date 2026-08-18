@@ -26,6 +26,7 @@ export interface AflMatch {
   providerId: string
   roundNumber: number
   roundName: string
+  roundAbbreviation: string
   homeTeamId: number
   homeTeamName: string
   awayTeamId: number
@@ -34,6 +35,8 @@ export interface AflMatch {
   awayScore: AflScore | null
   status: MatchStatus
   utcStartTime: string
+  venueName: string | null
+  finalsMatchLabel: string | null
   byeTeamIds: readonly number[]
 }
 
@@ -56,3 +59,39 @@ export interface LadderRow {
 }
 
 export type TeamRanking = number[]
+
+export type FinalsSlotRule =
+  | { kind: 'resolved' }
+  | { kind: 'seed'; position: number }
+  | { kind: 'result'; result: 'winner' | 'loser'; sourceCode: string }
+  | { kind: 'rankedWinner'; rank: 'lowest' | 'highest'; roundCode: string }
+
+export interface FinalsSlot {
+  teamId: number | null
+  seed: number | null
+  placeholderLabel: string
+  rule: FinalsSlotRule
+}
+
+export interface FinalsBracketMatch {
+  matchId: number
+  sourceCode: string
+  roundAbbreviation: string
+  roundName: string
+  finalsMatchLabel: string
+  venueName: string | null
+  utcStartTime: string
+  status: MatchStatus
+  home: FinalsSlot
+  away: FinalsSlot
+  winnerTeamId: number | null
+  homeScore: number | null
+  awayScore: number | null
+  isSimulated: boolean
+}
+
+export interface FinalsColumn {
+  code: string
+  title: string
+  matches: FinalsBracketMatch[]
+}
