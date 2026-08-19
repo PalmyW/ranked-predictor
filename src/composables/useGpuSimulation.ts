@@ -8,7 +8,8 @@
 // default, always-working implementation.
 import type { AflMatch } from '../types/afl'
 import type { PalmyVariant } from '../utils/palmyWinProb'
-import { TEAM_IDS, matchHomeWinProb, accumulateSimResult, type RangeAccumulator, type MatchScorePrediction } from './useSimulation'
+import { TEAM_IDS, matchHomeWinProb, accumulateSimResult, accumulateFinalsResult, type RangeAccumulator, type MatchScorePrediction } from './useSimulation'
+import { resolveFinalsForOrder } from './useFinals'
 import { LEAGUE_CONFIG } from '../config/league'
 // TEAMS (not TEAM_IDS from useSimulation.ts) specifically to avoid this
 // module's existing circular import with useSimulation.ts: useSimulation.ts
@@ -247,6 +248,12 @@ export interface GpuSimContext {
   readMaskBuf: GPUBuffer
   bindGroup: GPUBindGroup
   maxBatch: number
+  // Stashed so runGpuRangeBatch can resolve finals per sim without threading
+  // extra parameters through runManyGpu()'s call chain.
+  rankMap: Record<number, number>
+  predMap: Map<number, MatchScorePrediction> | null
+  usePalmy: boolean
+  variant: PalmyVariant
 }
 
 function makeStorageBuffer(device: GPUDevice, data: Float32Array | Uint32Array | Int32Array): GPUBuffer {
@@ -348,7 +355,7 @@ export async function createGpuSimContext(
     ],
   })
 
-  return { device, pipeline, paramsBuf, numTeams: n, numMatches, teamIds, teamIndex, orderOutBuf, nextWinMaskOutBuf, readOrderBuf, readMaskBuf, bindGroup, maxBatch }
+  return { device, pipeline, paramsBuf, numTeams: n, numMatches, teamIds, teamIndex, orderOutBuf, nextWinMaskOutBuf, readOrderBuf, readMaskBuf, bindGroup, maxBatch, rankMap, predMap, usePalmy, variant }
 }
 
 export function gpuMaxBatch(ctx: GpuSimContext): number {
@@ -386,6 +393,7 @@ export async function runGpuRangeBatch(ctx: GpuSimContext, acc: RangeAccumulator
   readOrderBuf.unmap()
   readMaskBuf.unmap()
 
+  const hasFinals = acc.finalsTemplate.matches.length > 0
   const order: number[] = new Array(numTeams)
   for (let s = 0; s < batchSize; s++) {
     const base = s * MAX_TEAMS
@@ -395,6 +403,9 @@ export async function runGpuRangeBatch(ctx: GpuSimContext, acc: RangeAccumulator
       const idx = teamIndex.get(tid)
       return idx !== undefined && (mask & (1 << idx)) !== 0
     })
+    if (hasFinals) {
+      accumulateFinalsResult(acc, resolveFinalsForOrder(acc.finalsTemplate, order, ctx.rankMap, ctx.predMap, ctx.usePalmy, ctx.variant))
+    }
   }
   acc.ran += batchSize
 }

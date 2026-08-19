@@ -362,31 +362,49 @@ function condLossPct(entry: RangeEntry, from: number, to: number): number | null
   return (lossCount / lossTotal) * 100
 }
 
+function positionRow(entry: RangeEntry, label: string, color: string, from: number, to: number) {
+  const base = pct(entry.counts, from, to)
+  const cond = condPct(entry, from, to)
+  const lossCond = condLossPct(entry, from, to)
+  return {
+    label,
+    color,
+    pct: base,
+    cond,
+    delta: cond === null ? null : cond - base,
+    lossCond,
+    lossDelta: lossCond === null ? null : lossCond - base,
+  }
+}
+
+function countRow(label: string, color: string, count: number) {
+  return { label, color, pct: (count / props.total) * 100, cond: null, delta: null, lossCond: null, lossDelta: null }
+}
+
 function milestones(entry: RangeEntry) {
-  const ranges: Array<{ label: string; from: number; to: number; color: string }> = [
-    { label: 'Minor Premier', from: 0,  to: 1,  color: '#16a34a' },
-    { label: 'Top 2',    from: 0,  to: 2,  color: '#22c55e' },
-    { label: 'Top 4',    from: 0,  to: 4,  color: '#86efac' },
-    { label: 'Top 6',    from: 0,  to: 6,  color: '#ca8a04' },
-    { label: 'Top 8',    from: 0,  to: 8,  color: '#ea580c' },
-    { label: 'Top 10',   from: 0,  to: 10, color: '#fdba74' },
-    { label: 'Bottom 4', from: 14, to: 18, color: '#991b1b' },
-    { label: 'Last',     from: 17, to: 18, color: '#292524' },
+  const rows = [
+    positionRow(entry, 'Minor Premier', '#16a34a', 0, 1),
+    positionRow(entry, 'Top 2', '#22c55e', 0, 2),
+    positionRow(entry, 'Top 4', '#86efac', 0, 4),
+    positionRow(entry, 'Top 6', '#ca8a04', 0, 6),
+    positionRow(entry, 'Top 8', '#ea580c', 0, 8),
+    positionRow(entry, 'Top 10', '#fdba74', 0, 10),
   ]
-  return ranges.map((r) => {
-    const base = pct(entry.counts, r.from, r.to)
-    const cond = condPct(entry, r.from, r.to)
-    const lossCond = condLossPct(entry, r.from, r.to)
-    return {
-      label: r.label,
-      color: r.color,
-      pct: base,
-      cond,
-      delta: cond === null ? null : cond - base,
-      lossCond,
-      lossDelta: lossCond === null ? null : lossCond - base,
-    }
-  })
+
+  if (props.stats?.hasFinalsData) {
+    rows.push(
+      countRow('Made Finals', '#0ea5e9', entry.finalsCount),
+      countRow('Reached Grand Final', '#7c3aed', entry.grandFinalCount),
+      countRow('Won Grand Final', '#eab308', entry.premiershipCount),
+    )
+  }
+
+  rows.push(
+    positionRow(entry, 'Bottom 4', '#991b1b', 14, 18),
+    positionRow(entry, 'Last', '#292524', 17, 18),
+  )
+
+  return rows
 }
 
 function medianPosition(entry: RangeEntry): number {

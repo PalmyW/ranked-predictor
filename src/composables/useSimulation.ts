@@ -4,6 +4,7 @@ import { TEAMS } from './useAFLData'
 import { homeWinProbFromScore, type PalmyVariant } from '../utils/palmyWinProb'
 import { invNorm } from '../utils/normal'
 import { checkGpuSupport, createGpuSimContext, runGpuRangeBatch, destroyGpuSimContext, gpuMaxBatch } from './useGpuSimulation'
+import { buildFinalsTemplate, resolveFinalsForOrder, type FinalsTemplate, type FinalsSimOutcome } from './useFinals'
 import { LEAGUE_CONFIG } from '../config/league'
 
 export interface RangeEntry {
@@ -17,6 +18,9 @@ export interface RangeEntry {
   nextMatchId: number | null  // first upcoming match for this team (null if none)
   nextOpponentName: string | null
   nextIsHome: boolean
+  finalsCount: number         // # sims where the team made the finals
+  grandFinalCount: number     // # sims where the team reached the Grand Final
+  premiershipCount: number    // # sims where the team won the Grand Final
 }
 
 export interface SimulationStats {
@@ -24,6 +28,7 @@ export interface SimulationStats {
   mostCommonCount: number      // how many times that exact ladder appeared
   consensusLadder: number[]    // greedy: for each position, the most-likely team (no repeats)
   uniqueCount: number          // number of distinct ladder orderings seen
+  hasFinalsData: boolean       // whether the fixture has finals matches to derive finals stats from
 }
 
 type MatchesRef = { readonly value: readonly AflMatch[] }
@@ -350,15 +355,25 @@ export interface RangeAccumulator {
   activeMatches: AflMatch[]
   teamMap: Record<number, { name: string; abbreviation: string; iconId: string }>
   ran: number
+  finalsTemplate: FinalsTemplate
+  finalsCounts: Record<number, number>
+  grandFinalCounts: Record<number, number>
+  premiershipCounts: Record<number, number>
 }
 
 function createRangeAccumulator(matches: readonly AflMatch[]): RangeAccumulator {
   const teamMap = Object.fromEntries(TEAMS.map((t) => [t.id, t]))
   const counts: Record<number, number[]> = {}
   const winNextCounts: Record<number, number[]> = {}
+  const finalsCounts: Record<number, number> = {}
+  const grandFinalCounts: Record<number, number> = {}
+  const premiershipCounts: Record<number, number> = {}
   for (const team of TEAMS) {
     counts[team.id] = new Array(TEAMS.length).fill(0)
     winNextCounts[team.id] = new Array(TEAMS.length).fill(0)
+    finalsCounts[team.id] = 0
+    grandFinalCounts[team.id] = 0
+    premiershipCounts[team.id] = 0
   }
 
   // Each team's next game: the first upcoming (non-concluded) match they appear
@@ -400,6 +415,10 @@ function createRangeAccumulator(matches: readonly AflMatch[]): RangeAccumulator 
     baseStats: buildStats(matches),
     teamMap,
     ran: 0,
+    finalsTemplate: buildFinalsTemplate(matches),
+    finalsCounts,
+    grandFinalCounts,
+    premiershipCounts,
   }
 }
 
@@ -421,6 +440,20 @@ export function accumulateSimResult(
   }
 }
 
+// Folds one simulated season's finals outcome into the running tallies.
+// Shared by the CPU and GPU batch runners, same as accumulateSimResult.
+export function accumulateFinalsResult(acc: RangeAccumulator, outcome: FinalsSimOutcome): void {
+  for (const tid of outcome.madeFinals) {
+    if (acc.finalsCounts[tid] !== undefined) acc.finalsCounts[tid]++
+  }
+  for (const tid of outcome.grandFinalists) {
+    if (acc.grandFinalCounts[tid] !== undefined) acc.grandFinalCounts[tid]++
+  }
+  if (outcome.premier !== null && acc.premiershipCounts[outcome.premier] !== undefined) {
+    acc.premiershipCounts[outcome.premier]++
+  }
+}
+
 function runRangeBatch(
   acc: RangeAccumulator,
   rankMap: Record<number, number>,
@@ -429,9 +462,13 @@ function runRangeBatch(
   usePalmy: boolean,
   variant: PalmyVariant,
 ): void {
+  const hasFinals = acc.finalsTemplate.matches.length > 0
   for (let i = 0; i < batch; i++) {
     const { order, nextWinners } = runOneSim(acc.baseStats, acc.activeMatches, rankMap, predMap, usePalmy, variant, acc.nextMatchIds)
     accumulateSimResult(acc, order, (tid) => nextWinners[acc.nextMatchId[tid]] === tid)
+    if (hasFinals) {
+      accumulateFinalsResult(acc, resolveFinalsForOrder(acc.finalsTemplate, order, rankMap, predMap, usePalmy, variant))
+    }
   }
   acc.ran += batch
 }
@@ -486,9 +523,21 @@ function buildRangeResults(acc: RangeAccumulator): { results: RangeEntry[]; stat
     nextMatchId: acc.nextMatchId[team.id] ?? null,
     nextOpponentName: acc.nextOpponentName[team.id] ?? null,
     nextIsHome: acc.nextIsHome[team.id] ?? false,
+    finalsCount: acc.finalsCounts[team.id] ?? 0,
+    grandFinalCount: acc.grandFinalCounts[team.id] ?? 0,
+    premiershipCount: acc.premiershipCounts[team.id] ?? 0,
   }))
 
-  return { results, stats: { mostCommonLadder, mostCommonCount, consensusLadder, uniqueCount: ladderCounts.size } }
+  return {
+    results,
+    stats: {
+      mostCommonLadder,
+      mostCommonCount,
+      consensusLadder,
+      uniqueCount: ladderCounts.size,
+      hasFinalsData: acc.finalsTemplate.matches.length > 0,
+    },
+  }
 }
 
 export interface MatchScorePrediction {
