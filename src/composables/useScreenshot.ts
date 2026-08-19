@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { toPng } from 'html-to-image'
+import { toCanvas } from 'html-to-image'
 
 /**
  * Capture a DOM element to a downloadable PNG.
@@ -8,6 +8,12 @@ import { toPng } from 'html-to-image'
  * `<use href="/ranked-predictor/icons.svg#id">` references, which html-to-image
  * can't resolve. We inline the sprite into the captured element and rewrite the
  * hrefs to local fragments for the duration of the capture, then restore them.
+ *
+ * The padding/background border is composited onto a second canvas afterwards
+ * rather than applied as CSS padding on `el` itself: absolutely positioned
+ * descendants (e.g. the finals bracket's connector-line SVG) anchor to the
+ * padding edge, not the content edge, so adding padding directly to `el`'s
+ * style shifts normal-flow content but leaves them behind, misaligning them.
  */
 export function useScreenshot() {
   const capturing = ref(false)
@@ -37,21 +43,29 @@ export function useScreenshot() {
 
       const dark = document.documentElement.classList.contains('dark')
       const pad = 16
-      const dataUrl = await toPng(el, {
-        pixelRatio: 2,
-        width: el.scrollWidth + pad * 2,
-        height: el.scrollHeight + pad * 2,
-        style: {
-          margin: '0',
-          padding: `${pad}px`,
-          background: dark ? '#111827' : '#ffffff',
-          borderRadius: '8px',
-          overflow: 'visible',
-        },
+      const ratio = 2
+      const contentCanvas = await toCanvas(el, {
+        pixelRatio: ratio,
+        width: el.scrollWidth,
+        height: el.scrollHeight,
+        style: { margin: '0', overflow: 'visible' },
       })
+
+      const finalCanvas = document.createElement('canvas')
+      finalCanvas.width = contentCanvas.width + pad * 2 * ratio
+      finalCanvas.height = contentCanvas.height + pad * 2 * ratio
+      const ctx = finalCanvas.getContext('2d')!
+      const radius = 8 * ratio
+      ctx.beginPath()
+      ctx.roundRect(0, 0, finalCanvas.width, finalCanvas.height, radius)
+      ctx.clip()
+      ctx.fillStyle = dark ? '#111827' : '#ffffff'
+      ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height)
+      ctx.drawImage(contentCanvas, pad * ratio, pad * ratio)
+
       const link = document.createElement('a')
       link.download = filename
-      link.href = dataUrl
+      link.href = finalCanvas.toDataURL('image/png')
       link.click()
     } finally {
       useEls.forEach(({ el, original }) => el.setAttribute('href', original))
