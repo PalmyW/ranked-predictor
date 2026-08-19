@@ -9,11 +9,13 @@
         <h1 class="text-lg font-bold text-gray-800 dark:text-gray-100">Finals</h1>
         <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Seeded from your last simulated season</p>
       </div>
-      <button
-        v-if="simulatedLadder"
-        @click="rerollTick++"
-        class="px-3 py-1.5 text-xs font-semibold rounded bg-purple-600 text-white hover:bg-purple-700 transition-colors"
-      >Re-roll Finals</button>
+      <div v-if="simulatedLadder" class="flex items-center gap-2">
+        <ScreenshotButton v-if="!capturing && columns.length > 0" @click="screenshot(bracketEl, 'finals-bracket.png')" />
+        <button
+          @click="rerollTick++"
+          class="px-3 py-1.5 text-xs font-semibold rounded bg-purple-600 text-white hover:bg-purple-700 transition-colors"
+        >Re-roll Finals</button>
+      </div>
     </div>
 
     <div v-if="isLoading" class="text-sm text-gray-400 dark:text-gray-500">Loading fixture...</div>
@@ -26,11 +28,30 @@
       No finals matches found for this season.
     </div>
 
-    <div v-else class="flex gap-6 overflow-x-auto pb-4">
-      <div v-for="col in columns" :key="col.code" class="flex flex-col gap-4">
+    <div v-else ref="bracketEl" class="relative flex gap-6 overflow-x-auto pb-4">
+      <svg
+        class="pointer-events-none absolute left-0 top-0 z-0"
+        :width="linesWidth"
+        :height="linesHeight"
+      >
+        <path
+          v-for="line in connectorLines"
+          :key="line.id"
+          :d="line.d"
+          fill="none"
+          :stroke="isDark ? '#374151' : '#d1d5db'"
+          stroke-width="2"
+        />
+      </svg>
+      <div v-for="col in columns" :key="col.code" class="relative z-10 flex flex-col gap-4">
         <h2 class="text-sm font-bold text-gray-700 dark:text-gray-200">{{ col.title }}</h2>
         <div class="flex flex-1 flex-col justify-around gap-6">
-          <FinalsBracketCard v-for="m in col.matches" :key="m.matchId" :match="m" />
+          <FinalsBracketCard
+            v-for="m in col.matches"
+            :key="m.matchId"
+            :ref="(el) => setCardRef(m.matchId, el)"
+            :match="m"
+          />
         </div>
       </div>
     </div>
@@ -38,12 +59,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type ComponentPublicInstance } from 'vue'
+import type { FinalsBracketMatch, FinalsSlot } from '../types/afl'
 import { useAFLData } from '../composables/useAFLData'
 import { useRanking } from '../composables/useRanking'
 import { useSimulation } from '../composables/useSimulation'
+import { useScreenshot } from '../composables/useScreenshot'
+import { useDarkMode } from '../composables/useDarkMode'
 import { buildFinalsBracket, groupFinalsColumns } from '../composables/useFinals'
 import FinalsBracketCard from '../components/FinalsBracketCard.vue'
+import ScreenshotButton from '../components/ScreenshotButton.vue'
 
 const { matches, isLoading, error } = useAFLData()
 const { ranking } = useRanking()
@@ -51,6 +76,9 @@ const { ranking } = useRanking()
 // with the Predictor page's Simulated tab, so this reflects whatever season
 // was last simulated there rather than running an independent simulation.
 const { simulatedLadder } = useSimulation(ranking, matches)
+const { capturing, screenshot } = useScreenshot()
+const { isDark } = useDarkMode()
+const bracketEl = ref<HTMLElement | null>(null)
 
 const rankMap = computed<Record<number, number>>(() => {
   const map: Record<number, number> = {}
@@ -70,4 +98,128 @@ const bracket = computed(() => {
 })
 
 const columns = computed(() => groupFinalsColumns(bracket.value))
+
+// Connector lines tracing which match feeds which slot ("Winner of QF1" etc).
+// Positions are measured from the actual card DOM (rather than derived from
+// layout math) since column heights vary with `justify-around` spacing.
+const cardRefs = new Map<number, HTMLElement>()
+
+function setCardRef(matchId: number, el: Element | ComponentPublicInstance | null) {
+  if (!el) { cardRefs.delete(matchId); return }
+  const node = ('$el' in el ? el.$el : el) as HTMLElement
+  cardRefs.set(matchId, node)
+}
+
+// Resolves the bracket match (and which of its two rows) that actually
+// feeds a given slot: for a "Winner/Loser of X" rule that's the winner's or
+// loser's row of match X respectively; for a "ranked WF winner" rule (which
+// can be fed by either wildcard match) it's the winner's row of whichever
+// one produced the team currently occupying the slot.
+function sourceRowFor(slot: FinalsSlot): { match: FinalsBracketMatch; side: 'home' | 'away' } | undefined {
+  const rule = slot.rule
+  if (rule.kind === 'result') {
+    const match = bracket.value.find((b) => b.sourceCode === rule.sourceCode)
+    if (!match || match.winnerTeamId === null) return undefined
+    const winnerSide = match.winnerTeamId === match.home.teamId ? 'home' : 'away'
+    const side = rule.result === 'winner' ? winnerSide : (winnerSide === 'home' ? 'away' : 'home')
+    return { match, side }
+  }
+  if (rule.kind === 'rankedWinner') {
+    const match = bracket.value.find((b) => b.sourceCode.startsWith(rule.roundCode) && b.winnerTeamId === slot.teamId)
+    if (!match || match.winnerTeamId === null) return undefined
+    return { match, side: match.winnerTeamId === match.home.teamId ? 'home' : 'away' }
+  }
+  return undefined
+}
+
+const linesWidth = ref(0)
+const linesHeight = ref(0)
+const connectorLines = ref<{ id: string; d: string }[]>([])
+
+interface RawLine { id: string; x1: number; y1: number; x2: number; y2: number }
+
+function recomputeLines() {
+  const wrap = bracketEl.value
+  if (!wrap) { connectorLines.value = []; return }
+
+  linesWidth.value = wrap.scrollWidth
+  linesHeight.value = wrap.scrollHeight
+  const wrapRect = wrap.getBoundingClientRect()
+
+  const raw: RawLine[] = []
+  for (const m of bracket.value) {
+    for (const side of ['home', 'away'] as const) {
+      const slot = m[side]
+      if (slot.teamId === null) continue
+      const source = sourceRowFor(slot)
+      if (!source) continue
+      const { match: sourceMatch, side: sourceSide } = source
+
+      const sourceRowEl = cardRefs.get(sourceMatch.matchId)?.querySelector(`[data-row="${sourceSide}"]`)
+      const destRowEl = cardRefs.get(m.matchId)?.querySelector(`[data-row="${side}"]`)
+      if (!sourceRowEl || !destRowEl) continue
+
+      const sr = sourceRowEl.getBoundingClientRect()
+      const dr = destRowEl.getBoundingClientRect()
+      raw.push({
+        id: `${sourceMatch.matchId}-${m.matchId}-${side}`,
+        x1: sr.right - wrapRect.left,
+        y1: sr.top + sr.height / 2 - wrapRect.top,
+        x2: dr.left - wrapRect.left,
+        y2: dr.top + dr.height / 2 - wrapRect.top,
+      })
+    }
+  }
+
+  // Lines between the same pair of columns share the same x1/x2 (every card
+  // in a column has the same edges), so group by that and fan them out
+  // across the gutter — otherwise crossing paths (e.g. Semi Final winners
+  // swapping into Preliminary Finals) would draw directly on top of each
+  // other. Each line stays a strict H-V-H elbow confined to x1..x2, i.e. the
+  // gap between the two columns, so it never crosses behind a card.
+  const groups = new Map<string, RawLine[]>()
+  for (const line of raw) {
+    const key = `${Math.round(line.x1)}-${Math.round(line.x2)}`
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key)!.push(line)
+  }
+
+  const newLines: { id: string; d: string }[] = []
+  for (const group of groups.values()) {
+    group.sort((a, b) => a.y1 - b.y1)
+    const n = group.length
+    group.forEach((line, i) => {
+      const midX = line.x1 + (line.x2 - line.x1) * ((i + 1) / (n + 1))
+      newLines.push({ id: line.id, d: `M ${line.x1} ${line.y1} H ${midX} V ${line.y2} H ${line.x2}` })
+    })
+  }
+  connectorLines.value = newLines
+}
+
+let resizeObserver: ResizeObserver | null = null
+
+// bracketEl only exists once data has loaded (it's behind `v-else`), so
+// attach the observer whenever it appears rather than just once on mount.
+watch(bracketEl, (el, oldEl) => {
+  if (oldEl) resizeObserver?.unobserve(oldEl)
+  if (el) resizeObserver?.observe(el)
+  recomputeLines()
+})
+
+watch([bracket, columns], async () => {
+  await nextTick()
+  recomputeLines()
+})
+
+onMounted(() => {
+  resizeObserver = new ResizeObserver(() => recomputeLines())
+  if (bracketEl.value) resizeObserver.observe(bracketEl.value)
+  window.addEventListener('resize', recomputeLines)
+  recomputeLines()
+})
+
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect()
+  window.removeEventListener('resize', recomputeLines)
+})
 </script>

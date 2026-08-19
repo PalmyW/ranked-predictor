@@ -10,6 +10,7 @@
         :key="slot.teamId ?? slot.placeholderLabel"
         class="flex items-center gap-2 px-3 py-2"
         :class="isWinner(slot) ? 'bg-gray-50 dark:bg-gray-800/60' : ''"
+        :data-row="slot === match.home ? 'home' : 'away'"
       >
         <span
           v-if="slot.seed !== null"

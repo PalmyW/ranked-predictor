@@ -39,13 +39,14 @@ export function useScreenshot() {
       const pad = 16
       const dataUrl = await toPng(el, {
         pixelRatio: 2,
-        width: el.offsetWidth + pad * 2,
-        height: el.offsetHeight + pad * 2,
+        width: el.scrollWidth + pad * 2,
+        height: el.scrollHeight + pad * 2,
         style: {
           margin: '0',
           padding: `${pad}px`,
           background: dark ? '#111827' : '#ffffff',
           borderRadius: '8px',
+          overflow: 'visible',
         },
       })
       const link = document.createElement('a')
