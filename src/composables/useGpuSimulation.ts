@@ -364,6 +364,25 @@ export function gpuMaxBatch(ctx: GpuSimContext): number {
 
 let seedCounter = (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0
 
+// Finals resolution (see useFinals.ts) costs on the order of tens of
+// microseconds per sim — trivial for a CPU batch (yields every batch
+// already), but a GPU batch's post-processing loop below runs fully
+// synchronously across up to MAX_GPU_BATCH sims with no yield point at all.
+// Without chunking, a large batch with finals enabled could block the main
+// thread for many seconds in one go (batchSize * ~tens of us), which reads
+// as a hung tab even though work is still progressing. Yielding every
+// FINALS_YIELD_CHUNK sims keeps each blocking stretch imperceptible.
+const FINALS_YIELD_CHUNK = 2000
+
+let yieldChannel: MessageChannel | null = null
+function yieldToEventLoop(): Promise<void> {
+  return new Promise((resolve) => {
+    const channel = yieldChannel ?? (yieldChannel = new MessageChannel())
+    channel.port1.onmessage = () => resolve()
+    channel.port2.postMessage(null)
+  })
+}
+
 // Dispatches one GPU batch and folds its results into `acc` via the same
 // accumulateSimResult() the CPU path uses, so downstream aggregation
 // (position counts, ladder dedup, next-game win tracking) is identical
@@ -405,6 +424,7 @@ export async function runGpuRangeBatch(ctx: GpuSimContext, acc: RangeAccumulator
     })
     if (hasFinals) {
       accumulateFinalsResult(acc, resolveFinalsForOrder(acc.finalsTemplate, order, ctx.rankMap, ctx.predMap, ctx.usePalmy, ctx.variant))
+      if ((s + 1) % FINALS_YIELD_CHUNK === 0) await yieldToEventLoop()
     }
   }
   acc.ran += batchSize

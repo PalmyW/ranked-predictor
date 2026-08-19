@@ -382,24 +382,23 @@ function countRow(label: string, color: string, count: number) {
 }
 
 function milestones(entry: RangeEntry) {
-  const rows = [
+  const rows = []
+
+  if (props.stats?.hasFinalsData) {
+    rows.push(
+      countRow('Win Grand Final', '#eab308', entry.premiershipCount),
+      countRow('Make Grand Final', '#7c3aed', entry.grandFinalCount),
+      countRow('Make Prelim', '#0ea5e9', entry.prelimCount),
+    )
+  }
+
+  rows.push(
     positionRow(entry, 'Minor Premier', '#16a34a', 0, 1),
     positionRow(entry, 'Top 2', '#22c55e', 0, 2),
     positionRow(entry, 'Top 4', '#86efac', 0, 4),
     positionRow(entry, 'Top 6', '#ca8a04', 0, 6),
     positionRow(entry, 'Top 8', '#ea580c', 0, 8),
     positionRow(entry, 'Top 10', '#fdba74', 0, 10),
-  ]
-
-  if (props.stats?.hasFinalsData) {
-    rows.push(
-      countRow('Made Finals', '#0ea5e9', entry.finalsCount),
-      countRow('Reached Grand Final', '#7c3aed', entry.grandFinalCount),
-      countRow('Won Grand Final', '#eab308', entry.premiershipCount),
-    )
-  }
-
-  rows.push(
     positionRow(entry, 'Bottom 4', '#991b1b', 14, 18),
     positionRow(entry, 'Last', '#292524', 17, 18),
   )

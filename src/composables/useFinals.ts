@@ -1,6 +1,6 @@
 import type { AflMatch, FinalsBracketMatch, FinalsColumn, FinalsSlot, FinalsSlotRule, LadderRow } from '../types/afl'
 import { teamById } from './useAFLData'
-import { matchHomeWinProb, sampleMatchScores, SIM_WIN_SCORE, SIM_LOSS_SCORE, type MatchScorePrediction } from './useSimulation'
+import { matchHomeWinProb, homeWinProbFor, sampleMatchScores, SIM_WIN_SCORE, SIM_LOSS_SCORE, type MatchScorePrediction } from './useSimulation'
 import type { PalmyVariant } from '../utils/palmyWinProb'
 
 // Every finals-round abbreviation seen across seasons: the 2026+ wildcard
@@ -176,27 +176,41 @@ export function buildFinalsBracket(
   return results
 }
 
+// Slot rules resolved to array indices at template-build time so the hot
+// per-sim resolver (resolveFinalsForOrder, called up to millions of times
+// per Range run) never touches strings, regexes, or dictionary lookups.
+type ResolvedRule =
+  | { kind: 'fixed' }
+  | { kind: 'seed'; position: number }
+  | { kind: 'winnerOf'; matchIdx: number }
+  | { kind: 'loserOf'; matchIdx: number }
+  | { kind: 'rankedWinner'; rank: 'lowest' | 'highest'; matchIdxs: number[] }
+
 interface FinalsTemplateMatch {
   matchId: number
-  sourceCode: string
-  homeRule: FinalsSlotRule
-  awayRule: FinalsSlotRule
+  homeRule: ResolvedRule
+  awayRule: ResolvedRule
   homeFixedTeamId: number | null
   awayFixedTeamId: number | null
   concludedWinnerId: number | null
-  concludedLoserId: number | null
-  raw: AflMatch
 }
 
 export interface FinalsTemplate {
   matches: FinalsTemplateMatch[]
-  maxSeed: number
-  fixedFinalists: number[]
-  grandFinalCode: string | null
+  grandFinalIdx: number | null
+  prelimIdxs: number[]
+  // Scratch buffers reused by every resolveFinalsForOrder() call against this
+  // template (reset, never reallocated) — resolution always runs fully
+  // synchronously before the next sim starts, so reuse is safe and avoids
+  // allocating fresh arrays/objects on what can be a multi-million-call loop.
+  scratchHome: (number | null)[]
+  scratchAway: (number | null)[]
+  scratchWinner: (number | null)[]
+  scratchLoser: (number | null)[]
 }
 
 export interface FinalsSimOutcome {
-  madeFinals: number[]
+  prelimFinalists: number[]
   grandFinalists: number[]
   premier: number | null
 }
@@ -208,49 +222,55 @@ export interface FinalsSimOutcome {
 // (resolveFinalsForOrder) can skip re-filtering/re-parsing the fixture.
 export function buildFinalsTemplate(matches: readonly AflMatch[]): FinalsTemplate {
   const finalsMatches = matches.filter(isFinalsMatch)
-  let maxSeed = 0
-  let grandFinalCode: string | null = null
-  const fixedFinalists = new Set<number>()
-
-  const templateMatches: FinalsTemplateMatch[] = finalsMatches.map((match) => {
-    const sourceCode = deriveSourceCode(match)
-    if (sourceCode === 'GF') grandFinalCode = sourceCode
-
-    const resolve = (teamId: number, name: string): { rule: FinalsSlotRule; fixed: number | null } => {
-      if (teamById(teamId)) {
-        fixedFinalists.add(teamId)
-        return { rule: { kind: 'resolved' }, fixed: teamId }
-      }
-      const rule = parseSlotRule(name)
-      if (rule.kind === 'seed') maxSeed = Math.max(maxSeed, rule.position)
-      return { rule, fixed: null }
-    }
-    const home = resolve(match.homeTeamId, match.homeTeamName)
-    const away = resolve(match.awayTeamId, match.awayTeamName)
-
-    let concludedWinnerId: number | null = null
-    let concludedLoserId: number | null = null
-    if (match.status === 'CONCLUDED' && match.homeScore && match.awayScore) {
-      const hs = match.homeScore.totalScore
-      const as = match.awayScore.totalScore
-      concludedWinnerId = hs >= as ? match.homeTeamId : match.awayTeamId
-      concludedLoserId = concludedWinnerId === match.homeTeamId ? match.awayTeamId : match.homeTeamId
-    }
-
-    return {
-      matchId: match.id,
-      sourceCode,
-      homeRule: home.rule,
-      awayRule: away.rule,
-      homeFixedTeamId: home.fixed,
-      awayFixedTeamId: away.fixed,
-      concludedWinnerId,
-      concludedLoserId,
-      raw: match,
-    }
+  const sourceCodes = finalsMatches.map(deriveSourceCode)
+  const indexBySourceCode = new Map<string, number>(sourceCodes.map((c, i) => [c, i]))
+  const roundCodeGroups = new Map<string, number[]>()
+  sourceCodes.forEach((c, i) => {
+    const roundCode = c.replace(/\d+$/, '')
+    const list = roundCodeGroups.get(roundCode)
+    if (list) list.push(i); else roundCodeGroups.set(roundCode, [i])
   })
 
-  return { matches: templateMatches, maxSeed, fixedFinalists: [...fixedFinalists], grandFinalCode }
+  let grandFinalIdx: number | null = null
+
+  const toResolvedRule = (rawRule: FinalsSlotRule): ResolvedRule => {
+    if (rawRule.kind === 'resolved') return { kind: 'fixed' }
+    if (rawRule.kind === 'seed') return { kind: 'seed', position: rawRule.position }
+    if (rawRule.kind === 'result') {
+      const idx = indexBySourceCode.get(rawRule.sourceCode)
+      if (idx === undefined) return { kind: 'fixed' } // dangling reference — never resolves, same as upstream
+      return rawRule.result === 'winner' ? { kind: 'winnerOf', matchIdx: idx } : { kind: 'loserOf', matchIdx: idx }
+    }
+    return { kind: 'rankedWinner', rank: rawRule.rank, matchIdxs: roundCodeGroups.get(rawRule.roundCode) ?? [] }
+  }
+
+  const templateMatches: FinalsTemplateMatch[] = finalsMatches.map((match, i) => {
+    if (sourceCodes[i] === 'GF') grandFinalIdx = i
+
+    const homeFixedTeamId = teamById(match.homeTeamId) ? match.homeTeamId : null
+    const awayFixedTeamId = teamById(match.awayTeamId) ? match.awayTeamId : null
+
+    const homeRule = homeFixedTeamId !== null ? { kind: 'fixed' as const } : toResolvedRule(parseSlotRule(match.homeTeamName))
+    const awayRule = awayFixedTeamId !== null ? { kind: 'fixed' as const } : toResolvedRule(parseSlotRule(match.awayTeamName))
+
+    let concludedWinnerId: number | null = null
+    if (match.status === 'CONCLUDED' && match.homeScore && match.awayScore) {
+      concludedWinnerId = match.homeScore.totalScore >= match.awayScore.totalScore ? match.homeTeamId : match.awayTeamId
+    }
+
+    return { matchId: match.id, homeRule, awayRule, homeFixedTeamId, awayFixedTeamId, concludedWinnerId }
+  })
+
+  const n = templateMatches.length
+  return {
+    matches: templateMatches,
+    grandFinalIdx,
+    prelimIdxs: roundCodeGroups.get('PF') ?? [],
+    scratchHome: new Array(n).fill(null),
+    scratchAway: new Array(n).fill(null),
+    scratchWinner: new Array(n).fill(null),
+    scratchLoser: new Array(n).fill(null),
+  }
 }
 
 // Per-simulation finals resolution: seeds {kind:'seed'} slots from the
@@ -258,7 +278,11 @@ export function buildFinalsTemplate(matches: readonly AflMatch[]): FinalsTemplat
 // slot-resolution loop as buildFinalsBracket (minus score sampling, since
 // only the winner is needed) to determine who made the finals, who reached
 // the Grand Final, and who won it. Shared by the CPU and GPU Range batch
-// runners so both engines compute finals stats identically.
+// runners so both engines compute finals stats identically. Operates purely
+// on the template's precomputed indices/scratch arrays — no string keys,
+// regexes, or heap allocation beyond the small per-resolved-match synthMatch
+// spread — since this runs once per simulated season (up to millions of
+// times per Range run).
 export function resolveFinalsForOrder(
   template: FinalsTemplate,
   order: readonly number[],
@@ -267,78 +291,87 @@ export function resolveFinalsForOrder(
   usePalmy: boolean,
   variant: PalmyVariant,
 ): FinalsSimOutcome {
-  if (template.matches.length === 0) return { madeFinals: [], grandFinalists: [], premier: null }
+  const { matches, scratchHome: homeIds, scratchAway: awayIds, scratchWinner: winnerIds, scratchLoser: loserIds } = template
+  const n = matches.length
+  if (n === 0) return { prelimFinalists: [], grandFinalists: [], premier: null }
 
-  const madeFinals = template.maxSeed > 0 ? order.slice(0, template.maxSeed) : template.fixedFinalists
-
-  const outcomes: Record<string, { winnerId: number; loserId: number }> = {}
-  const homeIds: Record<string, number | null> = {}
-  const awayIds: Record<string, number | null> = {}
-  for (const m of template.matches) {
-    homeIds[m.sourceCode] = m.homeFixedTeamId
-    awayIds[m.sourceCode] = m.awayFixedTeamId
+  for (let i = 0; i < n; i++) {
+    homeIds[i] = matches[i].homeFixedTeamId
+    awayIds[i] = matches[i].awayFixedTeamId
+    winnerIds[i] = null
+    loserIds[i] = null
   }
 
-  const resolveSlot = (rule: FinalsSlotRule): number | null => {
-    if (rule.kind === 'seed') return order[rule.position - 1] ?? null
-    if (rule.kind === 'result') {
-      const o = outcomes[rule.sourceCode]
-      if (!o) return null
-      return rule.result === 'winner' ? o.winnerId : o.loserId
+  const resolveSlot = (rule: ResolvedRule): number | null => {
+    switch (rule.kind) {
+      case 'seed': return order[rule.position - 1] ?? null
+      case 'winnerOf': return winnerIds[rule.matchIdx]
+      case 'loserOf': return loserIds[rule.matchIdx]
+      case 'rankedWinner': {
+        let chosen: number | null = null
+        let chosenSeed = rule.rank === 'highest' ? Infinity : -Infinity
+        for (const idx of rule.matchIdxs) {
+          const wid = winnerIds[idx]
+          if (wid === null) return null
+          const seed = order.indexOf(wid) + 1 || 999
+          if (rule.rank === 'highest' ? seed < chosenSeed : seed > chosenSeed) { chosenSeed = seed; chosen = wid }
+        }
+        return chosen
+      }
+      default: return null
     }
-    if (rule.kind === 'rankedWinner') {
-      const codes = template.matches.map((m) => m.sourceCode).filter((c) => c.replace(/\d+$/, '') === rule.roundCode)
-      if (codes.length === 0 || !codes.every((c) => outcomes[c])) return null
-      const winners = codes.map((c) => outcomes[c].winnerId)
-      const seeds = winners.map((id) => ({ id, seed: order.indexOf(id) + 1 || 999 }))
-      seeds.sort((a, b) => a.seed - b.seed)
-      return rule.rank === 'highest' ? seeds[0].id : seeds[seeds.length - 1].id
-    }
-    return null
   }
 
   let changed = true
   let guard = 0
-  while (changed && guard++ <= template.matches.length) {
+  while (changed && guard++ <= n) {
     changed = false
-    for (const m of template.matches) {
-      if (outcomes[m.sourceCode]) continue
-      if (homeIds[m.sourceCode] === null) {
-        const id = resolveSlot(m.homeRule)
-        if (id !== null) { homeIds[m.sourceCode] = id; changed = true }
+    for (let i = 0; i < n; i++) {
+      if (winnerIds[i] !== null) continue
+      if (homeIds[i] === null) {
+        const id = resolveSlot(matches[i].homeRule)
+        if (id !== null) { homeIds[i] = id; changed = true }
       }
-      if (awayIds[m.sourceCode] === null) {
-        const id = resolveSlot(m.awayRule)
-        if (id !== null) { awayIds[m.sourceCode] = id; changed = true }
+      if (awayIds[i] === null) {
+        const id = resolveSlot(matches[i].awayRule)
+        if (id !== null) { awayIds[i] = id; changed = true }
       }
-      const hId = homeIds[m.sourceCode]
-      const aId = awayIds[m.sourceCode]
+      const hId = homeIds[i]
+      const aId = awayIds[i]
       if (hId === null || aId === null) continue
 
+      const m = matches[i]
       let winnerId: number
       if (m.concludedWinnerId !== null) {
         winnerId = m.concludedWinnerId
       } else {
-        const synthMatch: AflMatch = { ...m.raw, homeTeamId: hId, awayTeamId: aId }
-        const p = matchHomeWinProb(synthMatch, rankMap, predMap, usePalmy, variant)
+        const p = homeWinProbFor(m.matchId, hId, aId, rankMap, predMap, usePalmy, variant)
         winnerId = Math.random() < p ? hId : aId
       }
-      outcomes[m.sourceCode] = { winnerId, loserId: winnerId === hId ? aId : hId }
+      winnerIds[i] = winnerId
+      loserIds[i] = winnerId === hId ? aId : hId
       changed = true
     }
   }
 
-  const gf = template.grandFinalCode ? template.matches.find((m) => m.sourceCode === template.grandFinalCode) : undefined
+  const prelimFinalists: number[] = []
+  for (const idx of template.prelimIdxs) {
+    const hId = homeIds[idx]
+    const aId = awayIds[idx]
+    if (hId !== null) prelimFinalists.push(hId)
+    if (aId !== null) prelimFinalists.push(aId)
+  }
+
   const grandFinalists: number[] = []
   let premier: number | null = null
-  if (gf) {
-    const hId = homeIds[gf.sourceCode]
-    const aId = awayIds[gf.sourceCode]
+  if (template.grandFinalIdx !== null) {
+    const hId = homeIds[template.grandFinalIdx]
+    const aId = awayIds[template.grandFinalIdx]
     if (hId !== null) grandFinalists.push(hId)
     if (aId !== null) grandFinalists.push(aId)
-    premier = outcomes[gf.sourceCode]?.winnerId ?? null
+    premier = winnerIds[template.grandFinalIdx]
   }
-  return { madeFinals, grandFinalists, premier }
+  return { prelimFinalists, grandFinalists, premier }
 }
 
 export function groupFinalsColumns(bracket: readonly FinalsBracketMatch[]): FinalsColumn[] {

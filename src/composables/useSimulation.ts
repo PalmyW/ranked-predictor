@@ -18,7 +18,7 @@ export interface RangeEntry {
   nextMatchId: number | null  // first upcoming match for this team (null if none)
   nextOpponentName: string | null
   nextIsHome: boolean
-  finalsCount: number         // # sims where the team made the finals
+  prelimCount: number         // # sims where the team made the Preliminary Final
   grandFinalCount: number     // # sims where the team reached the Grand Final
   premiershipCount: number    // # sims where the team won the Grand Final
 }
@@ -124,14 +124,31 @@ export function matchHomeWinProb(
   usePalmy: boolean,
   variant: PalmyVariant,
 ): number {
+  return homeWinProbFor(match.id, match.homeTeamId, match.awayTeamId, rankMap, predMap, usePalmy, variant)
+}
+
+// Same as matchHomeWinProb but takes the three fields it actually reads
+// directly instead of a full AflMatch, so callers that only know a
+// synthetic/hypothetical pairing (e.g. resolveFinalsForOrder in useFinals.ts,
+// called once per simulated season — up to millions of times per Range run)
+// don't need to allocate a throwaway match object just to satisfy the type.
+export function homeWinProbFor(
+  matchId: number,
+  homeTeamId: number,
+  awayTeamId: number,
+  rankMap: Record<number, number>,
+  predMap: Map<number, MatchScorePrediction> | null,
+  usePalmy: boolean,
+  variant: PalmyVariant,
+): number {
   if (usePalmy && predMap) {
-    const p = predMap.get(match.id)
+    const p = predMap.get(matchId)
     if (p?.hasStrengthData && p.predictedHomeScore !== p.predictedAwayScore) {
       return homeWinProbFromScore(p.predictedHomeScore, p.predictedAwayScore, variant)
     }
   }
-  const hRank = rankMap[match.homeTeamId] ?? 999
-  const aRank = rankMap[match.awayTeamId] ?? 999
+  const hRank = rankMap[homeTeamId] ?? 999
+  const aRank = rankMap[awayTeamId] ?? 999
   return homeWinProb(hRank, aRank)
 }
 
@@ -356,22 +373,29 @@ export interface RangeAccumulator {
   teamMap: Record<number, { name: string; abbreviation: string; iconId: string }>
   ran: number
   finalsTemplate: FinalsTemplate
-  finalsCounts: Record<number, number>
+  prelimCounts: Record<number, number>
   grandFinalCounts: Record<number, number>
   premiershipCounts: Record<number, number>
+  // Tracked incrementally in accumulateSimResult (O(1) per sim) rather than
+  // by scanning ladderCounts in buildRangeResults: that map grows roughly
+  // linearly with total sims run (18-team orderings rarely collide), so a
+  // full rescan after every batch made large runs (e.g. 10m) effectively
+  // O(n^2) and could take far longer than the simulations themselves.
+  mostCommonKey: string
+  mostCommonCount: number
 }
 
 function createRangeAccumulator(matches: readonly AflMatch[]): RangeAccumulator {
   const teamMap = Object.fromEntries(TEAMS.map((t) => [t.id, t]))
   const counts: Record<number, number[]> = {}
   const winNextCounts: Record<number, number[]> = {}
-  const finalsCounts: Record<number, number> = {}
+  const prelimCounts: Record<number, number> = {}
   const grandFinalCounts: Record<number, number> = {}
   const premiershipCounts: Record<number, number> = {}
   for (const team of TEAMS) {
     counts[team.id] = new Array(TEAMS.length).fill(0)
     winNextCounts[team.id] = new Array(TEAMS.length).fill(0)
-    finalsCounts[team.id] = 0
+    prelimCounts[team.id] = 0
     grandFinalCounts[team.id] = 0
     premiershipCounts[team.id] = 0
   }
@@ -416,9 +440,11 @@ function createRangeAccumulator(matches: readonly AflMatch[]): RangeAccumulator 
     teamMap,
     ran: 0,
     finalsTemplate: buildFinalsTemplate(matches),
-    finalsCounts,
+    prelimCounts,
     grandFinalCounts,
     premiershipCounts,
+    mostCommonKey: '',
+    mostCommonCount: 0,
   }
 }
 
@@ -431,7 +457,9 @@ export function accumulateSimResult(
   wonNextGame: (teamId: number) => boolean,
 ): void {
   const key = order.join(',')
-  acc.ladderCounts.set(key, (acc.ladderCounts.get(key) ?? 0) + 1)
+  const newCount = (acc.ladderCounts.get(key) ?? 0) + 1
+  acc.ladderCounts.set(key, newCount)
+  if (newCount > acc.mostCommonCount) { acc.mostCommonCount = newCount; acc.mostCommonKey = key }
   for (let pos = 0; pos < order.length; pos++) {
     const tid = order[pos]
     if (!acc.counts[tid]) continue
@@ -443,8 +471,8 @@ export function accumulateSimResult(
 // Folds one simulated season's finals outcome into the running tallies.
 // Shared by the CPU and GPU batch runners, same as accumulateSimResult.
 export function accumulateFinalsResult(acc: RangeAccumulator, outcome: FinalsSimOutcome): void {
-  for (const tid of outcome.madeFinals) {
-    if (acc.finalsCounts[tid] !== undefined) acc.finalsCounts[tid]++
+  for (const tid of outcome.prelimFinalists) {
+    if (acc.prelimCounts[tid] !== undefined) acc.prelimCounts[tid]++
   }
   for (const tid of outcome.grandFinalists) {
     if (acc.grandFinalCounts[tid] !== undefined) acc.grandFinalCounts[tid]++
@@ -477,14 +505,8 @@ function runRangeBatch(
 // Count arrays are copied so the returned snapshot is stable even as later
 // batches keep mutating the accumulator in place.
 function buildRangeResults(acc: RangeAccumulator): { results: RangeEntry[]; stats: SimulationStats } {
-  const { counts, winNextCounts, ladderCounts, teamMap } = acc
+  const { counts, winNextCounts, ladderCounts, teamMap, mostCommonKey, mostCommonCount } = acc
 
-  // Most common exact ladder
-  let mostCommonKey = ''
-  let mostCommonCount = 0
-  for (const [key, count] of ladderCounts) {
-    if (count > mostCommonCount) { mostCommonCount = count; mostCommonKey = key }
-  }
   const mostCommonLadder = mostCommonKey ? mostCommonKey.split(',').map(Number) : []
 
   // Consensus ladder: rank teams by mean finishing position across all runs.
@@ -523,7 +545,7 @@ function buildRangeResults(acc: RangeAccumulator): { results: RangeEntry[]; stat
     nextMatchId: acc.nextMatchId[team.id] ?? null,
     nextOpponentName: acc.nextOpponentName[team.id] ?? null,
     nextIsHome: acc.nextIsHome[team.id] ?? false,
-    finalsCount: acc.finalsCounts[team.id] ?? 0,
+    prelimCount: acc.prelimCounts[team.id] ?? 0,
     grandFinalCount: acc.grandFinalCounts[team.id] ?? 0,
     premiershipCount: acc.premiershipCounts[team.id] ?? 0,
   }))
@@ -844,7 +866,15 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef, options?
       if (!gpuCtx) return false
       const maxBatch = gpuMaxBatch(gpuCtx)
       let done = 0
-      let batchSize = Math.min(maxBatch, Math.max(GPU_MIN_BATCH_SIZE, Math.ceil(n / 20)))
+      // With finals data, the CPU-side per-sim post-processing (resolveFinalsForOrder)
+      // adds real cost the GPU shader itself never accounted for, so the usual
+      // "guess ~1/20th of n, up to maxBatch" start is unsafe here — a batch could
+      // block for many seconds before the self-tuning ceiling check below ever
+      // gets a chance to shrink it. Start at the floor and let elapsed-based tuning
+      // ramp up safely instead of ramping down from an already-blocking size.
+      let batchSize = acc.finalsTemplate.matches.length > 0
+        ? GPU_MIN_BATCH_SIZE
+        : Math.min(maxBatch, Math.max(GPU_MIN_BATCH_SIZE, Math.ceil(n / 20)))
       while (done < n) {
         const batch = Math.min(batchSize, maxBatch, n - done)
         const t0 = performance.now()
