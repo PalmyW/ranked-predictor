@@ -66,6 +66,11 @@ export function buildFinalsBracket(
   usePalmy: boolean,
   variant: PalmyVariant,
   random: boolean,
+  // When provided (even empty), switches unplayed matches from algorithmic
+  // simulation to manual picks: a match's winner is whatever team id is
+  // recorded here for its matchId, or left pending (unresolved) until one
+  // is. `random` is ignored in this mode.
+  manualWinners?: ReadonlyMap<number, number> | null,
 ): FinalsBracketMatch[] {
   const finalsMatches = matches.filter(isFinalsMatch)
   if (finalsMatches.length === 0 || ladder.length === 0) return []
@@ -93,6 +98,7 @@ export function buildFinalsBracket(
       homeScore: null,
       awayScore: null,
       isSimulated: false,
+      isManualPick: false,
     }
   })
 
@@ -142,6 +148,11 @@ export function buildFinalsBracket(
         fm.homeScore = hs
         fm.awayScore = as
         fm.isSimulated = false
+      } else if (manualWinners !== undefined && manualWinners !== null) {
+        const pick = manualWinners.get(fm.matchId)
+        if (pick === undefined || (pick !== fm.home.teamId && pick !== fm.away.teamId)) continue // no pick yet — stays pending
+        fm.winnerTeamId = pick
+        fm.isManualPick = true
       } else {
         const synthMatch: AflMatch = { ...raw, homeTeamId: fm.home.teamId, awayTeamId: fm.away.teamId }
         const p = matchHomeWinProb(synthMatch, rankMap, predMap, usePalmy, variant)

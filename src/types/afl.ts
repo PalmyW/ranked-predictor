@@ -88,6 +88,7 @@ export interface FinalsBracketMatch {
   homeScore: number | null
   awayScore: number | null
   isSimulated: boolean
+  isManualPick: boolean
 }
 
 export interface FinalsColumn {

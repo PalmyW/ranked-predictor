@@ -7,11 +7,19 @@
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
       <div>
         <h1 class="text-lg font-bold text-gray-800 dark:text-gray-100">Finals</h1>
-        <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Seeded from your last simulated season</p>
+        <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+          {{ seasonComplete ? 'Live ladder — click a team in a scheduled final to pick the winner' : 'Seeded from your last simulated season' }}
+        </p>
       </div>
-      <div v-if="simulatedLadder" class="flex items-center gap-2">
+      <div v-if="seasonComplete || simulatedLadder" class="flex items-center gap-2">
         <ScreenshotButton v-if="!capturing && columns.length > 0" @click="screenshot(bracketEl, 'finals-bracket.png')" />
         <button
+          v-if="seasonComplete"
+          @click="resetPicks"
+          class="px-3 py-1.5 text-xs font-semibold rounded bg-purple-600 text-white hover:bg-purple-700 transition-colors"
+        >Reset Picks</button>
+        <button
+          v-else
           @click="rerollTick++"
           class="px-3 py-1.5 text-xs font-semibold rounded bg-purple-600 text-white hover:bg-purple-700 transition-colors"
         >Re-roll Finals</button>
@@ -19,7 +27,7 @@
     </div>
 
     <div v-if="isLoading" class="text-sm text-gray-400 dark:text-gray-500">Loading fixture...</div>
-    <div v-else-if="!simulatedLadder" class="text-sm text-gray-400 dark:text-gray-500">
+    <div v-else-if="!seasonComplete && !simulatedLadder" class="text-sm text-gray-400 dark:text-gray-500">
       No simulation yet — head to the
       <RouterLink to="/" class="text-purple-600 dark:text-purple-400 font-semibold hover:underline">Predictor page's Simulated tab</RouterLink>
       and click Simulate to seed the finals bracket.
@@ -51,6 +59,8 @@
             :key="m.matchId"
             :ref="(el) => setCardRef(m.matchId, el)"
             :match="m"
+            :interactive="seasonComplete"
+            @pick="onPick"
           />
         </div>
       </div>
@@ -66,7 +76,7 @@ import { useRanking } from '../composables/useRanking'
 import { useSimulation } from '../composables/useSimulation'
 import { useScreenshot } from '../composables/useScreenshot'
 import { useDarkMode } from '../composables/useDarkMode'
-import { buildFinalsBracket, groupFinalsColumns } from '../composables/useFinals'
+import { buildFinalsBracket, groupFinalsColumns, isFinalsMatch } from '../composables/useFinals'
 import FinalsBracketCard from '../components/FinalsBracketCard.vue'
 import ScreenshotButton from '../components/ScreenshotButton.vue'
 
@@ -75,10 +85,18 @@ const { ranking } = useRanking()
 // simulatedLadder is a module-level singleton (see useSimulation.ts) shared
 // with the Predictor page's Simulated tab, so this reflects whatever season
 // was last simulated there rather than running an independent simulation.
-const { simulatedLadder } = useSimulation(ranking, matches)
+const { simulatedLadder, actualLadder } = useSimulation(ranking, matches)
 const { capturing, screenshot } = useScreenshot()
 const { isDark } = useDarkMode()
 const bracketEl = ref<HTMLElement | null>(null)
+
+// Once every home-and-away match has been played, the real ladder is final
+// and the bracket no longer needs a simulated season to seed it — the user
+// picks the still-to-be-played finals directly instead.
+const seasonComplete = computed(() => {
+  const seasonMatches = matches.value.filter((m) => !isFinalsMatch(m))
+  return seasonMatches.length > 0 && seasonMatches.every((m) => m.status === 'CONCLUDED')
+})
 
 const rankMap = computed<Record<number, number>>(() => {
   const map: Record<number, number> = {}
@@ -90,7 +108,23 @@ const rankMap = computed<Record<number, number>>(() => {
 // the same simulated ladder, without re-running the whole season.
 const rerollTick = ref(0)
 
+// matchId → manually-picked winner, used once the season is complete instead
+// of algorithmic simulation. In-memory only — cleared on reload or reset.
+const manualWinners = ref(new Map<number, number>())
+
+function onPick(matchId: number, teamId: number) {
+  manualWinners.value.set(matchId, teamId)
+}
+function resetPicks() {
+  manualWinners.value.clear()
+}
+
 const bracket = computed(() => {
+  if (seasonComplete.value) {
+    const ladder = actualLadder.value
+    if (ladder.length === 0) return []
+    return buildFinalsBracket(matches.value, ladder, rankMap.value, null, false, 'ha', true, manualWinners.value)
+  }
   void rerollTick.value
   const ladder = simulatedLadder.value
   if (!ladder || ladder.length === 0) return []
