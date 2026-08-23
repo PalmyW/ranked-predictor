@@ -408,7 +408,9 @@ function iconId(teamId: number) {
   return teamById(teamId)?.iconId || null
 }
 function abbrev(teamId: number) {
-  return teamById(teamId)?.abbreviation ?? String(teamId)
+  // Unresolved finals slot (e.g. "Winner of QF1") — fall through to the
+  // TeamFixtureSummaryPopup's teamName prop instead of showing a raw team id.
+  return teamById(teamId)?.abbreviation
 }
 function teamName(teamId: number) {
   return teamById(teamId)?.name ?? String(teamId)
