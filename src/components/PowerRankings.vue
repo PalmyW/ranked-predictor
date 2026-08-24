@@ -61,9 +61,9 @@
                 <div
                   class="flex items-center gap-2 border-b py-1.5 hover:bg-white/5"
                   :class="
-                    index === 5
+                    index === FINALS_BOUNDARY_INDEXES[0]
                       ? 'border-b-2 border-b-red-500'
-                      : index === 9
+                      : index === FINALS_BOUNDARY_INDEXES[1]
                         ? 'border-b-2 border-b-blue-500'
                         : 'border-b border-b-white/10'
                   "
@@ -101,12 +101,12 @@
                 :key="row.teamId"
                 class="flex items-center gap-2 border-b transition-colors"
                 :class="[
-                  i === 5
+                  i === FINALS_BOUNDARY_INDEXES[0]
                     ? [
                         'border-b-2',
                         isAnimating ? 'border-b-transparent' : 'border-b-red-500',
                       ]
-                    : i === 9
+                    : i === FINALS_BOUNDARY_INDEXES[1]
                       ? [
                           'border-b-2',
                           isAnimating
@@ -432,6 +432,7 @@ import {
 import { useRanking } from '../composables/useRanking'
 import { getActiveSeasonYear } from '../config/seasons'
 import { LEAGUE_CONFIG } from '../config/league'
+import { FINALS_BOUNDARY_INDEXES } from '../composables/useFinalsBoundary'
 
 const props = defineProps<{
   ranking: TeamRanking

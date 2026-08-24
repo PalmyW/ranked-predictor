@@ -2,9 +2,9 @@
   <tr
     class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
     :class="{
-      'border-b-2 border-red-400': index === 5,
-      'border-b-2 border-blue-400': index === 9,
-      'border-b border-gray-100 dark:border-gray-800': index !== 5 && index !== 9,
+      'border-b-2 border-red-400': index === FINALS_BOUNDARY_INDEXES[0],
+      'border-b-2 border-blue-400': index === FINALS_BOUNDARY_INDEXES[1],
+      'border-b border-gray-100 dark:border-gray-800': !FINALS_BOUNDARY_INDEXES.includes(index),
     }"
   >
     <td class="py-1.5 text-center text-gray-500 dark:text-gray-500 text-xs">{{ index + 1 }}</td>
@@ -136,6 +136,7 @@
 import { computed, ref } from 'vue'
 import type { LadderRow } from '../types/afl'
 import { DRAW_RESULT } from '../composables/useSimulation'
+import { FINALS_BOUNDARY_INDEXES } from '../composables/useFinalsBoundary'
 import HtmlTooltip from './HtmlTooltip.vue'
 import TeamFixtureSummaryPopup from './TeamFixtureSummaryPopup.vue'
 

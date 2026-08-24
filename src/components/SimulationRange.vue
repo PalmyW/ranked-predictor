@@ -215,7 +215,7 @@
                 v-for="(teamId, pos) in stats.mostCommonLadder"
                 :key="teamId"
                 class="flex items-center gap-2 py-1 rounded"
-                :class="pos === 5 ? 'border-b border-orange-300 dark:border-orange-700 mb-0.5 pb-1.5' : pos === 9 ? 'border-b border-blue-300 dark:border-blue-700 mb-0.5 pb-1.5' : ''"
+                :class="pos === FINALS_BOUNDARY_INDEXES[0] ? 'border-b border-orange-300 dark:border-orange-700 mb-0.5 pb-1.5' : pos === FINALS_BOUNDARY_INDEXES[1] ? 'border-b border-blue-300 dark:border-blue-700 mb-0.5 pb-1.5' : ''"
               >
                 <span class="w-5 text-right text-xs tabular-nums text-gray-400 dark:text-gray-500 shrink-0">{{ pos + 1 }}</span>
                 <svg class="size-5 shrink-0"><use :href="`/ranked-predictor/icons.svg#${teamMap.get(teamId)?.iconId ?? ''}`" /></svg>
@@ -232,7 +232,7 @@
                 v-for="(teamId, pos) in stats.consensusLadder"
                 :key="teamId"
                 class="flex items-center gap-2 py-1 rounded"
-                :class="pos === 5 ? 'border-b border-orange-300 dark:border-orange-700 mb-0.5 pb-1.5' : pos === 9 ? 'border-b border-blue-300 dark:border-blue-700 mb-0.5 pb-1.5' : ''"
+                :class="pos === FINALS_BOUNDARY_INDEXES[0] ? 'border-b border-orange-300 dark:border-orange-700 mb-0.5 pb-1.5' : pos === FINALS_BOUNDARY_INDEXES[1] ? 'border-b border-blue-300 dark:border-blue-700 mb-0.5 pb-1.5' : ''"
               >
                 <span class="w-5 text-right text-xs tabular-nums text-gray-400 dark:text-gray-500 shrink-0">{{ pos + 1 }}</span>
                 <svg class="size-5 shrink-0"><use :href="`/ranked-predictor/icons.svg#${teamMap.get(teamId)?.iconId ?? ''}`" /></svg>
@@ -257,6 +257,8 @@
 import { computed, ref } from 'vue'
 import { toPng } from 'html-to-image'
 import type { RangeEntry, SimulationStats } from '../composables/useSimulation'
+import { LEAGUE } from '../config/league'
+import { FINALS_BOUNDARY_INDEXES } from '../composables/useFinalsBoundary'
 
 const props = defineProps<{
   results: RangeEntry[]
@@ -398,7 +400,15 @@ function milestones(entry: RangeEntry) {
     positionRow(entry, 'Top 4', '#86efac', 0, 4),
     positionRow(entry, 'Top 6', '#ca8a04', 0, 6),
     positionRow(entry, 'Top 8', '#ea580c', 0, 8),
-    positionRow(entry, 'Top 10', '#fdba74', 0, 10),
+  )
+
+  // AFLW plays a straight top-8 with no wildcard round, so top 10 isn't a
+  // finals-relevant cutoff there — only AFL's wildcard format needs it.
+  if (LEAGUE !== 'aflw') {
+    rows.push(positionRow(entry, 'Top 10', '#fdba74', 0, 10))
+  }
+
+  rows.push(
     positionRow(entry, 'Bottom 4', '#991b1b', 14, 18),
     positionRow(entry, 'Last', '#292524', 17, 18),
   )

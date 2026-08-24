@@ -1757,6 +1757,7 @@ import type { AflMatch, AflTeam } from '../types/afl'
 import { titleToFilename } from '../composables/usePowerRankingsTitle'
 import { getActiveSeasonYear } from '../config/seasons'
 import { LEAGUE } from '../config/league'
+import { FINALS_BOUNDARY_INDEXES } from '../composables/useFinalsBoundary'
 
 const BASE_URL = import.meta.env.BASE_URL
 
@@ -2251,11 +2252,6 @@ interface XPalmyChampion {
 const showChampions = ref(false)
 const champions = ref<XPalmyChampion[]>([])
 const currentSeasonYear = getActiveSeasonYear()
-
-// Finals-boundary markers on the ladder table. AFL's 2026 format is a top-6
-// direct-qualify + 7-10 wildcard round; AFLW plays a straight top-8 with no
-// wildcard round, so it gets a single boundary line instead of two.
-const FINALS_BOUNDARY_INDEXES = LEAGUE === 'aflw' ? [7] : [5, 9]
 
 onMounted(async () => {
   if (LEAGUE !== 'afl') return // xpalmy-champions.json is an AFL-only overlay
