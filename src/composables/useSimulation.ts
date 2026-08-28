@@ -4,7 +4,7 @@ import { TEAMS } from './useAFLData'
 import { homeWinProbFromScore, type PalmyVariant } from '../utils/palmyWinProb'
 import { invNorm } from '../utils/normal'
 import { checkGpuSupport, createGpuSimContext, runGpuRangeBatch, destroyGpuSimContext, gpuMaxBatch } from './useGpuSimulation'
-import { buildFinalsTemplate, resolveFinalsForOrder, type FinalsTemplate, type FinalsSimOutcome } from './useFinals'
+import { buildFinalsTemplate, resolveFinalsForOrder, isFinalsMatch, type FinalsTemplate, type FinalsSimOutcome } from './useFinals'
 import { LEAGUE_CONFIG } from '../config/league'
 
 export interface RangeEntry {
@@ -179,6 +179,7 @@ function buildStats(matches: readonly AflMatch[]): Record<number, TeamStats> {
     stats[team.id] = { teamId: team.id, wins: 0, losses: 0, draws: 0, pts: 0, for: 0, against: 0, played: 0 }
   }
   for (const match of matches) {
+    if (isFinalsMatch(match)) continue
     if (match.status !== 'CONCLUDED') continue
     if (!match.homeScore || !match.awayScore) continue
     const hId = match.homeTeamId
@@ -214,6 +215,7 @@ function computeDifficulty(
   for (const team of TEAMS) oppMap[team.id] = []
 
   for (const match of matches) {
+    if (isFinalsMatch(match)) continue
     if (match.status === 'CONCLUDED') continue
     const hId = match.homeTeamId
     const aId = match.awayTeamId
@@ -409,6 +411,7 @@ function createRangeAccumulator(matches: readonly AflMatch[]): RangeAccumulator 
   const nextMatchIds = new Set<number>()
   const activeMatches: AflMatch[] = []
   for (const match of matches) {
+    if (isFinalsMatch(match)) continue
     if (match.status === 'CONCLUDED') continue
     const hId = match.homeTeamId
     const aId = match.awayTeamId
@@ -582,6 +585,7 @@ export function buildPalmyLadder(
   for (const [id, s] of Object.entries(baseStats)) simStats[Number(id)] = { ...s }
 
   for (const match of matches) {
+    if (isFinalsMatch(match)) continue
     if (match.status === 'CONCLUDED') continue
     const hId = match.homeTeamId
     const aId = match.awayTeamId
@@ -626,6 +630,7 @@ function simulateMatches(
   }
 
   for (const match of matches) {
+    if (isFinalsMatch(match)) continue
     if (match.status === 'CONCLUDED') continue
     const hId = match.homeTeamId
     const aId = match.awayTeamId
@@ -722,6 +727,7 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef, options?
     const winners: Record<number, number> = {}
     const scores: Record<number, { home: number; away: number }> = {}
     for (const match of matches.value) {
+      if (isFinalsMatch(match)) continue
       if (match.status === 'CONCLUDED') continue
       const hId = match.homeTeamId
       const aId = match.awayTeamId
@@ -782,6 +788,7 @@ export function useSimulation(ranking: RankingRef, matches: MatchesRef, options?
     // Group remaining matches by round in order
     const roundMap = new Map<number, { roundName: string; roundMatches: AflMatch[] }>()
     for (const match of matches.value) {
+      if (isFinalsMatch(match)) continue
       if (match.status === 'CONCLUDED') continue
       if (!roundMap.has(match.roundNumber)) {
         roundMap.set(match.roundNumber, { roundName: match.roundName, roundMatches: [] })
