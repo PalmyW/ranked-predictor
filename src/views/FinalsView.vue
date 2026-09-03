@@ -144,12 +144,25 @@ function setCardRef(matchId: number, el: Element | ComponentPublicInstance | nul
   cardRefs.set(matchId, node)
 }
 
+// Column (round) display order, used to tell "earlier round" from "later" when
+// reconstructing a bracket edge structurally.
+const roundRankMap = computed<Record<string, number>>(() => {
+  const map: Record<string, number> = {}
+  columns.value.forEach((c, i) => { map[c.code] = i })
+  return map
+})
+const roundRank = (abbr: string) => roundRankMap.value[abbr] ?? 99
+
 // Resolves the bracket match (and which of its two rows) that actually
 // feeds a given slot: for a "Winner/Loser of X" rule that's the winner's or
 // loser's row of match X respectively; for a "ranked WF winner" rule (which
 // can be fed by either wildcard match) it's the winner's row of whichever
-// one produced the team currently occupying the slot.
-function sourceRowFor(slot: FinalsSlot): { match: FinalsBracketMatch; side: 'home' | 'away' } | undefined {
+// one produced the team currently occupying the slot. For an already-resolved
+// slot (the fixture hard-fills the real team — discarding the "Winner of X"
+// placeholder — once its feeder concludes) the edge is reconstructed from the
+// team's most recent concluded finals match in an earlier round: its winner
+// row if the team won there, otherwise its loser row.
+function sourceRowFor(slot: FinalsSlot, destMatch: FinalsBracketMatch): { match: FinalsBracketMatch; side: 'home' | 'away' } | undefined {
   const rule = slot.rule
   if (rule.kind === 'result') {
     const match = bracket.value.find((b) => b.sourceCode === rule.sourceCode)
@@ -163,6 +176,20 @@ function sourceRowFor(slot: FinalsSlot): { match: FinalsBracketMatch; side: 'hom
     if (!match || match.winnerTeamId === null) return undefined
     return { match, side: match.winnerTeamId === match.home.teamId ? 'home' : 'away' }
   }
+  if (rule.kind === 'resolved' && slot.teamId !== null) {
+    const destRank = roundRank(destMatch.roundAbbreviation)
+    const feeder = bracket.value
+      .filter((b) =>
+        b.matchId !== destMatch.matchId &&
+        b.winnerTeamId !== null &&
+        roundRank(b.roundAbbreviation) < destRank &&
+        (b.home.teamId === slot.teamId || b.away.teamId === slot.teamId),
+      )
+      .sort((a, b) => roundRank(b.roundAbbreviation) - roundRank(a.roundAbbreviation))[0]
+    if (!feeder) return undefined
+    const side = feeder.home.teamId === slot.teamId ? 'home' : 'away'
+    return { match: feeder, side }
+  }
   return undefined
 }
 
@@ -170,7 +197,7 @@ const linesWidth = ref(0)
 const linesHeight = ref(0)
 const connectorLines = ref<{ id: string; d: string }[]>([])
 
-interface RawLine { id: string; x1: number; y1: number; x2: number; y2: number }
+interface RawLine { id: string; x1: number; y1: number; x2: number; y2: number; srcCol: number; dstCol: number }
 
 function recomputeLines() {
   const wrap = bracketEl.value
@@ -180,12 +207,28 @@ function recomputeLines() {
   linesHeight.value = wrap.scrollHeight
   const wrapRect = wrap.getBoundingClientRect()
 
+  // matchId -> column index, so an edge knows how many columns it spans.
+  const colOf = new Map<number, number>()
+  columns.value.forEach((c, i) => c.matches.forEach((m) => colOf.set(m.matchId, i)))
+
+  // Every card's box in wrap-local coords, grouped by column, for routing
+  // multi-column edges around (never behind) the cards they'd otherwise cross.
+  const cardBoxesByCol = new Map<number, { top: number; bottom: number }[]>()
+  for (const [matchId, el] of cardRefs) {
+    const col = colOf.get(matchId)
+    if (col === undefined) continue
+    const r = el.getBoundingClientRect()
+    const box = { top: r.top - wrapRect.top, bottom: r.bottom - wrapRect.top }
+    if (!cardBoxesByCol.has(col)) cardBoxesByCol.set(col, [])
+    cardBoxesByCol.get(col)!.push(box)
+  }
+
   const raw: RawLine[] = []
   for (const m of bracket.value) {
     for (const side of ['home', 'away'] as const) {
       const slot = m[side]
       if (slot.teamId === null) continue
-      const source = sourceRowFor(slot)
+      const source = sourceRowFor(slot, m)
       if (!source) continue
       const { match: sourceMatch, side: sourceSide } = source
 
@@ -201,24 +244,24 @@ function recomputeLines() {
         y1: sr.top + sr.height / 2 - wrapRect.top,
         x2: dr.left - wrapRect.left,
         y2: dr.top + dr.height / 2 - wrapRect.top,
+        srcCol: colOf.get(sourceMatch.matchId) ?? 0,
+        dstCol: colOf.get(m.matchId) ?? 0,
       })
     }
   }
 
-  // Lines between the same pair of columns share the same x1/x2 (every card
-  // in a column has the same edges), so group by that and fan them out
-  // across the gutter — otherwise crossing paths (e.g. Semi Final winners
-  // swapping into Preliminary Finals) would draw directly on top of each
-  // other. Each line stays a strict H-V-H elbow confined to x1..x2, i.e. the
-  // gap between the two columns, so it never crosses behind a card.
+  const newLines: { id: string; d: string }[] = []
+
+  // Adjacent-column edges (the common case): same x1/x2 for every card in the
+  // pair, so group by that and fan the H-V-H elbows across the gutter — the
+  // vertical run stays between the two columns, so it never crosses a card.
+  const adjacent = raw.filter((l) => l.dstCol - l.srcCol <= 1)
   const groups = new Map<string, RawLine[]>()
-  for (const line of raw) {
+  for (const line of adjacent) {
     const key = `${Math.round(line.x1)}-${Math.round(line.x2)}`
     if (!groups.has(key)) groups.set(key, [])
     groups.get(key)!.push(line)
   }
-
-  const newLines: { id: string; d: string }[] = []
   for (const group of groups.values()) {
     group.sort((a, b) => a.y1 - b.y1)
     const n = group.length
@@ -227,6 +270,60 @@ function recomputeLines() {
       newLines.push({ id: line.id, d: `M ${line.x1} ${line.y1} H ${midX} V ${line.y2} H ${line.x2}` })
     })
   }
+
+  // Multi-column edges (e.g. a Qualifying Final winner skipping the Semi
+  // Finals straight into a Preliminary Final): drop into the gutter just past
+  // the source column, run a horizontal "highway" through whichever clear
+  // horizontal band (the gap above, below, or between the cards of every
+  // spanned column) sits closest to the edge's midpoint, then drop into the
+  // gutter just before the destination column. The vertical drops live in
+  // gutters and the highway dodges every card, so nothing routes behind a card.
+  const GAP = 8
+  const MARGIN = 14
+  const longGroups = new Map<string, RawLine[]>()
+  for (const line of raw) {
+    if (line.dstCol - line.srcCol <= 1) continue
+    const key = `${Math.round(line.x1)}-${Math.round(line.x2)}`
+    if (!longGroups.has(key)) longGroups.set(key, [])
+    longGroups.get(key)!.push(line)
+  }
+  for (const group of longGroups.values()) {
+    group.sort((a, b) => a.y1 - b.y1)
+
+    // Clear horizontal bands spanning every intervening column (gaps in the
+    // union of their card boxes) — shared by the whole group.
+    const boxes: { top: number; bottom: number }[] = []
+    for (let c = group[0].srcCol + 1; c < group[0].dstCol; c++) {
+      for (const box of cardBoxesByCol.get(c) ?? []) boxes.push(box)
+    }
+    boxes.sort((a, b) => a.top - b.top)
+    const bands: { lo: number; hi: number }[] = []
+    let cursor = -Infinity
+    for (const box of boxes) {
+      if (box.top - MARGIN > cursor) bands.push({ lo: cursor, hi: box.top - MARGIN })
+      cursor = Math.max(cursor, box.bottom + MARGIN)
+    }
+    bands.push({ lo: cursor, hi: Infinity })
+
+    group.forEach((line, i) => {
+      const midY = (line.y1 + line.y2) / 2
+      let hy = midY
+      let best = Infinity
+      for (const band of bands) {
+        const pt = Math.min(Math.max(midY, band.lo), band.hi)
+        const d = Math.abs(pt - midY)
+        if (d < best) { best = d; hy = pt }
+      }
+      const step = i * 6
+      const xa = line.x1 + GAP + step
+      const xb = line.x2 - GAP - step
+      newLines.push({
+        id: line.id,
+        d: `M ${line.x1} ${line.y1} H ${xa} V ${hy + step} H ${xb} V ${line.y2} H ${line.x2}`,
+      })
+    })
+  }
+
   connectorLines.value = newLines
 }
 

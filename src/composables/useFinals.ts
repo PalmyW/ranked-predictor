@@ -14,9 +14,20 @@ export function isFinalsMatch(match: AflMatch): boolean {
   return FINALS_ROUND_ABBREVIATIONS.has(match.roundAbbreviation)
 }
 
-// Turns a match's finals label ("Qualifying Final 1", "Elimination Final 2",
-// "2026 Toyota AFL Grand Final") into a short code ("QF1", "EF2", "GF") that
+// Turns a match's finals label into a short code ("QF1", "EF2", "GF") that
 // other slots reference via "Winner of QF1" / "Loser of QF1" style names.
+// Handles both the trailing-digit form ("Qualifying Final 1") and the
+// ordinal-word form the 2026 fixture uses ("First Qualifying Final",
+// "Second Elimination Final", "First Semi Final").
+const ORDINAL_WORDS: Record<string, number> = { first: 1, second: 2, third: 3, fourth: 4 }
+
+function labelNumber(label: string): number | null {
+  const trailing = label.match(/(\d+)\s*$/)
+  if (trailing) return Number(trailing[1])
+  const word = label.toLowerCase().match(/\b(first|second|third|fourth)\b/)
+  return word ? ORDINAL_WORDS[word[1]] : null
+}
+
 function deriveSourceCode(match: AflMatch): string {
   const label = match.finalsMatchLabel ?? match.roundName
   const patterns: Array<[RegExp, string]> = [
@@ -30,8 +41,8 @@ function deriveSourceCode(match: AflMatch): string {
   for (const [re, code] of patterns) {
     if (!re.test(label)) continue
     if (code === 'GF') return 'GF'
-    const num = label.match(/(\d+)\s*$/)
-    return num ? `${code}${num[1]}` : code
+    const num = labelNumber(label)
+    return num ? `${code}${num}` : code
   }
   return `${match.roundAbbreviation}-${match.id}`
 }
