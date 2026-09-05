@@ -20482,6 +20482,12 @@
             "nickname": "Swans"
           },
           "teamType": "MEN"
+        },
+        "score": {
+          "goals": 21,
+          "behinds": 15,
+          "totalScore": 141,
+          "superGoals": 0
         }
       },
       "away": {
@@ -20499,6 +20505,12 @@
             "nickname": "Lions"
           },
           "teamType": "MEN"
+        },
+        "score": {
+          "goals": 13,
+          "behinds": 10,
+          "totalScore": 88,
+          "superGoals": 0
         }
       },
       "venue": {
@@ -20512,7 +20524,7 @@
         "landOwner": "Gadigal"
       },
       "utcStartTime": "2026-09-05T05:15:00.000+0000",
-      "status": "CONFIRMED_TEAMS",
+      "status": "CONCLUDED",
       "metadata": {
         "finals_match_label": "Second Qualifying Final",
         "ticket_link": "https://www.ticketmaster.com.au/event/25006510B2577F00"
@@ -20583,7 +20595,7 @@
         "landOwner": "Kaurna"
       },
       "utcStartTime": "2026-09-05T09:35:00.000+0000",
-      "status": "UNCONFIRMED_TEAMS",
+      "status": "CONFIRMED_TEAMS",
       "metadata": {
         "finals_match_label": "Second Elimination Final",
         "sold_out": "true",
@@ -20675,11 +20687,18 @@
       },
       "home": {
         "team": {
-          "id": 164,
-          "providerId": "CD_T3015",
-          "name": "Loser of QF2",
-          "abbreviation": "TBD",
-          "nickname": "TBD",
+          "id": 2,
+          "providerId": "CD_T20",
+          "name": "Brisbane Lions",
+          "abbreviation": "BL",
+          "nickname": "Lions",
+          "club": {
+            "id": 13,
+            "providerId": "CD_O3",
+            "name": "Brisbane Lions",
+            "abbreviation": "Lions",
+            "nickname": "Lions"
+          },
           "teamType": "MEN"
         }
       },
@@ -20784,11 +20803,18 @@
       },
       "home": {
         "team": {
-          "id": 162,
-          "providerId": "CD_T3013",
-          "name": "Winner of QF2",
-          "abbreviation": "TBD",
-          "nickname": "TBD",
+          "id": 13,
+          "providerId": "CD_T160",
+          "name": "Sydney Swans",
+          "abbreviation": "SYD",
+          "nickname": "Swans",
+          "club": {
+            "id": 24,
+            "providerId": "CD_O28",
+            "name": "Sydney Swans",
+            "abbreviation": "Swans",
+            "nickname": "Swans"
+          },
           "teamType": "MEN"
         }
       },
