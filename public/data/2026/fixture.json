@@ -20565,6 +20565,12 @@
             "nickname": "Crows"
           },
           "teamType": "MEN"
+        },
+        "score": {
+          "goals": 14,
+          "behinds": 6,
+          "totalScore": 90,
+          "superGoals": 0
         }
       },
       "away": {
@@ -20582,6 +20588,12 @@
             "nickname": "Bulldogs"
           },
           "teamType": "MEN"
+        },
+        "score": {
+          "goals": 9,
+          "behinds": 14,
+          "totalScore": 68,
+          "superGoals": 0
         }
       },
       "venue": {
@@ -20595,7 +20607,7 @@
         "landOwner": "Kaurna"
       },
       "utcStartTime": "2026-09-05T09:35:00.000+0000",
-      "status": "LIVE",
+      "status": "CONCLUDED",
       "metadata": {
         "finals_match_label": "Second Elimination Final",
         "sold_out": "true",
@@ -20655,16 +20667,17 @@
         }
       },
       "venue": {
-        "id": 103,
-        "providerId": "CD_V2385",
-        "name": "To Be Confirmed",
-        "abbreviation": "TBC",
-        "location": "Victoria",
-        "state": "VIC",
-        "timezone": "Australia/Melbourne"
+        "id": 65,
+        "providerId": "CD_V2925",
+        "name": "Optus Stadium",
+        "abbreviation": "OS",
+        "location": "Perth",
+        "state": "WA",
+        "timezone": "Australia/Perth",
+        "landOwner": "Whadjuk"
       },
-      "utcStartTime": "2026-09-07T02:00:00.000+0000",
-      "status": "PLACEHOLDER",
+      "utcStartTime": "2026-09-11T10:10:00.000+0000",
+      "status": "SCHEDULED",
       "metadata": { "finals_match_label": "First Semi Final" }
     },
     {
@@ -20704,25 +20717,33 @@
       },
       "away": {
         "team": {
-          "id": 170,
-          "providerId": "CD_T3017",
-          "name": "Winner of EF2",
-          "abbreviation": "TBD",
-          "nickname": "TBD",
+          "id": 1,
+          "providerId": "CD_T10",
+          "name": "Adelaide Crows",
+          "abbreviation": "ADEL",
+          "nickname": "Crows",
+          "club": {
+            "id": 3,
+            "providerId": "CD_O1",
+            "name": "Adelaide Crows",
+            "abbreviation": "Crows",
+            "nickname": "Crows"
+          },
           "teamType": "MEN"
         }
       },
       "venue": {
-        "id": 103,
-        "providerId": "CD_V2385",
-        "name": "To Be Confirmed",
-        "abbreviation": "TBC",
-        "location": "Victoria",
-        "state": "VIC",
-        "timezone": "Australia/Melbourne"
+        "id": 22,
+        "providerId": "CD_V20",
+        "name": "Gabba",
+        "abbreviation": "G",
+        "location": "Brisbane",
+        "state": "QLD",
+        "timezone": "Australia/Brisbane",
+        "landOwner": "Yuggera - Turrbal"
       },
-      "utcStartTime": "2026-09-07T02:00:00.000+0000",
-      "status": "PLACEHOLDER",
+      "utcStartTime": "2026-09-12T09:35:00.000+0000",
+      "status": "SCHEDULED",
       "metadata": { "finals_match_label": "Second Semi Final" }
     },
     {
