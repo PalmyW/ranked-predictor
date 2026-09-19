@@ -20888,6 +20888,12 @@
             "nickname": "Hawks"
           },
           "teamType": "MEN"
+        },
+        "score": {
+          "goals": 19,
+          "behinds": 8,
+          "totalScore": 122,
+          "superGoals": 0
         }
       },
       "away": {
@@ -20905,6 +20911,12 @@
             "nickname": "Lions"
           },
           "teamType": "MEN"
+        },
+        "score": {
+          "goals": 20,
+          "behinds": 11,
+          "totalScore": 131,
+          "superGoals": 0
         }
       },
       "venue": {
@@ -20918,7 +20930,7 @@
         "landOwner": "Wurundjeri"
       },
       "utcStartTime": "2026-09-19T07:15:00.000+0000",
-      "status": "LIVE",
+      "status": "CONCLUDED",
       "metadata": {
         "finals_match_label": "First Preliminary Final",
         "ticket_link": "https://premier.ticketek.com.au/shows/Show.aspx?sh=PRELP0126"
@@ -20944,21 +20956,35 @@
       },
       "home": {
         "team": {
-          "id": 171,
-          "providerId": "CD_T3020",
-          "name": "Winner of PF1",
-          "abbreviation": "TBD",
-          "nickname": "TBD",
+          "id": 14,
+          "providerId": "CD_T60",
+          "name": "Fremantle",
+          "abbreviation": "FRE",
+          "nickname": "Dockers",
+          "club": {
+            "id": 6,
+            "providerId": "CD_O10",
+            "name": "Fremantle",
+            "abbreviation": "Dockers",
+            "nickname": "Dockers"
+          },
           "teamType": "MEN"
         }
       },
       "away": {
         "team": {
-          "id": 173,
-          "providerId": "CD_T3021",
-          "name": "Winner of PF2",
-          "abbreviation": "TBD",
-          "nickname": "TBD",
+          "id": 2,
+          "providerId": "CD_T20",
+          "name": "Brisbane Lions",
+          "abbreviation": "BL",
+          "nickname": "Lions",
+          "club": {
+            "id": 13,
+            "providerId": "CD_O3",
+            "name": "Brisbane Lions",
+            "abbreviation": "Lions",
+            "nickname": "Lions"
+          },
           "teamType": "MEN"
         }
       },
