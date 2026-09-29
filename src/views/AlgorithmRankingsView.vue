@@ -2386,20 +2386,28 @@ const xpalmyTrailPath = computed(() => {
 
 const CHAMP_PAD = 10
 
+// Champions plotted as dots but ignored when placing the quadrant dividers
+const QUADRANT_OUTLIER_YEARS = new Set(['2026'])
+const quadrantChampions = computed(() =>
+  champions.value.filter((c) => !QUADRANT_OUTLIER_YEARS.has(c.year)),
+)
+
 // Vertical divider: just left of the furthest-left champion (highest xRating = smallest plotX)
 const scatterMidX = computed(() => {
-  if (champions.value.length === 0) return SC.x0 + SC_W / 2
+  if (quadrantChampions.value.length === 0) return SC.x0 + SC_W / 2
   const minPlotX = Math.min(
-    ...champions.value.map((c) => SC.x0 + (1 - champRatings(c).x) * SC_W),
+    ...quadrantChampions.value.map(
+      (c) => SC.x0 + (1 - champRatings(c).x) * SC_W,
+    ),
   )
   return minPlotX - CHAMP_PAD
 })
 
 // Horizontal divider: just below the lowest champion (highest yRating = largest plotY)
 const scatterMidY = computed(() => {
-  if (champions.value.length === 0) return SC.y0 + SC_H / 2
+  if (quadrantChampions.value.length === 0) return SC.y0 + SC_H / 2
   const maxPlotY = Math.max(
-    ...champions.value.map((c) => SC.y0 + champRatings(c).y * SC_H),
+    ...quadrantChampions.value.map((c) => SC.y0 + champRatings(c).y * SC_H),
   )
   return maxPlotY + CHAMP_PAD
 })

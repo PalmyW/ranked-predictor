@@ -153,8 +153,6 @@ const r4 = (v) => Math.round(v * 10000) / 10000
 const champions = []
 
 for (const year of SEASONS) {
-  if (year === CURRENT_YEAR) continue
-
   const fixturePath = join(ROOT, `public/data/${year}/fixture.json`)
   if (!existsSync(fixturePath)) {
     console.warn(`  ${year}: fixture.json not found — skipping`)
@@ -163,6 +161,12 @@ for (const year of SEASONS) {
 
   const fixture = JSON.parse(readFileSync(fixturePath, 'utf8'))
   const matches = parseMatches(fixture)
+
+  // Current season only counts once its Grand Final is played — the
+  // highest-round fallback would pick a random mid-season winner
+  if (year === CURRENT_YEAR && !matches.some((m) =>
+    m.status === 'CONCLUDED' && m.roundName.toLowerCase().includes('grand final')
+  )) continue
   const concluded = matches.filter((m) => m.status === 'CONCLUDED' && m.homeScore && m.awayScore)
 
   const winnerId = findGrandFinalWinner(matches)
