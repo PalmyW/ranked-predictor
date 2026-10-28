@@ -140,9 +140,10 @@ export const SEASON_REGISTRY: Record<string, number> = {
   '2024': 62,
   '2025': 73,
   '2026': 85,
+  '2027': 102,
 }
 
-export const CURRENT_SEASON_YEAR = '2026'
+export const CURRENT_SEASON_YEAR = '2027'
 
 export const SEASONS: SeasonConfig[] = [
   { year: '1897', compSeasonId: 8997 },
@@ -275,6 +276,7 @@ export const SEASONS: SeasonConfig[] = [
   { year: '2024', compSeasonId: 62 },
   { year: '2025', compSeasonId: 73 },
   { year: '2026', compSeasonId: 85 },
+  { year: '2027', compSeasonId: 102 },
 ]
 
 export function getActiveSeasonYear(): string {

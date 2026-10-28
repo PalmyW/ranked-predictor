@@ -155,7 +155,7 @@
               </svg>
               <h2 class="text-sm font-bold text-gray-800 dark:text-gray-100">
                 {{ selectedTeam.name }}
-                <span class="font-normal text-gray-400 dark:text-gray-500 ml-1">— 2026 Season</span>
+                <span class="font-normal text-gray-400 dark:text-gray-500 ml-1">— {{ SEASON }} Season</span>
               </h2>
             </div>
             <div class="flex items-center gap-3 flex-wrap">

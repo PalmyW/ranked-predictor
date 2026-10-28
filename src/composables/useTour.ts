@@ -14,7 +14,7 @@ const STEPS: TourStep[] = [
   {
     id: 'welcome',
     title: 'Welcome to PalmyData!',
-    description: 'Predict how the 2026 AFL season will finish. Rank teams your way and see where each side lands. This quick tour shows you around.',
+    description: 'Predict how the 2027 AFL season will finish. Rank teams your way and see where each side lands. This quick tour shows you around.',
     target: null,
   },
   {

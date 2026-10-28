@@ -59,7 +59,7 @@ function arg(name) {
 }
 const DRY_RUN = process.argv.includes('--dry-run')
 
-const SEASON = arg('season') ?? loadCurrentSeasonYear(ROOT, LEAGUE) ?? '2026'
+const SEASON = arg('season') ?? loadCurrentSeasonYear(ROOT, LEAGUE) ?? '2027'
 
 const DATA_DIR = dataDir(ROOT, LEAGUE, SEASON)
 const FIXTURE = join(DATA_DIR, 'fixture.json')

@@ -282,7 +282,7 @@ async function main() {
 
   const seasonsSource = readFileSync(join(ROOT, 'src/config/seasons.ts'), 'utf8')
   const currentYearMatch = seasonsSource.match(/CURRENT_SEASON_YEAR\s*=\s*'(\d+)'/)
-  const CURRENT_YEAR = Number(currentYearMatch?.[1] ?? '2026')
+  const CURRENT_YEAR = Number(currentYearMatch?.[1] ?? '2027')
 
   let years = []
   if (arg('year')) years = [Number(arg('year'))]

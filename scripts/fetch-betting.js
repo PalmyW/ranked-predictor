@@ -3,12 +3,13 @@ import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { tmpdir } from 'os'
 import * as XLSX from 'xlsx'
+import { LEAGUES, loadCurrentSeasonYear } from './lib/league.js'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const DATA_DIR = join(ROOT, 'public/data')
 const XLSX_URL = 'https://www.aussportsbetting.com/historical_data/afl.xlsx'
 
-const CURRENT_SEASON = '2026'
+const CURRENT_SEASON = loadCurrentSeasonYear(ROOT, LEAGUES.afl) ?? '2027'
 
 // --- CLI args ---
 const args = process.argv.slice(2)

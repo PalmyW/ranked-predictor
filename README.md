@@ -1,6 +1,6 @@
-# PalmyData — AFL 2026 Season Predictor
+# PalmyData — AFL 2027 Season Predictor
 
-An interactive AFL 2026 tool with four pages: a tier-based season predictor, per-match player stats, cumulative season stats, and algorithm-driven team rankings. Share any view via URL.
+An interactive AFL 2027 tool with four pages: a tier-based season predictor, per-match player stats, cumulative season stats, and algorithm-driven team rankings. Share any view via URL.
 
 **[Live site →](https://palmyw.github.io/ranked-predictor/)**
 

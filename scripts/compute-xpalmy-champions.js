@@ -37,7 +37,7 @@ const TEAM_MAP = Object.fromEntries(TEAMS.map((t) => [t.id, t]))
 // Read SEASONS and CURRENT_SEASON_YEAR from seasons.ts
 const seasonsSource = readFileSync(join(ROOT, 'src/config/seasons.ts'), 'utf8')
 const currentYearMatch = seasonsSource.match(/CURRENT_SEASON_YEAR\s*=\s*'(\d+)'/)
-const CURRENT_YEAR = currentYearMatch?.[1] ?? '2026'
+const CURRENT_YEAR = currentYearMatch?.[1] ?? '2027'
 
 const seasonsMatch = seasonsSource.match(/export const SEASONS[^=]*=\s*\[([^\]]*)\]/)
 const SEASONS = []

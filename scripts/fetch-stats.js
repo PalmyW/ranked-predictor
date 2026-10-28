@@ -8,7 +8,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const LEAGUE = leagueFromArgv()
 
 const seasonArg = process.argv.find((a) => a.startsWith('--season='))
-const season = seasonArg ? seasonArg.split('=')[1] : (loadCurrentSeasonYear(ROOT, LEAGUE) ?? '2026')
+const season = seasonArg ? seasonArg.split('=')[1] : (loadCurrentSeasonYear(ROOT, LEAGUE) ?? '2027')
 
 const FIXTURE = join(dataDir(ROOT, LEAGUE, season), 'fixture.json')
 const STATS_DIR = join(dataDir(ROOT, LEAGUE, season), 'stats')
