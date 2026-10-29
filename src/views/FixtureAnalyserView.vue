@@ -70,7 +70,7 @@
                   :title="col.key === 'difficulty'
                     ? `${seasonYear} fixture difficulty — 1st is the hardest draw`
                     : col.key === 'retro'
-                      ? `How hard each team's ${previousSeasonYear} fixture turned out, by ${previousSeasonYear} ${active.averageName}`
+                      ? `How hard each team's ${previousSeasonYear} fixture was, rated by the same measure`
                       : `Each team's ${active.positionName}`"
                 >
                   {{ col.label }}
@@ -113,8 +113,7 @@
           Difficulty ranks the {{ seasonYear }} draws (1st = hardest); the bracketed number is the
           opponents' average {{ active.averageName }}.
           <template v-if="showRetro">
-            {{ previousSeasonYear }} fixture rates each team's {{ previousSeasonYear }} draw the same way,
-            in hindsight.
+            {{ previousSeasonYear }} Diff rates each team's {{ previousSeasonYear }} draw the same way.
           </template>
           Click a heading to sort.
         </p>
@@ -232,7 +231,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { useAFLData, fetchSeasonMatches, teamById } from '../composables/useAFLData'
 import { useRanking } from '../composables/useRanking'
 import { analyseFixture, finalLadderPositions, finalPercentages, BREAK_DAYS, GAME_DAYS, type FixtureTeamAnalysis, type ShortBreak } from '../composables/useFixtureAnalysis'
@@ -287,9 +286,6 @@ const BASES: Record<Basis, {
   positionName: string
   // What the bracketed average in the Difficulty column is an average of.
   averageName: string
-  // Whether the basis is a previous-season result, so it can also rate that
-  // season's own fixture in hindsight (your ranking is a prediction, so not).
-  retrospective: boolean
 }> = {
   ladder: {
     label: `${previousSeasonYear} ladder`,
@@ -297,7 +293,6 @@ const BASES: Record<Basis, {
     difficultyKey: 'ladderDifficulty',
     positionName: `${previousSeasonYear} finishing position, after finals`,
     averageName: 'finishing position',
-    retrospective: true,
   },
   percentage: {
     label: `${previousSeasonYear} %`,
@@ -305,7 +300,6 @@ const BASES: Record<Basis, {
     difficultyKey: 'percentageDifficulty',
     positionName: `${previousSeasonYear} percentage`,
     averageName: 'percentage',
-    retrospective: true,
   },
   ranking: {
     label: 'Your ranking',
@@ -313,7 +307,6 @@ const BASES: Record<Basis, {
     difficultyKey: 'rankingDifficulty',
     positionName: 'place in your team ranking',
     averageName: 'ranking',
-    retrospective: false,
   },
 }
 const BASIS_KEYS: Basis[] = ['ladder', 'percentage', 'ranking']
@@ -327,15 +320,12 @@ type SortColumn = 'difficulty' | 'position' | 'retro'
 const SORT_COLUMNS: Array<{ key: SortColumn; label: string }> = [
   { key: 'position', label: 'Position' },
   { key: 'difficulty', label: 'Difficulty' },
-  { key: 'retro', label: `${previousSeasonYear} fixture` },
+  { key: 'retro', label: `${previousSeasonYear} Diff` },
 ]
-const showRetro = computed(() => !!previousSeasonYear && active.value.retrospective)
-const visibleColumns = computed(() => SORT_COLUMNS.filter((c) => c.key !== 'retro' || showRetro.value))
+// No previous season (the first one on record) means nothing to look back on.
+const showRetro = !!previousSeasonYear
+const visibleColumns = SORT_COLUMNS.filter((c) => c.key !== 'retro' || showRetro)
 const sortColumn = ref<SortColumn>('difficulty')
-// The retrospective column isn't shown for your ranking — fall back to Difficulty.
-watch(showRetro, (shown) => {
-  if (!shown && sortColumn.value === 'retro') sortColumn.value = 'difficulty'
-})
 const sortDesc = ref(false)
 function sortOn(column: SortColumn) {
   if (sortColumn.value === column) sortDesc.value = !sortDesc.value
