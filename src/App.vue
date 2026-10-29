@@ -7,7 +7,6 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
 import { useAFLData } from './composables/useAFLData'
 import { useDarkMode } from './composables/useDarkMode'
 import { useTour } from './composables/useTour'
@@ -16,9 +15,5 @@ import GuidedTour from './components/GuidedTour.vue'
 
 const { isDark, toggle: toggleDark } = useDarkMode()
 const { isLoading, syncedAt } = useAFLData()
-const { startTour, initTour } = useTour()
-
-onMounted(() => {
-  initTour()
-})
+const { startTour } = useTour()
 </script>

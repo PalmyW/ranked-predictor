@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 
-const STORAGE_KEY = 'afl-tour-v1'
+// The tour never starts on its own — only from the header's "?" button.
 
 export interface TourStep {
   id: string
@@ -230,7 +230,6 @@ export function useTour() {
 
   function closeTour() {
     isActive.value = false
-    localStorage.setItem(STORAGE_KEY, 'seen')
   }
 
   function nextStep() {
@@ -249,11 +248,5 @@ export function useTour() {
     closeTour()
   }
 
-  function initTour() {
-    if (localStorage.getItem(STORAGE_KEY) !== 'seen') {
-      startTour()
-    }
-  }
-
-  return { isActive, currentStep, step, stepNumber, totalSteps, isFirst, isLast, startTour, nextStep, prevStep, skipTour, initTour }
+  return { isActive, currentStep, step, stepNumber, totalSteps, isFirst, isLast, startTour, nextStep, prevStep, skipTour }
 }
