@@ -7,14 +7,14 @@
     <div class="mb-6">
       <h1 class="mb-1 text-xl font-bold text-gray-900 dark:text-gray-100">Fixture Analyser</h1>
       <p class="text-sm text-gray-500 dark:text-gray-400">
-        How hard each team's {{ seasonYear }} home-and-away fixture is. Diff is the average rank of a
-        team's opponents (1 = hardest draw), rated by your team ranking and by the
-        {{ previousSeasonYear ?? 'previous' }} final ladder.
+        How hard each team's {{ seasonYear }} home-and-away fixture is, from the average rank of its
+        opponents (1st = hardest draw) — rated by the {{ previousSeasonYear ?? 'previous' }} final
+        ladder or by your team ranking.
       </p>
     </div>
 
     <div
-      v-if="isDefaultRanking"
+      v-if="isDefaultRanking && !isLadder"
       class="mb-4 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400"
     >
       You haven't ranked the teams yet, so "Your ranking" is just alphabetical.
@@ -40,11 +40,11 @@
           <h2 class="text-base font-bold text-gray-800 dark:text-gray-100">Hardest fixture</h2>
           <div class="flex gap-0.5 rounded-lg bg-gray-100 p-0.5 text-xs dark:bg-gray-800">
             <button
-              v-for="opt in SORT_OPTIONS"
+              v-for="opt in BASIS_OPTIONS"
               :key="opt.key"
-              @click="sortBy = opt.key"
+              @click="basis = opt.key"
               class="rounded-md px-2.5 py-1 font-semibold transition-colors"
-              :class="sortBy === opt.key
+              :class="basis === opt.key
                 ? 'bg-white text-gray-800 shadow-sm dark:bg-gray-900 dark:text-gray-100'
                 : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
             >{{ opt.key === 'ladder' ? `${previousSeasonYear} ladder` : opt.label }}</button>
@@ -56,9 +56,25 @@
             <tr class="bg-gray-100 text-xs uppercase tracking-wide text-gray-600 dark:bg-gray-800 dark:text-gray-400">
               <th class="w-8 py-2 text-center font-semibold">#</th>
               <th class="py-2 pl-2 text-left font-semibold">Team</th>
-              <th class="w-24 py-2 text-center font-semibold sm:w-32">Your ranking</th>
-              <th class="w-24 py-2 text-center font-semibold sm:w-32">{{ previousSeasonYear }} ladder</th>
-              <th class="w-14 py-2 text-center font-semibold" title="How much harder (▲) or easier (▼) your ranking rates the fixture than the ladder does">Gap</th>
+              <th
+                v-for="col in SORT_COLUMNS"
+                :key="col.key"
+                class="py-2 text-center font-semibold"
+                :class="col.key === 'difficulty' ? 'w-28 sm:w-32' : 'w-20'"
+                :aria-sort="sortColumn === col.key ? (sortDesc ? 'descending' : 'ascending') : 'none'"
+              >
+                <button
+                  @click="sortOn(col.key)"
+                  class="inline-flex items-center gap-0.5 uppercase tracking-wide hover:text-gray-800 dark:hover:text-gray-200"
+                  :class="sortColumn === col.key ? 'text-gray-800 dark:text-gray-100' : ''"
+                  :title="col.key === 'difficulty'
+                    ? 'Fixture difficulty — 1st is the hardest draw'
+                    : isLadder ? `${previousSeasonYear} ladder position` : 'Your team ranking'"
+                >
+                  {{ col.label }}
+                  <span class="w-2 text-[9px]">{{ sortColumn === col.key ? (sortDesc ? '▼' : '▲') : '' }}</span>
+                </button>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -74,27 +90,19 @@
                   <span class="truncate">{{ team(row.teamId).name }}</span>
                 </a>
               </td>
-              <td class="py-1.5 text-center text-xs font-semibold" :class="orderClass(row.rankingOrder)">
-                {{ ordinal(row.rankingOrder, rows, 'rankingOrder') }}
-                <span class="ml-0.5 hidden font-normal text-gray-400 sm:inline">({{ avg(row.rankingDifficulty) }})</span>
-              </td>
-              <td class="py-1.5 text-center text-xs font-semibold" :class="orderClass(row.ladderOrder)">
-                {{ ordinal(row.ladderOrder, rows, 'ladderOrder') }}
-                <span class="ml-0.5 hidden font-normal text-gray-400 sm:inline">({{ avg(row.ladderDifficulty) }})</span>
-              </td>
-              <td class="py-1.5 text-center text-xs font-bold tabular-nums">
-                <template v-if="row.rankingOrder !== null && row.ladderOrder !== null">
-                  <span v-if="row.rankingOrder < row.ladderOrder" class="text-red-500">▲{{ row.ladderOrder - row.rankingOrder }}</span>
-                  <span v-else-if="row.rankingOrder > row.ladderOrder" class="text-green-600">▼{{ row.rankingOrder - row.ladderOrder }}</span>
-                  <span v-else class="text-gray-300 dark:text-gray-600">—</span>
-                </template>
+              <td class="py-1.5 text-center text-xs text-gray-600 dark:text-gray-400">{{ position(row.teamId) }}</td>
+              <td class="py-1.5 text-center text-xs font-semibold" :class="orderClass(row[orderKey])">
+                {{ ordinal(row[orderKey], rows, orderKey) }}
+                <span class="ml-0.5 hidden font-normal text-gray-400 sm:inline">({{ avg(row[difficultyKey]) }})</span>
               </td>
             </tr>
           </tbody>
         </table>
         <p class="mt-2 text-xs text-gray-400 dark:text-gray-500">
-          Bracketed numbers are the average opponent rank. Gap ▲ means your ranking rates the draw harder
-          than the {{ previousSeasonYear }} ladder does; ▼ means easier.
+          Position is each team's
+          {{ isLadder ? `${previousSeasonYear} ladder finish` : 'place in your team ranking' }}.
+          Difficulty ranks the draws (1st = hardest); the bracketed number is the opponents' average
+          {{ isLadder ? 'ladder position' : 'ranking' }}. Click a heading to sort.
         </p>
       </section>
 
@@ -111,11 +119,12 @@
             <div class="mb-3 flex items-center gap-2">
               <svg class="size-8 shrink-0"><use :href="`${BASE_URL}icons.svg#${team(row.teamId).iconId}`" /></svg>
               <h3 class="flex-1 truncate text-sm font-bold text-gray-800 dark:text-gray-100">{{ team(row.teamId).name }}</h3>
-              <span class="text-xs text-gray-400 dark:text-gray-500">
-                <span class="font-semibold" :class="orderClass(row.rankingOrder)">{{ ordinal(row.rankingOrder, rows, 'rankingOrder') }}</span>
-                /
-                <span class="font-semibold" :class="orderClass(row.ladderOrder)">{{ ordinal(row.ladderOrder, rows, 'ladderOrder') }}</span>
+              <span class="text-right text-xs text-gray-400 dark:text-gray-500">
+                <span class="font-semibold" :class="orderClass(row[orderKey])">{{ ordinal(row[orderKey], rows, orderKey) }}</span>
                 hardest
+                <span class="block text-[11px]">
+                  {{ isLadder ? 'Finished' : 'You ranked them' }} {{ position(row.teamId) }}{{ isLadder ? ` in ${previousSeasonYear}` : '' }}
+                </span>
               </span>
             </div>
 
@@ -130,8 +139,8 @@
                     <span :class="mt.isHome ? 'text-blue-600 dark:text-blue-400' : ''">{{ mt.isHome ? 'H' : 'A' }}</span>
                   </span>
                 </span>
-                <span class="shrink-0 text-gray-400 dark:text-gray-500" :title="`Your ranking / ${previousSeasonYear} ladder`">
-                  #{{ rankingMap[d.opponentId] ?? '—' }} / {{ ladderMap[d.opponentId] ? ordinalNumber(ladderMap[d.opponentId]) : '—' }}
+                <span class="shrink-0 font-semibold text-gray-500 dark:text-gray-400" :title="isLadder ? `${previousSeasonYear} ladder position` : 'Your ranking'">
+                  {{ position(d.opponentId) }}
                 </span>
               </li>
             </ul>
@@ -196,16 +205,48 @@ const isDefaultRanking = computed(() => ranking.value.every((id, i) => id === te
 
 const rows = computed(() => analyseFixture(matches.value, rankingMap.value, ladderMap.value))
 
-type SortKey = 'ranking' | 'ladder'
-const SORT_OPTIONS: Array<{ key: SortKey; label: string }> = [
-  { key: 'ranking', label: 'Your ranking' },
+type Basis = 'ranking' | 'ladder'
+const BASIS_OPTIONS: Array<{ key: Basis; label: string }> = [
   { key: 'ladder', label: 'Ladder' },
+  { key: 'ranking', label: 'Your ranking' },
 ]
-const sortBy = ref<SortKey>('ranking')
+const basis = ref<Basis>('ladder')
+// Each view shows only its own basis — the ladder view has no ranking data
+// and vice versa.
+const isLadder = computed(() => basis.value === 'ladder')
+const orderKey = computed(() => (isLadder.value ? 'ladderOrder' : 'rankingOrder'))
+const difficultyKey = computed(() => (isLadder.value ? 'ladderDifficulty' : 'rankingDifficulty'))
+
+// Table (and breakdown) order: click a column header to sort by it, again to reverse.
+type SortColumn = 'difficulty' | 'position'
+const SORT_COLUMNS: Array<{ key: SortColumn; label: string }> = [
+  { key: 'position', label: 'Position' },
+  { key: 'difficulty', label: 'Difficulty' },
+]
+const sortColumn = ref<SortColumn>('difficulty')
+const sortDesc = ref(false)
+function sortOn(column: SortColumn) {
+  if (sortColumn.value === column) sortDesc.value = !sortDesc.value
+  else {
+    sortColumn.value = column
+    sortDesc.value = false
+  }
+}
 const sortedRows = computed(() => {
-  const key = sortBy.value === 'ranking' ? 'rankingOrder' : 'ladderOrder'
-  return [...rows.value].sort((a, b) => (a[key] ?? 99) - (b[key] ?? 99))
+  const value = (r: FixtureTeamAnalysis) =>
+    (sortColumn.value === 'difficulty' ? r[orderKey.value] : positionOf(r.teamId)) ?? 99
+  const dir = sortDesc.value ? -1 : 1
+  return [...rows.value].sort((a, b) => dir * (value(a) - value(b)))
 })
+
+// A team's place under the active basis: its ladder finish or your ranking.
+function positionOf(teamId: number): number | null {
+  return (isLadder.value ? ladderMap.value : rankingMap.value)[teamId] ?? null
+}
+function position(teamId: number): string {
+  const p = positionOf(teamId)
+  return p ? ordinalNumber(p) : '—'
+}
 
 // e.g. "Rounds 17–24", from the home-and-away matches whose times are still dummies.
 const untimedRounds = computed(() => {
