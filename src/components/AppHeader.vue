@@ -159,5 +159,6 @@ const TABS = [
   { path: '/rankings', label: 'Over complicated Ladders' },
   { path: '/score-predictor', label: 'PalmyScore™' },
   { path: '/finals', label: 'Finals' },
+  { path: '/fixture', label: 'Fixture' },
 ]
 </script>
