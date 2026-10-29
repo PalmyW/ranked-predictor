@@ -57,10 +57,10 @@
               <th class="w-8 py-2 text-center font-semibold">#</th>
               <th class="py-2 pl-2 text-left font-semibold">Team</th>
               <th
-                v-for="col in SORT_COLUMNS"
+                v-for="col in visibleColumns"
                 :key="col.key"
                 class="py-2 text-center font-semibold"
-                :class="col.key === 'difficulty' ? 'w-28 sm:w-32' : 'w-20'"
+                :class="col.key === 'position' ? 'w-16 sm:w-20' : 'w-20 sm:w-32'"
                 :aria-sort="sortColumn === col.key ? (sortDesc ? 'descending' : 'ascending') : 'none'"
               >
                 <button
@@ -68,8 +68,10 @@
                   class="inline-flex items-center gap-0.5 uppercase tracking-wide hover:text-gray-800 dark:hover:text-gray-200"
                   :class="sortColumn === col.key ? 'text-gray-800 dark:text-gray-100' : ''"
                   :title="col.key === 'difficulty'
-                    ? 'Fixture difficulty — 1st is the hardest draw'
-                    : `Each team's ${active.positionName}`"
+                    ? `${seasonYear} fixture difficulty — 1st is the hardest draw`
+                    : col.key === 'retro'
+                      ? `How hard each team's ${previousSeasonYear} fixture turned out, by ${previousSeasonYear} ${active.averageName}`
+                      : `Each team's ${active.positionName}`"
                 >
                   {{ col.label }}
                   <span class="w-2 text-[9px]">{{ sortColumn === col.key ? (sortDesc ? '▼' : '▲') : '' }}</span>
@@ -95,13 +97,26 @@
                 {{ ordinal(row[orderKey], rows, orderKey) }}
                 <span class="ml-0.5 hidden font-normal text-gray-400 sm:inline">({{ avg(row[difficultyKey]) }})</span>
               </td>
+              <td
+                v-if="showRetro"
+                class="py-1.5 text-center text-xs font-semibold"
+                :class="orderClass(retroByTeam.get(row.teamId)?.[orderKey] ?? null)"
+              >
+                {{ ordinal(retroByTeam.get(row.teamId)?.[orderKey] ?? null, retroRows, orderKey) }}
+                <span class="ml-0.5 hidden font-normal text-gray-400 sm:inline">({{ avg(retroByTeam.get(row.teamId)?.[difficultyKey] ?? null) }})</span>
+              </td>
             </tr>
           </tbody>
         </table>
         <p class="mt-2 text-xs text-gray-400 dark:text-gray-500">
           Position is each team's {{ active.positionName }}.
-          Difficulty ranks the draws (1st = hardest); the bracketed number is the opponents' average
-          {{ active.averageName }}. Click a heading to sort.
+          Difficulty ranks the {{ seasonYear }} draws (1st = hardest); the bracketed number is the
+          opponents' average {{ active.averageName }}.
+          <template v-if="showRetro">
+            {{ previousSeasonYear }} fixture rates each team's {{ previousSeasonYear }} draw the same way,
+            in hindsight.
+          </template>
+          Click a heading to sort.
         </p>
       </section>
 
@@ -217,7 +232,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useAFLData, fetchSeasonMatches, teamById } from '../composables/useAFLData'
 import { useRanking } from '../composables/useRanking'
 import { analyseFixture, finalLadderPositions, finalPercentages, BREAK_DAYS, GAME_DAYS, type FixtureTeamAnalysis, type ShortBreak } from '../composables/useFixtureAnalysis'
@@ -254,6 +269,13 @@ const rows = computed(() =>
   analyseFixture(matches.value, rankingMap.value, ladderMap.value, percentageMap.value),
 )
 
+// The previous season's own fixture, rated with hindsight by that season's
+// finishing positions / percentages — how hard each team's draw turned out.
+const retroRows = computed(() =>
+  analyseFixture(previousMatches.value, rankingMap.value, ladderMap.value, percentageMap.value),
+)
+const retroByTeam = computed(() => new Map(retroRows.value.map((r) => [r.teamId, r])))
+
 // Each view shows only its own basis — e.g. the ladder view has no ranking data.
 type Basis = 'ladder' | 'percentage' | 'ranking'
 type OrderKey = 'ladderOrder' | 'percentageOrder' | 'rankingOrder'
@@ -265,6 +287,9 @@ const BASES: Record<Basis, {
   positionName: string
   // What the bracketed average in the Difficulty column is an average of.
   averageName: string
+  // Whether the basis is a previous-season result, so it can also rate that
+  // season's own fixture in hindsight (your ranking is a prediction, so not).
+  retrospective: boolean
 }> = {
   ladder: {
     label: `${previousSeasonYear} ladder`,
@@ -272,6 +297,7 @@ const BASES: Record<Basis, {
     difficultyKey: 'ladderDifficulty',
     positionName: `${previousSeasonYear} finishing position, after finals`,
     averageName: 'finishing position',
+    retrospective: true,
   },
   percentage: {
     label: `${previousSeasonYear} %`,
@@ -279,6 +305,7 @@ const BASES: Record<Basis, {
     difficultyKey: 'percentageDifficulty',
     positionName: `${previousSeasonYear} percentage`,
     averageName: 'percentage',
+    retrospective: true,
   },
   ranking: {
     label: 'Your ranking',
@@ -286,6 +313,7 @@ const BASES: Record<Basis, {
     difficultyKey: 'rankingDifficulty',
     positionName: 'place in your team ranking',
     averageName: 'ranking',
+    retrospective: false,
   },
 }
 const BASIS_KEYS: Basis[] = ['ladder', 'percentage', 'ranking']
@@ -295,12 +323,19 @@ const orderKey = computed(() => active.value.orderKey)
 const difficultyKey = computed(() => active.value.difficultyKey)
 
 // Table (and breakdown) order: click a column header to sort by it, again to reverse.
-type SortColumn = 'difficulty' | 'position'
+type SortColumn = 'difficulty' | 'position' | 'retro'
 const SORT_COLUMNS: Array<{ key: SortColumn; label: string }> = [
   { key: 'position', label: 'Position' },
   { key: 'difficulty', label: 'Difficulty' },
+  { key: 'retro', label: `${previousSeasonYear} fixture` },
 ]
+const showRetro = computed(() => !!previousSeasonYear && active.value.retrospective)
+const visibleColumns = computed(() => SORT_COLUMNS.filter((c) => c.key !== 'retro' || showRetro.value))
 const sortColumn = ref<SortColumn>('difficulty')
+// The retrospective column isn't shown for your ranking — fall back to Difficulty.
+watch(showRetro, (shown) => {
+  if (!shown && sortColumn.value === 'retro') sortColumn.value = 'difficulty'
+})
 const sortDesc = ref(false)
 function sortOn(column: SortColumn) {
   if (sortColumn.value === column) sortDesc.value = !sortDesc.value
@@ -311,7 +346,9 @@ function sortOn(column: SortColumn) {
 }
 const sortedRows = computed(() => {
   const value = (r: FixtureTeamAnalysis) =>
-    sortColumn.value === 'difficulty' ? (r[orderKey.value] ?? 99) : positionSortValue(r.teamId)
+    sortColumn.value === 'difficulty' ? (r[orderKey.value] ?? 99)
+    : sortColumn.value === 'retro' ? (retroByTeam.value.get(r.teamId)?.[orderKey.value] ?? 99)
+    : positionSortValue(r.teamId)
   const dir = sortDesc.value ? -1 : 1
   return [...rows.value].sort((a, b) => dir * (value(a) - value(b)))
 })
