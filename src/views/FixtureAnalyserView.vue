@@ -115,7 +115,7 @@
             :id="`team-${row.teamId}`"
             :key="row.teamId"
             :data-tour="i === 0 ? 'fixture-team-card' : undefined"
-            class="scroll-mt-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900"
+            class="scroll-mt-20 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900"
           >
             <div class="mb-3 flex items-center gap-2">
               <svg class="size-8 shrink-0"><use :href="`${BASE_URL}icons.svg#${team(row.teamId).iconId}`" /></svg>
