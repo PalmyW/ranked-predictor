@@ -175,10 +175,41 @@
                 <div class="font-bold tabular-nums text-gray-500 dark:text-gray-400">{{ otherBreaks(row) }}</div>
               </div>
             </div>
+            <template v-if="row.shortBreaks.length">
+              <p class="mb-1 mt-2 text-[11px] text-gray-400 dark:text-gray-500">Short breaks, and the opponent's break into the same game:</p>
+              <ul class="space-y-1">
+                <li v-for="b in row.shortBreaks" :key="b.matchId" class="flex items-center gap-2 text-xs">
+                  <span class="w-6 shrink-0 font-bold tabular-nums" :class="breakClass(b.days, 1)">{{ b.days }}d</span>
+                  <span class="w-11 shrink-0 text-gray-500 dark:text-gray-400">Rd {{ b.roundNumber }}</span>
+                  <svg class="size-5 shrink-0"><use :href="`${BASE_URL}icons.svg#${team(b.opponentId).iconId}`" /></svg>
+                  <span class="w-12 shrink-0 font-semibold text-gray-700 dark:text-gray-200">{{ team(b.opponentId).abbreviation }}</span>
+                  <span class="flex-1" :class="b.isHome ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'">{{ b.isHome ? 'H' : 'A' }}</span>
+                  <span class="shrink-0 tabular-nums" :class="restGapClass(b.days, b.opponentDays)" :title="opponentBreakTitle(b)">
+                    {{ b.opponentDays === null ? 'first game' : `on ${b.opponentDays}d` }}
+                  </span>
+                </li>
+              </ul>
+            </template>
             <p v-if="otherBreaksTitle(row) || row.pendingBreaks" class="mt-1.5 text-[11px] text-gray-400 dark:text-gray-500">
               <span v-if="otherBreaksTitle(row)">Other: {{ otherBreaksTitle(row) }}. </span>
               <span v-if="row.pendingBreaks">{{ row.pendingBreaks }} still to be timed.</span>
             </p>
+
+            <p class="mb-1 mt-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Opponents coming off a bye</p>
+            <ul v-if="row.opponentsOffBye.length" class="space-y-1">
+              <li v-for="o in row.opponentsOffBye" :key="o.matchId" class="flex items-center gap-2 text-xs">
+                <span class="w-11 shrink-0 text-gray-500 dark:text-gray-400">Rd {{ o.roundNumber }}</span>
+                <svg class="size-5 shrink-0"><use :href="`${BASE_URL}icons.svg#${team(o.opponentId).iconId}`" /></svg>
+                <span class="w-12 shrink-0 font-semibold text-gray-700 dark:text-gray-200">{{ team(o.opponentId).abbreviation }}</span>
+                <span class="flex-1" :class="o.isHome ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'">{{ o.isHome ? 'H' : 'A' }}</span>
+                <span v-if="o.opponentDays === null" class="shrink-0 text-gray-400 dark:text-gray-500">time TBC</span>
+                <span v-else class="shrink-0 tabular-nums">
+                  <span :class="restGapClass(o.days, o.opponentDays)">they're on {{ o.opponentDays }}d</span>
+                  <span v-if="o.days !== null" class="text-gray-400 dark:text-gray-500"> · you {{ o.days }}d</span>
+                </span>
+              </li>
+            </ul>
+            <p v-else class="text-xs text-gray-400 dark:text-gray-500">None</p>
           </div>
         </div>
       </section>
@@ -192,7 +223,7 @@
 import { ref, computed } from 'vue'
 import { useAFLData, fetchSeasonMatches, teamById } from '../composables/useAFLData'
 import { useRanking } from '../composables/useRanking'
-import { analyseFixture, finalLadderPositions, BREAK_DAYS, GAME_DAYS, type FixtureTeamAnalysis } from '../composables/useFixtureAnalysis'
+import { analyseFixture, finalLadderPositions, BREAK_DAYS, GAME_DAYS, type FixtureTeamAnalysis, type ShortBreak } from '../composables/useFixtureAnalysis'
 import { isFinalsMatch } from '../composables/useFinals'
 import { getActiveSeasonYear, previousSeasonKey } from '../config/seasons'
 import type { AflMatch, AflTeam } from '../types/afl'
@@ -334,6 +365,21 @@ function otherBreaksTitle(row: FixtureTeamAnalysis): string {
   return otherBreakEntries(row)
     .map(([d, c]) => `${d}d${c > 1 ? ` ×${c}` : ''}`)
     .join(', ')
+}
+
+// Colours the opponent's break: red when they're better rested than the
+// team, green when worse.
+function restGapClass(days: number | null, opponentDays: number | null): string {
+  if (days === null || opponentDays === null || opponentDays === days) return 'text-gray-500 dark:text-gray-400'
+  return opponentDays > days ? 'font-semibold text-red-600' : 'font-semibold text-green-600'
+}
+
+function opponentBreakTitle(b: ShortBreak): string {
+  const abbr = team(b.opponentId).abbreviation
+  if (b.opponentDays === null) return `This is ${abbr}'s first game of the season`
+  const diff = b.opponentDays - b.days
+  if (diff === 0) return `${abbr} also had ${b.days} days`
+  return `${abbr} had ${b.opponentDays} days — ${Math.abs(diff)} ${Math.abs(diff) === 1 ? 'day' : 'days'} ${diff > 0 ? 'more' : 'less'}`
 }
 
 // Games on days outside GAME_DAYS, e.g. a Wednesday opener or holiday Monday.

@@ -15,9 +15,33 @@ export const GAME_DAYS = ['Thu', 'Fri', 'Sat', 'Sun']
 // Friday-night match.
 const NIGHT_FROM_HOUR = 17
 
+// Breaks this short or shorter are listed individually with the opponent's
+// break into the same match.
+export const SHORT_BREAK_MAX_DAYS = 6
+
 export interface DoubleUp {
   opponentId: number
   meetings: Array<{ matchId: number; roundNumber: number; isHome: boolean }>
+}
+
+export interface ShortBreak {
+  matchId: number
+  roundNumber: number
+  isHome: boolean
+  days: number
+  opponentId: number
+  // The opponent's break into the same match; null if it's their first game.
+  opponentDays: number | null
+}
+
+export interface OpponentOffBye {
+  matchId: number
+  roundNumber: number
+  isHome: boolean
+  opponentId: number
+  // Breaks into this match; null when a game involved is still untimed.
+  opponentDays: number | null
+  days: number | null
 }
 
 export interface FixtureTeamAnalysis {
@@ -35,6 +59,10 @@ export interface FixtureTeamAnalysis {
   breaks: Record<number, number>
   // Gaps involving a PLACEHOLDER match, whose start time is a dummy value.
   pendingBreaks: number
+  // Breaks of SHORT_BREAK_MAX_DAYS or fewer, shortest first, then by round.
+  shortBreaks: ShortBreak[]
+  // Matches where the opponent is coming off a bye, in round order.
+  opponentsOffBye: OpponentOffBye[]
   // Weekday ('Thu', 'Mon', …) → count, only for matches with confirmed times.
   gameDays: Record<string, number>
   // Friday-night matches that are the only match on that Friday night.
@@ -132,10 +160,30 @@ export function analyseFixture(
     fridayNightCount.set(date, (fridayNightCount.get(date) ?? 0) + 1)
   }
 
-  const rows = teamsInMatches(homeAndAway).map((team): FixtureTeamAnalysis => {
+  // Each team's matches in order, and its break (days) into each one — null
+  // for its first match or when either game is still untimed. Built up front
+  // so a short break can be compared with the opponent's break into that match.
+  const teams = teamsInMatches(homeAndAway)
+  const ownMatches = new Map<number, AflMatch[]>()
+  const breakInto = new Map<string, number | null>()
+  // Matches a team plays straight after a bye (its previous game was two or
+  // more rounds earlier), keyed `${teamId}:${matchId}`.
+  const afterBye = new Set<string>()
+  for (const team of teams) {
     const own = homeAndAway
       .filter((m) => m.homeTeamId === team.id || m.awayTeamId === team.id)
       .sort((a, b) => a.roundNumber - b.roundNumber || a.utcStartTime.localeCompare(b.utcStartTime))
+    ownMatches.set(team.id, own)
+    own.forEach((m, i) => {
+      const prev = own[i - 1]
+      const timed = prev && prev.status !== 'PLACEHOLDER' && m.status !== 'PLACEHOLDER'
+      breakInto.set(`${team.id}:${m.id}`, timed ? calendarDaysBetween(prev.utcStartTime, m.utcStartTime) : null)
+      if (prev && m.roundNumber - prev.roundNumber > 1) afterBye.add(`${team.id}:${m.id}`)
+    })
+  }
+
+  const rows = teams.map((team): FixtureTeamAnalysis => {
+    const own = ownMatches.get(team.id)!
     const opponentIds = own.map((m) => (m.homeTeamId === team.id ? m.awayTeamId : m.homeTeamId))
 
     const meetings = new Map<number, DoubleUp['meetings']>()
@@ -149,15 +197,42 @@ export function analyseFixture(
       .map(([opponentId, list]) => ({ opponentId, meetings: list }))
 
     const breaks: Record<number, number> = {}
+    const shortBreaks: ShortBreak[] = []
     let pendingBreaks = 0
     for (let i = 1; i < own.length; i++) {
-      if (own[i - 1].status === 'PLACEHOLDER' || own[i].status === 'PLACEHOLDER') {
+      const m = own[i]
+      const days = breakInto.get(`${team.id}:${m.id}`) ?? null
+      if (days === null) {
         pendingBreaks++
         continue
       }
-      const days = calendarDaysBetween(own[i - 1].utcStartTime, own[i].utcStartTime)
       breaks[days] = (breaks[days] ?? 0) + 1
+      if (days <= SHORT_BREAK_MAX_DAYS) {
+        shortBreaks.push({
+          matchId: m.id,
+          roundNumber: m.roundNumber,
+          isHome: m.homeTeamId === team.id,
+          days,
+          opponentId: opponentIds[i],
+          opponentDays: breakInto.get(`${opponentIds[i]}:${m.id}`) ?? null,
+        })
+      }
     }
+
+    shortBreaks.sort((a, b) => a.days - b.days || a.roundNumber - b.roundNumber)
+
+    const opponentsOffBye: OpponentOffBye[] = []
+    own.forEach((m, i) => {
+      if (!afterBye.has(`${opponentIds[i]}:${m.id}`)) return
+      opponentsOffBye.push({
+        matchId: m.id,
+        roundNumber: m.roundNumber,
+        isHome: m.homeTeamId === team.id,
+        opponentId: opponentIds[i],
+        opponentDays: breakInto.get(`${opponentIds[i]}:${m.id}`) ?? null,
+        days: breakInto.get(`${team.id}:${m.id}`) ?? null,
+      })
+    })
 
     const gameDays: Record<string, number> = {}
     let standaloneFridayNights = 0
@@ -185,6 +260,8 @@ export function analyseFixture(
       doubleUps,
       breaks,
       pendingBreaks,
+      shortBreaks,
+      opponentsOffBye,
       gameDays,
       standaloneFridayNights,
       untimedGames,
