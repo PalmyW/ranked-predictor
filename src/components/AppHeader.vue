@@ -22,6 +22,21 @@
         </div>
       </RouterLink>
 
+      <!-- Menu toggle, next to the logo: below xl the page tabs live in the menu panel -->
+      <button
+        @click="menuOpen = !menuOpen"
+        class="flex h-8 min-w-0 items-center gap-1.5 rounded border border-gray-200 px-2 text-xs font-semibold text-gray-600 transition-colors hover:bg-gray-100 xl:hidden dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+        :aria-expanded="menuOpen"
+        aria-controls="site-menu"
+        :aria-label="menuOpen ? 'Close menu' : 'Open menu'"
+      >
+        <svg class="size-4 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true">
+          <path v-if="menuOpen" d="M4 4l8 8M12 4l-8 8" />
+          <path v-else d="M2.5 4h11M2.5 8h11M2.5 12h11" />
+        </svg>
+        <span class="hidden max-w-[10rem] truncate sm:inline">{{ activeTabLabel }}</span>
+      </button>
+
       <!-- Page navigation: inline on wide screens -->
       <nav class="hidden xl:flex xl:gap-0.5" aria-label="Main">
         <RouterLink
@@ -78,20 +93,6 @@
         >
           <span v-if="isDark">☀️</span>
           <span v-else>🌙</span>
-        </button>
-        <!-- Menu toggle: below xl the page tabs live in the menu panel -->
-        <button
-          @click="menuOpen = !menuOpen"
-          class="flex h-8 items-center gap-1.5 rounded border border-gray-200 px-2 text-xs font-semibold text-gray-600 transition-colors hover:bg-gray-100 xl:hidden dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-          :aria-expanded="menuOpen"
-          aria-controls="site-menu"
-          :aria-label="menuOpen ? 'Close menu' : 'Open menu'"
-        >
-          <svg class="size-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true">
-            <path v-if="menuOpen" d="M4 4l8 8M12 4l-8 8" />
-            <path v-else d="M2.5 4h11M2.5 8h11M2.5 12h11" />
-          </svg>
-          <span class="hidden max-w-[10rem] truncate sm:inline">{{ activeTabLabel }}</span>
         </button>
       </div>
     </div>
