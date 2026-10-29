@@ -1,6 +1,10 @@
 import { ref, computed } from 'vue'
+import { ACTIVE_CURRENT_SEASON_YEAR, previousSeasonKey } from '../config/seasons'
+import { LEAGUE_CONFIG } from '../config/league'
 
 // The tour never starts on its own — only from the header's "?" button.
+
+const PREVIOUS_SEASON_YEAR = previousSeasonKey(ACTIVE_CURRENT_SEASON_YEAR) ?? 'last season'
 
 export interface TourStep {
   id: string
@@ -14,7 +18,7 @@ const STEPS: TourStep[] = [
   {
     id: 'welcome',
     title: 'Welcome to PalmyData!',
-    description: 'Predict how the 2027 AFL season will finish. Rank teams your way and see where each side lands. This quick tour shows you around.',
+    description: `Predict how the ${ACTIVE_CURRENT_SEASON_YEAR} ${LEAGUE_CONFIG.label} season will finish. Rank teams your way and see where each side lands. This quick tour shows you around.`,
     target: null,
   },
   {
@@ -34,14 +38,14 @@ const STEPS: TourStep[] = [
   {
     id: 'ladder-source',
     title: 'Ladder Source',
-    description: 'Switch between the live AFL ladder, your saved My Ladder, or a shared ranking loaded from a URL.',
+    description: 'Shows where your current ranking came from: the live ladder, your saved My Ladder, a shared ranking loaded from a link, or one you imported.',
     target: '[data-tour="ladder-source"]',
     route: '/',
   },
   {
     id: 'ranking-actions',
-    title: 'Save & Reset',
-    description: 'Save your current ranking as "My Ladder" or reset back to the live AFL standings at any time.',
+    title: 'Save & Import',
+    description: 'Save your ranking as My Ladder and reload it later, or use Import from… to start from the live ladder or any of the ranking algorithms. Revert undoes an import.',
     target: '[data-tour="ranking-actions"]',
     route: '/',
   },
@@ -53,9 +57,16 @@ const STEPS: TourStep[] = [
     route: '/',
   },
   {
+    id: 'palmy-predicted-tab',
+    title: 'PalmyScore™ Predicted Ladder',
+    description: 'See how the season would finish if every remaining match went to the PalmyScore™ predicted winner — no ranking influence, just score-based predictions.',
+    target: '[data-tour="palmy-predicted-tab"]',
+    route: '/',
+  },
+  {
     id: 'simulated-tab',
     title: 'Simulated Season',
-    description: 'Run a randomised season where upsets can happen. Win probability scales by rank gap, with a home-ground boost.',
+    description: "Run a randomised season where upsets can happen. Win chances come from PalmyScore™'s predicted margins by default, or switch to Ranking to base them on your rank gaps with a home-ground boost.",
     target: '[data-tour="simulated-tab"]',
     route: '/',
   },
@@ -71,13 +82,6 @@ const STEPS: TourStep[] = [
     title: 'Circle of Parity',
     description: 'Visualise the win/loss loops between teams — who beats who in a circular chain of season results.',
     target: '[data-tour="parity-tab"]',
-    route: '/',
-  },
-  {
-    id: 'palmy-predicted-tab',
-    title: 'PalmyScore™ Predicted Ladder',
-    description: 'See how the season would finish if every remaining match went to the PalmyScore™ predicted winner — no ranking influence, just score-based predictions.',
-    target: '[data-tour="palmy-predicted-tab"]',
     route: '/',
   },
   {
@@ -174,7 +178,7 @@ const STEPS: TourStep[] = [
   {
     id: 'rankings-table',
     title: 'Ranking Table',
-    description: 'Teams are ordered by the algorithm\'s rating. The "vs AFL" column shows where this algorithm agrees or disagrees with the official points-based ladder.',
+    description: 'Teams are ordered by the algorithm\'s rating. The "vs AFL" column shows where it agrees or disagrees with the official ladder. Use Last X to rate recent form only, or switch to the graph to see how the rankings moved round by round.',
     target: '[data-tour="rankings-table"]',
     route: '/rankings',
   },
@@ -188,7 +192,7 @@ const STEPS: TourStep[] = [
   {
     id: 'score-predictor-predictions',
     title: 'Match Predictions',
-    description: 'Predicted scores for every upcoming match, calculated from each team\'s season attack average adjusted by their opponent\'s defence rating. Toggle between All Games and Home/Away to factor in venue history.',
+    description: 'Predicted scores for every upcoming match, calculated from each team\'s attack average adjusted by their opponent\'s defence rating. Toggle between All Games and Home/Away to factor in venue history, or use Last X to rate teams on recent form.',
     target: '[data-tour="score-predictor-predictions"]',
     route: '/score-predictor',
   },
@@ -198,6 +202,34 @@ const STEPS: TourStep[] = [
     description: "Every team's average score, average conceded, and defence adjustment — how many extra points opponents tend to score above their own average when facing that team. Sort by Attack or Defence rank.",
     target: '[data-tour="score-predictor-strength"]',
     route: '/score-predictor',
+  },
+  {
+    id: 'finals-nav',
+    title: 'Finals',
+    description: 'The Finals page plays out the finals bracket — seeded from your last simulated season, or from the live ladder once the home-and-away season is over, where you can pick each winner.',
+    target: '[data-tour="finals-nav"]',
+    route: '/score-predictor',
+  },
+  {
+    id: 'fixture-nav',
+    title: 'Fixture Analyser',
+    description: "The Fixture page rates how hard every team's draw is. Let's take a look.",
+    target: '[data-tour="fixture-nav"]',
+    route: '/score-predictor',
+  },
+  {
+    id: 'fixture-table',
+    title: 'Hardest Fixture',
+    description: `Every team's draw ranked by difficulty — the average rank of its opponents, by the ${PREVIOUS_SEASON_YEAR} final ladder or by your own ranking. Click Position or Difficulty to sort.`,
+    target: '[data-tour="fixture-table"]',
+    route: '/fixture',
+  },
+  {
+    id: 'fixture-team-card',
+    title: 'Team Breakdown',
+    description: 'Each team gets a card listing the opponents they play twice, and how many 5- to 10-day breaks they get between games.',
+    target: '[data-tour="fixture-team-card"]',
+    route: '/fixture',
   },
   {
     id: 'dark-mode',

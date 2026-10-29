@@ -35,7 +35,7 @@
 
     <template v-else-if="rows.length">
       <!-- Hardest-fixture ladder -->
-      <section class="mb-8">
+      <section data-tour="fixture-table" class="mb-8">
         <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 class="text-base font-bold text-gray-800 dark:text-gray-100">Hardest fixture</h2>
           <div class="flex gap-0.5 rounded-lg bg-gray-100 p-0.5 text-xs dark:bg-gray-800">
@@ -111,9 +111,10 @@
         <h2 class="mb-3 text-base font-bold text-gray-800 dark:text-gray-100">Team breakdown</h2>
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div
-            v-for="row in sortedRows"
+            v-for="(row, i) in sortedRows"
             :id="`team-${row.teamId}`"
             :key="row.teamId"
+            :data-tour="i === 0 ? 'fixture-team-card' : undefined"
             class="scroll-mt-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900"
           >
             <div class="mb-3 flex items-center gap-2">
