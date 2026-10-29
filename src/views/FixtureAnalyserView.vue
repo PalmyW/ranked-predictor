@@ -270,8 +270,8 @@ const BASES: Record<Basis, {
     label: `${previousSeasonYear} ladder`,
     orderKey: 'ladderOrder',
     difficultyKey: 'ladderDifficulty',
-    positionName: `${previousSeasonYear} ladder finish`,
-    averageName: 'ladder position',
+    positionName: `${previousSeasonYear} finishing position, after finals`,
+    averageName: 'finishing position',
   },
   percentage: {
     label: `${previousSeasonYear} %`,

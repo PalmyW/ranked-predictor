@@ -104,10 +104,39 @@ function isFridayNight(m: AflMatch): boolean {
   return MELBOURNE_WEEKDAY.format(start) === 'Fri' && Number(MELBOURNE_HOUR.format(start)) >= NIGHT_FROM_HOUR
 }
 
-/** A season's final home-and-away ladder positions (1 = top), keyed by team id. */
+/**
+ * A season's finishing positions (1 = premier), keyed by team id. Finalists
+ * rank by how far they got — the Grand Final winner, then the loser, then the
+ * preliminary-final losers, and so on — with teams knocked out in the same
+ * round ordered by home-and-away ladder position. Non-finalists follow in
+ * ladder order. Before any final is played this is just the ladder.
+ */
 export function finalLadderPositions(matches: readonly AflMatch[]): Record<number, number> {
-  const homeAndAway = matches.filter((m) => !isFinalsMatch(m))
-  return Object.fromEntries(buildOfficialRankMap(buildBasicStats(homeAndAway)))
+  const ladder = buildOfficialRankMap(buildBasicStats(matches.filter((m) => !isFinalsMatch(m))))
+  const finals = matches.filter(
+    (m) => isFinalsMatch(m) && m.status === 'CONCLUDED' && m.homeScore && m.awayScore,
+  )
+
+  // The last finals round each team played in (a qualifying-final loser plays
+  // on, so it's the furthest round reached, not the round they lost in).
+  const furthest = new Map<number, number>()
+  for (const m of finals) {
+    for (const id of [m.homeTeamId, m.awayTeamId]) {
+      furthest.set(id, Math.max(furthest.get(id) ?? 0, m.roundNumber))
+    }
+  }
+  const gf = finals.find((m) => m.roundAbbreviation === 'GF')
+  const premier = gf && gf.homeScore!.totalScore !== gf.awayScore!.totalScore
+    ? (gf.homeScore!.totalScore > gf.awayScore!.totalScore ? gf.homeTeamId : gf.awayTeamId)
+    : null
+
+  const order = [...ladder.keys()].sort(
+    (a, b) =>
+      (furthest.get(b) ?? -1) - (furthest.get(a) ?? -1) ||
+      Number(b === premier) - Number(a === premier) ||
+      ladder.get(a)! - ladder.get(b)!,
+  )
+  return Object.fromEntries(order.map((id, i) => [id, i + 1]))
 }
 
 /** A season's final home-and-away percentages (points for ÷ against × 100), keyed by team id. */
