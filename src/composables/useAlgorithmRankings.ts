@@ -1,6 +1,7 @@
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { AflMatch } from '../types/afl'
-import { teamsInMatches, teamById } from './useAFLData'
+import { teamsInMatches, teamById, fetchSeasonMatches } from './useAFLData'
+import { previousSeasonKey } from '../config/seasons'
 
 export type VenueFilter = 'both' | 'home' | 'away'
 
@@ -659,6 +660,54 @@ export function computeAlgorithmRanking(
 }
 
 type MatchesRef = { readonly value: readonly AflMatch[] }
+
+// Before a season's first match concludes every algorithm would rank on zero
+// games, so each team's last PRESEASON_FORM_MATCHES games of the previous
+// season stand in until then.
+export const PRESEASON_FORM_MATCHES = 8
+
+/**
+ * The matches the ranking algorithms should run on: the season's own matches,
+ * or — once its fixture has loaded but before any match has concluded — each
+ * team's last PRESEASON_FORM_MATCHES games of the previous season. The previous
+ * season is only fetched when that fallback is actually needed.
+ */
+export function usePreseasonRankingMatches(matchesRef: MatchesRef, seasonYear: string) {
+  const previousSeasonYear = previousSeasonKey(seasonYear)
+  const previousMatches = ref<AflMatch[]>([])
+
+  // A loaded fixture is never empty, so length 0 means it's still loading —
+  // don't fetch the previous season during a mid-season page load.
+  const seasonNotStarted = computed(
+    () =>
+      matchesRef.value.length > 0 &&
+      !matchesRef.value.some((m) => m.status === 'CONCLUDED' && m.homeScore && m.awayScore),
+  )
+
+  let requested = false
+  watch(
+    seasonNotStarted,
+    (notStarted) => {
+      if (!notStarted || requested || !previousSeasonYear) return
+      requested = true
+      fetchSeasonMatches(previousSeasonYear).then((m) => {
+        previousMatches.value = m
+      })
+    },
+    { immediate: true },
+  )
+
+  const usingPreviousSeason = computed(
+    () => seasonNotStarted.value && previousMatches.value.length > 0,
+  )
+  const rankingMatches = computed<readonly AflMatch[]>(() =>
+    usingPreviousSeason.value
+      ? filterRecentMatches(previousMatches.value, PRESEASON_FORM_MATCHES)
+      : matchesRef.value,
+  )
+
+  return { rankingMatches, usingPreviousSeason, previousSeasonYear }
+}
 
 export function useAlgorithmRankings(matchesRef: MatchesRef) {
   const basicStats = computed(() => buildBasicStats(matchesRef.value))

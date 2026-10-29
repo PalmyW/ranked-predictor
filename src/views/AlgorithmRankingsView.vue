@@ -480,6 +480,14 @@
       </p>
     </div>
 
+    <div
+      v-if="usingPreviousSeason"
+      class="mb-4 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400"
+    >
+      No {{ currentSeasonYear }} games have been played yet — rankings use each
+      team's last {{ PRESEASON_FORM_MATCHES }} games of {{ previousSeasonYear }}.
+    </div>
+
     <!-- Algorithm selector -->
     <div data-tour="rankings-algo-selector" class="mb-4 flex flex-wrap gap-2">
       <button
@@ -1746,6 +1754,8 @@ import {
   buildBasicStats,
   buildOfficialRankMap,
   filterRecentMatches,
+  usePreseasonRankingMatches,
+  PRESEASON_FORM_MATCHES,
 } from '../composables/useAlgorithmRankings'
 import type {
   AlgorithmId,
@@ -1777,10 +1787,15 @@ const recentLimit = ref(
       ? queryRecent
       : 0,
 )
+const {
+  rankingMatches: seasonRankingMatches,
+  usingPreviousSeason,
+  previousSeasonYear,
+} = usePreseasonRankingMatches(matches, getActiveSeasonYear())
 const rankingMatches = computed<readonly AflMatch[]>(() =>
   recentLimit.value
-    ? filterRecentMatches(matches.value, recentLimit.value)
-    : matches.value,
+    ? filterRecentMatches(seasonRankingMatches.value, recentLimit.value)
+    : seasonRankingMatches.value,
 )
 
 const {
@@ -1986,7 +2001,7 @@ const concludedRounds = computed<number[]>(() => {
 
 const roundLabels = computed<Record<number, string>>(() => {
   const map: Record<number, string> = {}
-  for (const m of matches.value) {
+  for (const m of rankingMatches.value) {
     if (m.roundNumber in map) continue
     const n = m.roundName
     map[m.roundNumber] =

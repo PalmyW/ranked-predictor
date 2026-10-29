@@ -124,7 +124,7 @@
 import { computed, ref, watch, onMounted, provide } from 'vue'
 import { useAFLData } from '../composables/useAFLData'
 import { useRanking } from '../composables/useRanking'
-import { useAlgorithmRankings, ALGORITHMS } from '../composables/useAlgorithmRankings'
+import { useAlgorithmRankings, usePreseasonRankingMatches, ALGORITHMS, PRESEASON_FORM_MATCHES } from '../composables/useAlgorithmRankings'
 import { useSimulation, buildPalmyLadder } from '../composables/useSimulation'
 import { usePredictionsStore } from '../stores/predictions'
 import { useAnalytics } from '../composables/useAnalytics'
@@ -142,7 +142,8 @@ const { ranking, tierSizes, shareUrl, rankedFromUrl, rankedFromStorage, ladderSo
 
 provide('matches', matches)
 provide('ranking', ranking)
-const { srsRanking, colleyRanking, masseyRanking, winFlowRanking, palmyRanking, xpalmyRanking } = useAlgorithmRankings(matches)
+const { rankingMatches, usingPreviousSeason, previousSeasonYear } = usePreseasonRankingMatches(matches, activeSeasonYear.value)
+const { srsRanking, colleyRanking, masseyRanking, winFlowRanking, palmyRanking, xpalmyRanking } = useAlgorithmRankings(rankingMatches)
 
 const importedFromName = ref<string | null>(null)
 const algoRankingMap = computed<Record<string, { teamId: number }[]>>(() => ({
@@ -249,7 +250,10 @@ function onImportSelect(e: Event) {
   const rows = algoRankingMap.value[algoId]
   if (!rows || rows.length === 0) return
   const algo = ALGORITHMS.find((a) => a.id === algoId)
-  importedFromName.value = algo?.name ?? algoId
+  const name = algo?.name ?? algoId
+  importedFromName.value = usingPreviousSeason.value
+    ? `${name} (last ${PRESEASON_FORM_MATCHES} of ${previousSeasonYear})`
+    : name
   importRanking(rows.map((r) => r.teamId))
 }
 
