@@ -7,6 +7,14 @@ import { buildBasicStats, buildOfficialRankMap } from './useAlgorithmRankings'
 // anything shorter or longer (e.g. a bye) is grouped as "other".
 export const BREAK_DAYS = [5, 6, 7, 8, 9, 10]
 
+// Weekdays (Melbourne time) broken out individually; anything else (a
+// Wednesday opener, a public-holiday Monday) is grouped as "other".
+export const GAME_DAYS = ['Thu', 'Fri', 'Sat', 'Sun']
+
+// A Friday match kicking off at or after this hour (Melbourne time) is a
+// Friday-night match.
+const NIGHT_FROM_HOUR = 17
+
 export interface DoubleUp {
   opponentId: number
   meetings: Array<{ matchId: number; roundNumber: number; isHome: boolean }>
@@ -27,6 +35,12 @@ export interface FixtureTeamAnalysis {
   breaks: Record<number, number>
   // Gaps involving a PLACEHOLDER match, whose start time is a dummy value.
   pendingBreaks: number
+  // Weekday ('Thu', 'Mon', …) → count, only for matches with confirmed times.
+  gameDays: Record<string, number>
+  // Friday-night matches that are the only match on that Friday night.
+  standaloneFridayNights: number
+  // PLACEHOLDER matches, whose day isn't known yet.
+  untimedGames: number
 }
 
 const MELBOURNE_DATE = new Intl.DateTimeFormat('en-CA', {
@@ -36,11 +50,27 @@ const MELBOURNE_DATE = new Intl.DateTimeFormat('en-CA', {
   day: '2-digit',
 })
 
+const MELBOURNE_WEEKDAY = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'Australia/Melbourne',
+  weekday: 'short',
+})
+
+const MELBOURNE_HOUR = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Australia/Melbourne',
+  hour: 'numeric',
+  hourCycle: 'h23',
+})
+
 // Calendar days between two kick-offs in Melbourne time, so a Saturday night
 // game to the next Friday night is a 6-day break regardless of kick-off times.
 function calendarDaysBetween(a: string, b: string): number {
   const day = (iso: string) => Date.parse(`${MELBOURNE_DATE.format(new Date(iso))}T00:00:00Z`)
   return Math.round((day(b) - day(a)) / 86_400_000)
+}
+
+function isFridayNight(m: AflMatch): boolean {
+  const start = new Date(m.utcStartTime)
+  return MELBOURNE_WEEKDAY.format(start) === 'Fri' && Number(MELBOURNE_HOUR.format(start)) >= NIGHT_FROM_HOUR
 }
 
 /** A season's final home-and-away ladder positions (1 = top), keyed by team id. */
@@ -94,6 +124,14 @@ export function analyseFixture(
 ): FixtureTeamAnalysis[] {
   const homeAndAway = matches.filter((m) => !isFinalsMatch(m))
 
+  // Friday-night matches per Melbourne date, to spot the stand-alone ones.
+  const fridayNightCount = new Map<string, number>()
+  for (const m of homeAndAway) {
+    if (m.status === 'PLACEHOLDER' || !isFridayNight(m)) continue
+    const date = MELBOURNE_DATE.format(new Date(m.utcStartTime))
+    fridayNightCount.set(date, (fridayNightCount.get(date) ?? 0) + 1)
+  }
+
   const rows = teamsInMatches(homeAndAway).map((team): FixtureTeamAnalysis => {
     const own = homeAndAway
       .filter((m) => m.homeTeamId === team.id || m.awayTeamId === team.id)
@@ -121,6 +159,22 @@ export function analyseFixture(
       breaks[days] = (breaks[days] ?? 0) + 1
     }
 
+    const gameDays: Record<string, number> = {}
+    let standaloneFridayNights = 0
+    let untimedGames = 0
+    for (const m of own) {
+      if (m.status === 'PLACEHOLDER') {
+        untimedGames++
+        continue
+      }
+      const start = new Date(m.utcStartTime)
+      const weekday = MELBOURNE_WEEKDAY.format(start)
+      gameDays[weekday] = (gameDays[weekday] ?? 0) + 1
+      if (isFridayNight(m) && fridayNightCount.get(MELBOURNE_DATE.format(start)) === 1) {
+        standaloneFridayNights++
+      }
+    }
+
     return {
       teamId: team.id,
       games: own.length,
@@ -131,6 +185,9 @@ export function analyseFixture(
       doubleUps,
       breaks,
       pendingBreaks,
+      gameDays,
+      standaloneFridayNights,
+      untimedGames,
     }
   })
 

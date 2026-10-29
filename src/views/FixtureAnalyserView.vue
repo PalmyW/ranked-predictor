@@ -147,6 +147,23 @@
             </ul>
             <p v-else class="mb-3 text-xs text-gray-400 dark:text-gray-500">None</p>
 
+            <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Game days</p>
+            <div class="grid grid-cols-5 gap-1 text-center text-xs">
+              <div v-for="d in GAME_DAYS" :key="d" class="rounded bg-gray-50 py-1 dark:bg-gray-800/60">
+                <div class="text-[10px] text-gray-400 dark:text-gray-500">{{ d }}</div>
+                <div class="font-bold tabular-nums" :class="(row.gameDays[d] ?? 0) ? 'text-gray-700 dark:text-gray-200' : 'text-gray-300 dark:text-gray-600'">{{ row.gameDays[d] ?? 0 }}</div>
+              </div>
+              <div class="rounded bg-gray-50 py-1 dark:bg-gray-800/60" :title="otherDaysTitle(row)">
+                <div class="text-[10px] text-gray-400 dark:text-gray-500">Other</div>
+                <div class="font-bold tabular-nums text-gray-500 dark:text-gray-400">{{ otherDays(row) }}</div>
+              </div>
+            </div>
+            <p class="mb-3 mt-1.5 text-[11px] text-gray-400 dark:text-gray-500">
+              {{ row.standaloneFridayNights }} stand-alone Friday night {{ row.standaloneFridayNights === 1 ? 'match' : 'matches' }}.
+              <span v-if="otherDaysTitle(row)">Other: {{ otherDaysTitle(row) }}. </span>
+              <span v-if="row.untimedGames">{{ row.untimedGames }} still to be timed.</span>
+            </p>
+
             <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Breaks between games</p>
             <div class="grid grid-cols-7 gap-1 text-center text-xs">
               <div v-for="d in BREAK_DAYS" :key="d" class="rounded bg-gray-50 py-1 dark:bg-gray-800/60">
@@ -175,7 +192,7 @@
 import { ref, computed } from 'vue'
 import { useAFLData, fetchSeasonMatches, teamById } from '../composables/useAFLData'
 import { useRanking } from '../composables/useRanking'
-import { analyseFixture, finalLadderPositions, BREAK_DAYS, type FixtureTeamAnalysis } from '../composables/useFixtureAnalysis'
+import { analyseFixture, finalLadderPositions, BREAK_DAYS, GAME_DAYS, type FixtureTeamAnalysis } from '../composables/useFixtureAnalysis'
 import { isFinalsMatch } from '../composables/useFinals'
 import { getActiveSeasonYear, previousSeasonKey } from '../config/seasons'
 import type { AflMatch, AflTeam } from '../types/afl'
@@ -316,6 +333,21 @@ function otherBreaks(row: FixtureTeamAnalysis): number {
 function otherBreaksTitle(row: FixtureTeamAnalysis): string {
   return otherBreakEntries(row)
     .map(([d, c]) => `${d}d${c > 1 ? ` ×${c}` : ''}`)
+    .join(', ')
+}
+
+// Games on days outside GAME_DAYS, e.g. a Wednesday opener or holiday Monday.
+function otherDayEntries(row: FixtureTeamAnalysis): Array<[string, number]> {
+  return Object.entries(row.gameDays).filter(([d]) => !GAME_DAYS.includes(d))
+}
+
+function otherDays(row: FixtureTeamAnalysis): number {
+  return otherDayEntries(row).reduce((n, [, c]) => n + c, 0)
+}
+
+function otherDaysTitle(row: FixtureTeamAnalysis): string {
+  return otherDayEntries(row)
+    .map(([d, c]) => `${d}${c > 1 ? ` ×${c}` : ''}`)
     .join(', ')
 }
 </script>
