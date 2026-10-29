@@ -36,18 +36,26 @@
     <template v-else-if="rows.length">
       <!-- Hardest-fixture ladder -->
       <section data-tour="fixture-table" class="mb-8">
+       <div ref="tableEl">
         <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 class="text-base font-bold text-gray-800 dark:text-gray-100">Hardest fixture</h2>
-          <div class="flex gap-0.5 rounded-lg bg-gray-100 p-0.5 text-xs dark:bg-gray-800">
-            <button
-              v-for="key in BASIS_KEYS"
-              :key="key"
-              @click="basis = key"
-              class="rounded-md px-2.5 py-1 font-semibold transition-colors"
-              :class="basis === key
-                ? 'bg-white text-gray-800 shadow-sm dark:bg-gray-900 dark:text-gray-100'
-                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
-            >{{ BASES[key].label }}</button>
+          <h2 class="text-base font-bold text-gray-800 dark:text-gray-100">
+            Hardest {{ seasonYear }} fixture
+            <!-- In the exported image the toggle is hidden, so name the basis here -->
+            <span v-if="capturing" class="font-normal text-gray-500 dark:text-gray-400">— by {{ active.label }}</span>
+          </h2>
+          <div v-if="!capturing" class="flex items-center gap-2">
+            <div class="flex gap-0.5 rounded-lg bg-gray-100 p-0.5 text-xs dark:bg-gray-800">
+              <button
+                v-for="key in BASIS_KEYS"
+                :key="key"
+                @click="basis = key"
+                class="rounded-md px-2.5 py-1 font-semibold transition-colors"
+                :class="basis === key
+                  ? 'bg-white text-gray-800 shadow-sm dark:bg-gray-900 dark:text-gray-100'
+                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
+              >{{ BASES[key].label }}</button>
+            </div>
+            <ScreenshotButton @click="screenshot(tableEl, `hardest-fixture-${seasonYear}-${basis}.png`)" />
           </div>
         </div>
 
@@ -83,7 +91,7 @@
             <tr
               v-for="(row, i) in sortedRows"
               :key="row.teamId"
-              class="border-b border-gray-100 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/50"
+              class="border-b border-gray-100 bg-white transition-colors even:bg-gray-100/70 hover:bg-blue-50 dark:border-gray-800 dark:bg-gray-900 dark:even:bg-gray-800/60 dark:hover:bg-gray-700/60"
             >
               <td class="py-1.5 text-center text-xs text-gray-500">{{ i + 1 }}</td>
               <td class="py-1.5 pl-2 font-medium text-gray-800 dark:text-gray-200">
@@ -115,8 +123,9 @@
           <template v-if="showRetro">
             {{ previousSeasonYear }} Diff rates each team's {{ previousSeasonYear }} draw the same way.
           </template>
-          Click a heading to sort.
+          <template v-if="!capturing">Click a heading to sort.</template>
         </p>
+       </div>
       </section>
 
       <!-- Per-team breakdown -->
@@ -237,9 +246,15 @@ import { useRanking } from '../composables/useRanking'
 import { analyseFixture, finalLadderPositions, finalPercentages, BREAK_DAYS, GAME_DAYS, type FixtureTeamAnalysis, type ShortBreak } from '../composables/useFixtureAnalysis'
 import { isFinalsMatch } from '../composables/useFinals'
 import { getActiveSeasonYear, previousSeasonKey } from '../config/seasons'
+import { useScreenshot } from '../composables/useScreenshot'
+import ScreenshotButton from '../components/ScreenshotButton.vue'
 import type { AflMatch, AflTeam } from '../types/afl'
 
 const BASE_URL = import.meta.env.BASE_URL
+
+// "Save as image" for the hardest-fixture table.
+const tableEl = ref<HTMLElement | null>(null)
+const { capturing, screenshot } = useScreenshot()
 
 const { matches, teams, isLoading, error } = useAFLData()
 const { ranking } = useRanking()
