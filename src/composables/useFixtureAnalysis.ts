@@ -51,9 +51,12 @@ export interface FixtureTeamAnalysis {
   // lower = harder. null when no opponent has a rank under that basis.
   rankingDifficulty: number | null
   ladderDifficulty: number | null
+  // Average opponent percentage — higher = harder.
+  percentageDifficulty: number | null
   // 1 = hardest fixture in the competition under that basis.
   rankingOrder: number | null
   ladderOrder: number | null
+  percentageOrder: number | null
   doubleUps: DoubleUp[]
   // Days → count, only for gaps where both matches have confirmed times.
   breaks: Record<number, number>
@@ -107,6 +110,24 @@ export function finalLadderPositions(matches: readonly AflMatch[]): Record<numbe
   return Object.fromEntries(buildOfficialRankMap(buildBasicStats(homeAndAway)))
 }
 
+/** A season's final home-and-away percentages (points for ÷ against × 100), keyed by team id. */
+export function finalPercentages(matches: readonly AflMatch[]): Record<number, number> {
+  const stats = buildBasicStats(matches.filter((m) => !isFinalsMatch(m)))
+  const result: Record<number, number> = {}
+  for (const [id, s] of Object.entries(stats)) {
+    if (s.against > 0) result[Number(id)] = (s.for / s.against) * 100
+  }
+  return result
+}
+
+function averageOpponentPercentage(
+  opponentIds: readonly number[],
+  percentages: Record<number, number>,
+): number | null {
+  const values = opponentIds.map((id) => percentages[id]).filter((p): p is number => p !== undefined)
+  return values.length ? values.reduce((a, b) => a + b, 0) / values.length : null
+}
+
 // Mirrors computeDifficulty in useSimulation.ts (opponents ranked in a 17-team
 // system, so opponents below the team shift up one), but over the whole fixture
 // rather than only the remaining matches, and skipping unranked opponents.
@@ -123,13 +144,17 @@ function averageOpponentRank(
   return ranks.length ? ranks.reduce((a, b) => a + b, 0) / ranks.length : null
 }
 
+// `harderIsHigher`: for percentages a bigger average means a harder draw; for
+// ranks a smaller one does.
 function orderByDifficulty(
   rows: FixtureTeamAnalysis[],
-  key: 'rankingDifficulty' | 'ladderDifficulty',
+  key: 'rankingDifficulty' | 'ladderDifficulty' | 'percentageDifficulty',
+  harderIsHigher = false,
 ): Map<number, number> {
+  const dir = harderIsHigher ? -1 : 1
   const ranked = rows
     .filter((r) => r[key] !== null)
-    .sort((a, b) => (a[key] as number) - (b[key] as number))
+    .sort((a, b) => dir * ((a[key] as number) - (b[key] as number)))
   // Equal averages share a place (e.g. three teams on 8.83 are all =6th).
   const order = new Map<number, number>()
   ranked.forEach((r, i) => {
@@ -142,13 +167,15 @@ function orderByDifficulty(
 
 /**
  * Per-team analysis of a season's home-and-away fixture: schedule difficulty
- * under two opponent rankings (the user's power ranking and a previous season's
- * final ladder), opponents played twice, and the breaks between matches.
+ * under three opponent measures (the user's power ranking, and a previous
+ * season's final ladder and percentages), opponents played twice, and the
+ * breaks between matches.
  */
 export function analyseFixture(
   matches: readonly AflMatch[],
   rankingMap: Record<number, number>,
   ladderMap: Record<number, number>,
+  percentages: Record<number, number>,
 ): FixtureTeamAnalysis[] {
   const homeAndAway = matches.filter((m) => !isFinalsMatch(m))
 
@@ -255,8 +282,10 @@ export function analyseFixture(
       games: own.length,
       rankingDifficulty: averageOpponentRank(team.id, opponentIds, rankingMap),
       ladderDifficulty: averageOpponentRank(team.id, opponentIds, ladderMap),
+      percentageDifficulty: averageOpponentPercentage(opponentIds, percentages),
       rankingOrder: null,
       ladderOrder: null,
+      percentageOrder: null,
       doubleUps,
       breaks,
       pendingBreaks,
@@ -270,9 +299,11 @@ export function analyseFixture(
 
   const rankingOrder = orderByDifficulty(rows, 'rankingDifficulty')
   const ladderOrder = orderByDifficulty(rows, 'ladderDifficulty')
+  const percentageOrder = orderByDifficulty(rows, 'percentageDifficulty', true)
   for (const r of rows) {
     r.rankingOrder = rankingOrder.get(r.teamId) ?? null
     r.ladderOrder = ladderOrder.get(r.teamId) ?? null
+    r.percentageOrder = percentageOrder.get(r.teamId) ?? null
   }
   return rows
 }

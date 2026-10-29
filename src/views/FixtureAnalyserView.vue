@@ -7,14 +7,14 @@
     <div class="mb-6">
       <h1 class="mb-1 text-xl font-bold text-gray-900 dark:text-gray-100">Fixture Analyser</h1>
       <p class="text-sm text-gray-500 dark:text-gray-400">
-        How hard each team's {{ seasonYear }} home-and-away fixture is, from the average rank of its
-        opponents (1st = hardest draw) — rated by the {{ previousSeasonYear ?? 'previous' }} final
-        ladder or by your team ranking.
+        How hard each team's {{ seasonYear }} home-and-away fixture is, from the average strength of
+        its opponents (1st = hardest draw) — rated by the {{ previousSeasonYear ?? 'previous' }} final
+        ladder, {{ previousSeasonYear ?? 'previous' }} percentages, or your team ranking.
       </p>
     </div>
 
     <div
-      v-if="isDefaultRanking && !isLadder"
+      v-if="isDefaultRanking && basis === 'ranking'"
       class="mb-4 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400"
     >
       You haven't ranked the teams yet, so "Your ranking" is just alphabetical.
@@ -40,14 +40,14 @@
           <h2 class="text-base font-bold text-gray-800 dark:text-gray-100">Hardest fixture</h2>
           <div class="flex gap-0.5 rounded-lg bg-gray-100 p-0.5 text-xs dark:bg-gray-800">
             <button
-              v-for="opt in BASIS_OPTIONS"
-              :key="opt.key"
-              @click="basis = opt.key"
+              v-for="key in BASIS_KEYS"
+              :key="key"
+              @click="basis = key"
               class="rounded-md px-2.5 py-1 font-semibold transition-colors"
-              :class="basis === opt.key
+              :class="basis === key
                 ? 'bg-white text-gray-800 shadow-sm dark:bg-gray-900 dark:text-gray-100'
                 : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
-            >{{ opt.key === 'ladder' ? `${previousSeasonYear} ladder` : opt.label }}</button>
+            >{{ BASES[key].label }}</button>
           </div>
         </div>
 
@@ -69,7 +69,7 @@
                   :class="sortColumn === col.key ? 'text-gray-800 dark:text-gray-100' : ''"
                   :title="col.key === 'difficulty'
                     ? 'Fixture difficulty — 1st is the hardest draw'
-                    : isLadder ? `${previousSeasonYear} ladder position` : 'Your team ranking'"
+                    : `Each team's ${active.positionName}`"
                 >
                   {{ col.label }}
                   <span class="w-2 text-[9px]">{{ sortColumn === col.key ? (sortDesc ? '▼' : '▲') : '' }}</span>
@@ -99,10 +99,9 @@
           </tbody>
         </table>
         <p class="mt-2 text-xs text-gray-400 dark:text-gray-500">
-          Position is each team's
-          {{ isLadder ? `${previousSeasonYear} ladder finish` : 'place in your team ranking' }}.
+          Position is each team's {{ active.positionName }}.
           Difficulty ranks the draws (1st = hardest); the bracketed number is the opponents' average
-          {{ isLadder ? 'ladder position' : 'ranking' }}. Click a heading to sort.
+          {{ active.averageName }}. Click a heading to sort.
         </p>
       </section>
 
@@ -123,9 +122,7 @@
               <span class="text-right text-xs text-gray-400 dark:text-gray-500">
                 <span class="font-semibold" :class="orderClass(row[orderKey])">{{ ordinal(row[orderKey], rows, orderKey) }}</span>
                 hardest
-                <span class="block text-[11px]">
-                  {{ isLadder ? 'Finished' : 'You ranked them' }} {{ position(row.teamId) }}{{ isLadder ? ` in ${previousSeasonYear}` : '' }}
-                </span>
+                <span class="block text-[11px]">{{ standingLine(row.teamId) }}</span>
               </span>
             </div>
 
@@ -140,7 +137,7 @@
                     <span :class="mt.isHome ? 'text-blue-600 dark:text-blue-400' : ''">{{ mt.isHome ? 'H' : 'A' }}</span>
                   </span>
                 </span>
-                <span class="shrink-0 font-semibold text-gray-500 dark:text-gray-400" :title="isLadder ? `${previousSeasonYear} ladder position` : 'Your ranking'">
+                <span class="shrink-0 font-semibold text-gray-500 dark:text-gray-400" :title="`${team(d.opponentId).abbreviation}'s ${active.positionName}`">
                   {{ position(d.opponentId) }}
                 </span>
               </li>
@@ -223,7 +220,7 @@
 import { ref, computed } from 'vue'
 import { useAFLData, fetchSeasonMatches, teamById } from '../composables/useAFLData'
 import { useRanking } from '../composables/useRanking'
-import { analyseFixture, finalLadderPositions, BREAK_DAYS, GAME_DAYS, type FixtureTeamAnalysis, type ShortBreak } from '../composables/useFixtureAnalysis'
+import { analyseFixture, finalLadderPositions, finalPercentages, BREAK_DAYS, GAME_DAYS, type FixtureTeamAnalysis, type ShortBreak } from '../composables/useFixtureAnalysis'
 import { isFinalsMatch } from '../composables/useFinals'
 import { getActiveSeasonYear, previousSeasonKey } from '../config/seasons'
 import type { AflMatch, AflTeam } from '../types/afl'
@@ -248,23 +245,54 @@ const rankingMap = computed<Record<number, number>>(() =>
   Object.fromEntries(ranking.value.map((id, i) => [id, i + 1])),
 )
 const ladderMap = computed(() => finalLadderPositions(previousMatches.value))
+const percentageMap = computed(() => finalPercentages(previousMatches.value))
 
 // useRanking falls back to the alphabetical TEAMS order when nothing is saved.
 const isDefaultRanking = computed(() => ranking.value.every((id, i) => id === teams[i]?.id))
 
-const rows = computed(() => analyseFixture(matches.value, rankingMap.value, ladderMap.value))
+const rows = computed(() =>
+  analyseFixture(matches.value, rankingMap.value, ladderMap.value, percentageMap.value),
+)
 
-type Basis = 'ranking' | 'ladder'
-const BASIS_OPTIONS: Array<{ key: Basis; label: string }> = [
-  { key: 'ladder', label: 'Ladder' },
-  { key: 'ranking', label: 'Your ranking' },
-]
+// Each view shows only its own basis — e.g. the ladder view has no ranking data.
+type Basis = 'ladder' | 'percentage' | 'ranking'
+type OrderKey = 'ladderOrder' | 'percentageOrder' | 'rankingOrder'
+const BASES: Record<Basis, {
+  label: string
+  orderKey: OrderKey
+  difficultyKey: 'ladderDifficulty' | 'percentageDifficulty' | 'rankingDifficulty'
+  // What the Position column (and double-up labels) show.
+  positionName: string
+  // What the bracketed average in the Difficulty column is an average of.
+  averageName: string
+}> = {
+  ladder: {
+    label: `${previousSeasonYear} ladder`,
+    orderKey: 'ladderOrder',
+    difficultyKey: 'ladderDifficulty',
+    positionName: `${previousSeasonYear} ladder finish`,
+    averageName: 'ladder position',
+  },
+  percentage: {
+    label: `${previousSeasonYear} %`,
+    orderKey: 'percentageOrder',
+    difficultyKey: 'percentageDifficulty',
+    positionName: `${previousSeasonYear} percentage`,
+    averageName: 'percentage',
+  },
+  ranking: {
+    label: 'Your ranking',
+    orderKey: 'rankingOrder',
+    difficultyKey: 'rankingDifficulty',
+    positionName: 'place in your team ranking',
+    averageName: 'ranking',
+  },
+}
+const BASIS_KEYS: Basis[] = ['ladder', 'percentage', 'ranking']
 const basis = ref<Basis>('ladder')
-// Each view shows only its own basis — the ladder view has no ranking data
-// and vice versa.
-const isLadder = computed(() => basis.value === 'ladder')
-const orderKey = computed(() => (isLadder.value ? 'ladderOrder' : 'rankingOrder'))
-const difficultyKey = computed(() => (isLadder.value ? 'ladderDifficulty' : 'rankingDifficulty'))
+const active = computed(() => BASES[basis.value])
+const orderKey = computed(() => active.value.orderKey)
+const difficultyKey = computed(() => active.value.difficultyKey)
 
 // Table (and breakdown) order: click a column header to sort by it, again to reverse.
 type SortColumn = 'difficulty' | 'position'
@@ -283,18 +311,34 @@ function sortOn(column: SortColumn) {
 }
 const sortedRows = computed(() => {
   const value = (r: FixtureTeamAnalysis) =>
-    (sortColumn.value === 'difficulty' ? r[orderKey.value] : positionOf(r.teamId)) ?? 99
+    sortColumn.value === 'difficulty' ? (r[orderKey.value] ?? 99) : positionSortValue(r.teamId)
   const dir = sortDesc.value ? -1 : 1
   return [...rows.value].sort((a, b) => dir * (value(a) - value(b)))
 })
 
-// A team's place under the active basis: its ladder finish or your ranking.
+// A team's own standing under the active basis: its ladder finish, its
+// percentage, or your ranking.
 function positionOf(teamId: number): number | null {
-  return (isLadder.value ? ladderMap.value : rankingMap.value)[teamId] ?? null
+  const map = basis.value === 'ladder' ? ladderMap.value : basis.value === 'percentage' ? percentageMap.value : rankingMap.value
+  return map[teamId] ?? null
+}
+// Ascending sort puts the best team first: 1st on the ladder, or the highest percentage.
+function positionSortValue(teamId: number): number {
+  const p = positionOf(teamId)
+  if (p === null) return Infinity
+  return basis.value === 'percentage' ? -p : p
 }
 function position(teamId: number): string {
   const p = positionOf(teamId)
-  return p ? ordinalNumber(p) : '—'
+  if (p === null) return '—'
+  return basis.value === 'percentage' ? `${p.toFixed(1)}%` : ordinalNumber(p)
+}
+
+// The card's line under "Nth hardest".
+function standingLine(teamId: number): string {
+  if (basis.value === 'ladder') return `Finished ${position(teamId)} in ${previousSeasonYear}`
+  if (basis.value === 'percentage') return `${position(teamId)} in ${previousSeasonYear}`
+  return `You ranked them ${position(teamId)}`
 }
 
 // e.g. "Rounds 17–24", from the home-and-away matches whose times are still dummies.
@@ -323,7 +367,7 @@ function ordinalNumber(n: number): string {
 function ordinal(
   order: number | null,
   all: readonly FixtureTeamAnalysis[],
-  key: 'rankingOrder' | 'ladderOrder',
+  key: OrderKey,
 ): string {
   if (order === null) return '—'
   const tied = all.filter((r) => r[key] === order).length > 1
@@ -331,7 +375,8 @@ function ordinal(
 }
 
 function avg(v: number | null): string {
-  return v === null ? '—' : v.toFixed(2)
+  if (v === null) return '—'
+  return basis.value === 'percentage' ? `${v.toFixed(1)}%` : v.toFixed(2)
 }
 
 // Same bands as the ladder's Diff column.
