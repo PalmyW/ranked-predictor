@@ -19,6 +19,10 @@ const NIGHT_FROM_HOUR = 17
 // break into the same match.
 export const SHORT_BREAK_MAX_DAYS = 6
 
+// A match is a "Broadcast King" when no other match kicks off within this many
+// hours either side of it (a match exactly this far away still counts as a clash).
+export const BROADCAST_WINDOW_HOURS = 3
+
 export interface DoubleUp {
   opponentId: number
   meetings: Array<{ matchId: number; roundNumber: number; isHome: boolean }>
@@ -42,6 +46,14 @@ export interface OpponentOffBye {
   // Breaks into this match; null when a game involved is still untimed.
   opponentDays: number | null
   days: number | null
+}
+
+export interface BroadcastKing {
+  matchId: number
+  roundNumber: number
+  isHome: boolean
+  opponentId: number
+  utcStartTime: string
 }
 
 export interface FixtureTeamAnalysis {
@@ -70,6 +82,9 @@ export interface FixtureTeamAnalysis {
   gameDays: Record<string, number>
   // Friday-night matches that are the only match on that Friday night.
   standaloneFridayNights: number
+  // Timed matches with no other timed match kicking off within
+  // BROADCAST_WINDOW_HOURS either side, in round order.
+  broadcastKings: BroadcastKing[]
   // PLACEHOLDER matches, whose day isn't known yet.
   untimedGames: number
 }
@@ -216,6 +231,18 @@ export function analyseFixture(
     fridayNightCount.set(date, (fridayNightCount.get(date) ?? 0) + 1)
   }
 
+  // Timed matches with the broadcast window to themselves. Untimed matches are
+  // ignored on both sides, since their start times are dummies.
+  const timedStarts = homeAndAway
+    .filter((m) => m.status !== 'PLACEHOLDER')
+    .map((m) => ({ id: m.id, start: Date.parse(m.utcStartTime) }))
+  const windowMs = BROADCAST_WINDOW_HOURS * 3_600_000
+  const exclusive = new Set(
+    timedStarts
+      .filter((a) => !timedStarts.some((b) => b.id !== a.id && Math.abs(b.start - a.start) <= windowMs))
+      .map((a) => a.id),
+  )
+
   // Each team's matches in order, and its break (days) into each one — null
   // for its first match or when either game is still untimed. Built up front
   // so a short break can be compared with the opponent's break into that match.
@@ -306,6 +333,18 @@ export function analyseFixture(
       }
     }
 
+    const broadcastKings: BroadcastKing[] = []
+    own.forEach((m, i) => {
+      if (!exclusive.has(m.id)) return
+      broadcastKings.push({
+        matchId: m.id,
+        roundNumber: m.roundNumber,
+        isHome: m.homeTeamId === team.id,
+        opponentId: opponentIds[i],
+        utcStartTime: m.utcStartTime,
+      })
+    })
+
     return {
       teamId: team.id,
       games: own.length,
@@ -322,6 +361,7 @@ export function analyseFixture(
       opponentsOffBye,
       gameDays,
       standaloneFridayNights,
+      broadcastKings,
       untimedGames,
     }
   })

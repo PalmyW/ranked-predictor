@@ -128,6 +128,58 @@
        </div>
       </section>
 
+      <!-- Broadcast Kings: games with the TV window to themselves -->
+      <section class="mb-8">
+       <div ref="kingsEl">
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-base font-bold text-gray-800 dark:text-gray-100">Broadcast Kings</h2>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Games with no overlap</p>
+          </div>
+          <ScreenshotButton v-if="!capturingKings" @click="screenshotKings(kingsEl, `broadcast-kings-${seasonYear}.png`)" />
+        </div>
+        <ol class="text-sm">
+          <li
+            v-for="row in broadcastRows"
+            :key="row.teamId"
+            class="flex gap-2 border-b border-gray-100 bg-white px-1 py-1.5 even:bg-gray-100/70 dark:border-gray-800 dark:bg-gray-900 dark:even:bg-gray-800/60"
+          >
+            <span class="w-6 shrink-0 pt-1 text-center text-xs text-gray-500">{{ broadcastPlace(row) }}</span>
+            <div class="flex w-28 shrink-0 items-start gap-1.5 sm:w-40">
+              <svg class="size-7 shrink-0"><use :href="`${BASE_URL}icons.svg#${team(row.teamId).iconId}`" /></svg>
+              <span class="truncate pt-1 font-medium text-gray-800 dark:text-gray-200">
+                <span class="sm:hidden">{{ team(row.teamId).abbreviation }}</span>
+                <span class="hidden sm:inline">{{ team(row.teamId).name }}</span>
+              </span>
+            </div>
+            <span class="w-6 shrink-0 pt-1 text-center font-bold tabular-nums" :class="row.broadcastKings.length ? 'text-gray-800 dark:text-gray-100' : 'text-gray-300 dark:text-gray-600'">
+              {{ row.broadcastKings.length }}
+            </span>
+            <ul class="flex flex-1 flex-wrap gap-1 pt-0.5">
+              <li
+                v-for="g in row.broadcastKings"
+                :key="g.matchId"
+                class="flex items-center gap-1 rounded bg-gray-50 px-1.5 py-0.5 text-xs dark:bg-gray-800"
+                :title="`Round ${g.roundNumber}: ${team(row.teamId).abbreviation} ${g.isHome ? 'v' : '@'} ${team(g.opponentId).abbreviation}, ${kickoff(g.utcStartTime)} (Melbourne time)`"
+              >
+                <span class="text-gray-500 dark:text-gray-400">R{{ g.roundNumber }}</span>
+                <span class="tabular-nums text-gray-600 dark:text-gray-300">{{ kickoff(g.utcStartTime) }}</span>
+                <span :class="g.isHome ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'">{{ g.isHome ? 'v' : '@' }}</span>
+                <svg class="size-4 shrink-0"><use :href="`${BASE_URL}icons.svg#${team(g.opponentId).iconId}`" /></svg>
+                <span class="font-semibold text-gray-700 dark:text-gray-200">{{ team(g.opponentId).abbreviation }}</span>
+              </li>
+            </ul>
+          </li>
+        </ol>
+        <p class="mt-2 text-xs text-gray-400 dark:text-gray-500">
+          Games with the broadcast to themselves: no other game starts within {{ BROADCAST_WINDOW_HOURS }} hours
+          before or after kick-off (a game exactly {{ BROADCAST_WINDOW_HOURS }} hours away counts as a clash).
+          Times are Melbourne time.
+          <template v-if="untimedRounds">Games in {{ untimedRounds }} aren't counted until their times are confirmed.</template>
+        </p>
+       </div>
+      </section>
+
       <!-- Per-team breakdown -->
       <section>
         <h2 class="mb-3 text-base font-bold text-gray-800 dark:text-gray-100">Team breakdown</h2>
@@ -243,7 +295,7 @@
 import { ref, computed } from 'vue'
 import { useAFLData, fetchSeasonMatches, teamById } from '../composables/useAFLData'
 import { useRanking } from '../composables/useRanking'
-import { analyseFixture, finalLadderPositions, finalPercentages, BREAK_DAYS, GAME_DAYS, type FixtureTeamAnalysis, type ShortBreak } from '../composables/useFixtureAnalysis'
+import { analyseFixture, finalLadderPositions, finalPercentages, BREAK_DAYS, BROADCAST_WINDOW_HOURS, GAME_DAYS, type FixtureTeamAnalysis, type ShortBreak } from '../composables/useFixtureAnalysis'
 import { isFinalsMatch } from '../composables/useFinals'
 import { getActiveSeasonYear, previousSeasonKey } from '../config/seasons'
 import { useScreenshot } from '../composables/useScreenshot'
@@ -255,6 +307,9 @@ const BASE_URL = import.meta.env.BASE_URL
 // "Save as image" for the hardest-fixture table.
 const tableEl = ref<HTMLElement | null>(null)
 const { capturing, screenshot } = useScreenshot()
+// And for the Broadcast Kings list.
+const kingsEl = ref<HTMLElement | null>(null)
+const { capturing: capturingKings, screenshot: screenshotKings } = useScreenshot()
 
 const { matches, teams, isLoading, error } = useAFLData()
 const { ranking } = useRanking()
@@ -381,6 +436,32 @@ function standingLine(teamId: number): string {
   if (basis.value === 'ladder') return `Finished ${position(teamId)} in ${previousSeasonYear}`
   if (basis.value === 'percentage') return `${position(teamId)} in ${previousSeasonYear}`
   return `You ranked them ${position(teamId)}`
+}
+
+// Most stand-alone broadcasts first; ties share a place, shown as "=3".
+const broadcastRows = computed(() =>
+  [...rows.value].sort(
+    (a, b) => b.broadcastKings.length - a.broadcastKings.length || team(a.teamId).name.localeCompare(team(b.teamId).name),
+  ),
+)
+function broadcastPlace(row: FixtureTeamAnalysis): string {
+  const n = row.broadcastKings.length
+  const place = 1 + broadcastRows.value.filter((r) => r.broadcastKings.length > n).length
+  const tied = broadcastRows.value.filter((r) => r.broadcastKings.length === n).length > 1
+  return `${tied ? '=' : ''}${place}`
+}
+
+// e.g. "Fri 7:40pm", in Melbourne time.
+const KICKOFF = new Intl.DateTimeFormat('en-AU', {
+  timeZone: 'Australia/Melbourne',
+  weekday: 'short',
+  hour: 'numeric',
+  minute: '2-digit',
+  hour12: true,
+})
+function kickoff(iso: string): string {
+  const parts = Object.fromEntries(KICKOFF.formatToParts(new Date(iso)).map((p) => [p.type, p.value]))
+  return `${parts.weekday} ${parts.hour}:${parts.minute}${(parts.dayPeriod ?? '').toLowerCase()}`
 }
 
 // e.g. "Rounds 17–24", from the home-and-away matches whose times are still dummies.
