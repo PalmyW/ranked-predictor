@@ -7706,7 +7706,7 @@
         "landOwner": "Gadigal/Wangal"
       },
       "utcStartTime": "2026-11-01T01:35:00.000+0000",
-      "status": "UNCONFIRMED_TEAMS",
+      "status": "LIVE",
       "metadata": {
         "ticket_link": "https://www.ticketmaster.com.au/event/130064E8B0A74AB6"
       }
@@ -7776,7 +7776,7 @@
         "landOwner": "Wurundjeri"
       },
       "utcStartTime": "2026-11-01T02:05:00.000+0000",
-      "status": "UNCONFIRMED_TEAMS",
+      "status": "CONFIRMED_TEAMS",
       "metadata": {
         "ticket_link": "https://www.ticketmaster.com.au/event/250064E6AC5D2B14"
       }
@@ -7941,12 +7941,19 @@
       },
       "home": {
         "team": {
-          "id": 153,
-          "providerId": "CD_T3000",
-          "name": "1st",
-          "abbreviation": "TBD",
-          "nickname": "TBD",
-          "teamType": "MEN"
+          "id": 30,
+          "providerId": "CD_T8466",
+          "name": "North Melbourne",
+          "abbreviation": "NMFC",
+          "nickname": "Kangaroos",
+          "club": {
+            "id": 20,
+            "providerId": "CD_O20",
+            "name": "North Melbourne",
+            "abbreviation": "Kangaroos",
+            "nickname": "Kangaroos"
+          },
+          "teamType": "WOMEN"
         }
       },
       "away": {
@@ -7992,12 +7999,19 @@
       },
       "home": {
         "team": {
-          "id": 154,
-          "providerId": "CD_T3001",
-          "name": "2nd",
-          "abbreviation": "TBD",
-          "nickname": "TBD",
-          "teamType": "MEN"
+          "id": 26,
+          "providerId": "CD_T8467",
+          "name": "Geelong Cats",
+          "abbreviation": "GEEL",
+          "nickname": "Cats",
+          "club": {
+            "id": 15,
+            "providerId": "CD_O11",
+            "name": "Geelong Cats",
+            "abbreviation": "Cats",
+            "nickname": "Cats"
+          },
+          "teamType": "WOMEN"
         }
       },
       "away": {
@@ -8020,7 +8034,8 @@
         "timezone": "Australia/Melbourne"
       },
       "utcStartTime": "2026-11-02T01:00:00.000+0000",
-      "status": "PLACEHOLDER"
+      "status": "PLACEHOLDER",
+      "metadata": { "finals_match_label": "Second Qualifying Final" }
     },
     {
       "id": 9077,
