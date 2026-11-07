@@ -7966,7 +7966,8 @@
             "nickname": "Cats"
           },
           "teamType": "WOMEN"
-        }
+        },
+        "score": { "goals": 8, "behinds": 4, "totalScore": 52, "superGoals": 0 }
       },
       "away": {
         "team": {
@@ -7983,7 +7984,8 @@
             "nickname": "Demons"
           },
           "teamType": "WOMEN"
-        }
+        },
+        "score": { "goals": 8, "behinds": 8, "totalScore": 56, "superGoals": 0 }
       },
       "venue": {
         "id": 37,
@@ -7996,7 +7998,7 @@
         "landOwner": "Wurundjeri"
       },
       "utcStartTime": "2026-11-07T02:05:00.000+0000",
-      "status": "UNCONFIRMED_TEAMS",
+      "status": "CONCLUDED",
       "metadata": {
         "finals_match_label": "Second Qualifying Final",
         "ticket_link": "https://www.ticketmaster.com.au/event/1300655680E32247"
@@ -8067,7 +8069,7 @@
         "landOwner": "Wurundjeri"
       },
       "utcStartTime": "2026-11-07T05:05:00.000+0000",
-      "status": "UNCONFIRMED_TEAMS",
+      "status": "LIVE",
       "metadata": {
         "finals_match_label": "First Qualifying Final",
         "ticket_link": "https://www.ticketmaster.com.au/event/1300655680E32247"
@@ -8286,12 +8288,19 @@
       },
       "home": {
         "team": {
-          "id": 164,
-          "providerId": "CD_T3015",
-          "name": "Loser of QF2",
-          "abbreviation": "TBD",
-          "nickname": "TBD",
-          "teamType": "MEN"
+          "id": 26,
+          "providerId": "CD_T8467",
+          "name": "Geelong Cats",
+          "abbreviation": "GEEL",
+          "nickname": "Cats",
+          "club": {
+            "id": 15,
+            "providerId": "CD_O11",
+            "name": "Geelong Cats",
+            "abbreviation": "Cats",
+            "nickname": "Cats"
+          },
+          "teamType": "WOMEN"
         }
       },
       "away": {
@@ -8388,12 +8397,19 @@
       },
       "home": {
         "team": {
-          "id": 162,
-          "providerId": "CD_T3013",
-          "name": "Winner of QF2",
-          "abbreviation": "TBD",
-          "nickname": "TBD",
-          "teamType": "MEN"
+          "id": 29,
+          "providerId": "CD_T7386",
+          "name": "Melbourne",
+          "abbreviation": "MELB",
+          "nickname": "Demons",
+          "club": {
+            "id": 14,
+            "providerId": "CD_O18",
+            "name": "Melbourne",
+            "abbreviation": "Demons",
+            "nickname": "Demons"
+          },
+          "teamType": "WOMEN"
         }
       },
       "away": {
